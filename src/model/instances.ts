@@ -95,7 +95,10 @@ function nodesEquivalent(a: SceneNode, b: SceneNode): boolean {
     a.transform.tx !== b.transform.tx ||
     a.transform.ty !== b.transform.ty ||
     a.fills !== b.fills ||
-    a.strokes !== b.strokes
+    a.strokes !== b.strokes ||
+    // A binding change must reach the instance, or a layer bound to a property
+    // keeps the copy it was materialized with.
+    a.componentPropertyReferences !== b.componentPropertyReferences
   ) {
     return false;
   }

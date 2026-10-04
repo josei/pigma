@@ -253,6 +253,26 @@ export function componentLibrary(file: PigmaFile): Array<{ id: string; name: str
 }
 
 /**
+ * The node that owns the component property definitions a panel should show.
+ *
+ * For an instance: the component SET its component belongs to, or — when that
+ * component is standalone — the component itself. Returning the instance instead
+ * yields no definitions at all, which hid every control (BOOLEAN, TEXT and
+ * INSTANCE_SWAP alike) for instances of standalone components.
+ */
+export function propertyOwnerOf(file: PigmaFile, node: SceneNode): ComponentNode | null {
+  if (node.type === 'COMPONENT_SET') return node;
+  if (node.type === 'COMPONENT') return componentSetOf(file, node.id) ?? node;
+  if (node.type === 'INSTANCE') {
+    const set = componentSetOf(file, node.componentId);
+    if (set) return set;
+    const main = findNode(file.document, node.componentId);
+    return main && main.type === 'COMPONENT' ? main : null;
+  }
+  return componentSetOf(file, node.id);
+}
+
+/**
  * Effective overrides for a layer inside an instance, driven by the instance's
  * component property values (`componentPropertyReferences`).
  */
