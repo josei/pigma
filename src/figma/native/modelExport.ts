@@ -12,6 +12,7 @@
  */
 import { invert } from '../../model/matrix';
 import type {
+  ComponentPropertyDefinition,
   PrototypeAction,
   LayoutGrid,
   AnyNode,
@@ -603,8 +604,12 @@ function nodeChange(
     change.variableBindings = toNativeBindings(node.boundVariables as Record<string, string>);
   }
   if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
-    const component = node as unknown as { componentPropertyDefinitions?: Record<string, unknown> };
-    if (component.componentPropertyDefinitions) change.componentPropertyDefinitions = component.componentPropertyDefinitions;
+    const component = node as unknown as { componentPropertyDefinitions?: Record<string, ComponentPropertyDefinition> };
+    const definitions = component.componentPropertyDefinitions;
+    if (definitions && Object.keys(definitions).length > 0) {
+      const mapped = componentPropDefs(definitions, ctx.sessionID, ctx.warnings);
+      if (mapped.length > 0) change.componentPropDefs = mapped;
+    }
   }
   if (node.type === 'INSTANCE') {
     const instance = node as SceneNode & { componentId?: string };
@@ -710,6 +715,74 @@ const BINDING_EXPORT_KEYS: Record<string, string> = {
   visible: 'visible',
   characters: 'characters',
 };
+
+/**
+ * The model's component property types are NOT the wire's. The wire's
+ * `ComponentPropType` is BOOL / TEXT / COLOR / INSTANCE_SWAP / VARIANT / NUMBER /
+ * IMAGE / SLOT / EASING; the model has VARIANT / BOOLEAN / TEXT / INSTANCE_SWAP /
+ * SLOT. Note `BOOLEAN` vs `BOOL`: writing the model's name through would be
+ * silently dropped, the same class as the six vocabulary instances.
+ */
+const WIRE_PROP_TYPES: Record<string, string> = {
+  BOOLEAN: 'BOOL',
+  TEXT: 'TEXT',
+  VARIANT: 'VARIANT',
+  INSTANCE_SWAP: 'INSTANCE_SWAP',
+  SLOT: 'SLOT',
+};
+
+/** The wire's `ComponentPropValue` is a union discriminated by which field is set. */
+function wirePropValue(wireType: string, value: unknown): Record<string, unknown> | null {
+  switch (wireType) {
+    case 'BOOL':
+      return typeof value === 'boolean' ? { boolValue: value } : null;
+    case 'TEXT':
+    case 'VARIANT':
+      return typeof value === 'string' ? { textValue: { characters: value } } : null;
+    case 'INSTANCE_SWAP':
+      return typeof value === 'string' ? { guidValue: value } : null;
+    case 'SLOT':
+      // A slot's initial value is the empty text data.
+      return typeof value === 'string' ? { textValue: { characters: value } } : null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * The model keeps `Record<name, { type, defaultValue }>`; the wire keeps a LIST of
+ * `ComponentPropDef` with the id and the NAME inside each entry. So this is a
+ * mapper, not a rename: the id is derived, the type is translated, and the value
+ * is boxed into the union.
+ *
+ * NOTE THE SHAPE: `componentPropDefs` is a LIST on the wire, not a map. Writing a
+ * map under the right field name encoded as an EMPTY LIST and lost every
+ * definition with no warning — a value-shape loss the field check cannot catch.
+ */
+function componentPropDefs(
+  definitions: Record<string, ComponentPropertyDefinition>,
+  sessionID: number,
+  warnings: string[],
+): unknown[] {
+  const out: unknown[] = [];
+  let index = 0;
+  for (const [name, definition] of Object.entries(definitions)) {
+    const wireType = WIRE_PROP_TYPES[definition.type];
+    if (!wireType) {
+      warnings.push(`component property "${name}" has type ${definition.type}, which this .fig schema has no member for`);
+      continue;
+    }
+    const value = wirePropValue(wireType, definition.defaultValue);
+    if (!value) {
+      warnings.push(`component property "${name}" has a default this .fig schema cannot encode`);
+      continue;
+    }
+    const guid = guidFor(`componentProp:${name}`, sessionID);
+    out.push({ id: guid, name, type: wireType, sortPosition: String(index), initialValue: value });
+    index += 1;
+  }
+  return out;
+}
 
 function toNativeBindings(bindings: Record<string, string>): Record<string, unknown> {
   const out: Record<string, unknown> = {};

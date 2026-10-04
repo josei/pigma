@@ -171,6 +171,70 @@ function componentProperties(
 const COMPONENT_PROPERTY_TYPES: readonly ComponentPropertyType[] = ['VARIANT', 'BOOLEAN', 'TEXT', 'INSTANCE_SWAP', 'SLOT'];
 
 /**
+ * The wire's `ComponentPropType` is not the model's. Note `BOOL` on the wire
+ * against `BOOLEAN` in the model: reading the wire's name through would drop
+ * every boolean property.
+ */
+const MODEL_PROP_TYPES: Record<string, ComponentPropertyType> = {
+  BOOL: 'BOOLEAN',
+  TEXT: 'TEXT',
+  VARIANT: 'VARIANT',
+  INSTANCE_SWAP: 'INSTANCE_SWAP',
+  SLOT: 'SLOT',
+};
+
+/** Unbox the wire's `ComponentPropValue` union into the model's default value. */
+function modelPropValue(value: Record<string, unknown>): string | boolean | null {
+  if (typeof value.boolValue === 'boolean') return value.boolValue;
+  const text = value.textValue;
+  if (isRecord(text) && typeof text.characters === 'string') return text.characters;
+  if (typeof value.guidValue === 'string') return value.guidValue;
+  if (typeof value.floatValue === 'number') return String(value.floatValue);
+  return null;
+}
+
+/**
+ * Maps the native wire's component property definitions — keyed by prop id, with
+ * the NAME inside and the type in the wire's vocabulary — into the model's shape,
+ * which is keyed by name. Unmappable entries are reported, never coerced.
+ */
+function nativeComponentPropDefs(
+  nodeId: string,
+  path: string,
+  raw: unknown[],
+  report: ReportBuilder,
+): Record<string, ComponentPropertyDefinition> | undefined {
+  const definitions: Record<string, ComponentPropertyDefinition> = {};
+  for (const [index, entry] of raw.entries()) {
+    if (!isRecord(entry)) continue;
+    const propId = `#${index}`;
+    if (entry.isDeleted === true) continue;
+    const name = typeof entry.name === 'string' ? entry.name : null;
+    if (!name) {
+      report.addUnsupported({ nodeId, path, feature: 'componentPropertyDefinition', detail: `"${propId}" has no name` });
+      continue;
+    }
+    const type = typeof entry.type === 'string' ? MODEL_PROP_TYPES[entry.type] : undefined;
+    if (!type) {
+      report.addUnsupported({
+        nodeId,
+        path,
+        feature: 'componentPropertyDefinition',
+        detail: `"${name}" has type ${JSON.stringify(entry.type)}, which the model has no member for`,
+      });
+      continue;
+    }
+    const initial = isRecord(entry.initialValue) ? modelPropValue(entry.initialValue) : null;
+    if (initial === null) {
+      report.addUnsupported({ nodeId, path, feature: 'componentPropertyDefinition', detail: `"${name}" has a default the model cannot represent` });
+      continue;
+    }
+    definitions[name] = { type, defaultValue: initial };
+  }
+  return Object.keys(definitions).length > 0 ? definitions : undefined;
+}
+
+/**
  * Validates raw `componentPropertyDefinitions` into the model shape. Entries
  * that cannot be represented (unknown type, missing default) are reported
  * rather than coerced, so nothing is silently lost.
@@ -726,9 +790,18 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
     }
   }
   if (node.type === 'SYMBOL' || node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
-    const definitions = node.componentPropertyDefinitions;
-    if (definitions && typeof definitions === 'object') {
-      normalized.componentPropertyDefinitions = componentPropertyDefinitions(id, path, definitions as Record<string, unknown>, report);
+    // The native wire keys the definitions by PROP ID with the name inside; the
+    // REST shape keys them by name. Try the native name first.
+    // A LIST on the wire, with the name inside each entry.
+    const nativeDefs = node.componentPropDefs;
+    if (Array.isArray(nativeDefs)) {
+      const mapped = nativeComponentPropDefs(id, path, nativeDefs as unknown[], report);
+      if (mapped) normalized.componentPropertyDefinitions = mapped;
+    } else {
+      const definitions = node.componentPropertyDefinitions;
+      if (definitions && typeof definitions === 'object') {
+        normalized.componentPropertyDefinitions = componentPropertyDefinitions(id, path, definitions as Record<string, unknown>, report);
+      }
     }
   }
 

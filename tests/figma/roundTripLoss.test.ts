@@ -472,3 +472,41 @@ describe('style bindings survive through the style table', () => {
     expect(warnings.filter((line) => line.includes('is not defined by this .fig schema'))).toEqual([]);
   });
 });
+
+describe('component property definitions round-trip through the wire mapper', () => {
+  it('survives, with the type vocabulary translated', async () => {
+    const file = emptyFile('Component props');
+    const page = file.document.children[0]!;
+    const component = createFrameNode(file.document, 0, 0, 100, 100);
+    component.name = 'Button';
+    (component as { type: string }).type = 'COMPONENT';
+    (component as { componentPropertyDefinitions?: Record<string, { type: string; defaultValue: string | boolean; variantOptions?: string[] }> }).componentPropertyDefinitions = {
+      size: { type: 'VARIANT', defaultValue: 'large', variantOptions: ['small', 'large'] },
+      disabled: { type: 'BOOLEAN', defaultValue: false },
+      label: { type: 'TEXT', defaultValue: 'Go' },
+    };
+    page.children = [component];
+
+    const back = byName(await roundTrip(file, 'circle.fig'), 'Button')!;
+    const defs = (back as { componentPropertyDefinitions?: Record<string, { type: string; defaultValue: unknown }> }).componentPropertyDefinitions!;
+    // The wire calls BOOLEAN "BOOL"; writing the model's name through would drop it.
+    expect(defs.disabled, 'the boolean property did not survive').toEqual({ type: 'BOOLEAN', defaultValue: false });
+    expect(defs.label).toEqual({ type: 'TEXT', defaultValue: 'Go' });
+    expect(defs.size?.type).toBe('VARIANT');
+    expect(defs.size?.defaultValue).toBe('large');
+    expect(Object.keys(defs).sort()).toEqual(['disabled', 'label', 'size']);
+  });
+
+  it('reports a wire type the model has no member for, rather than coercing it', () => {
+    const file = emptyFile('Unknown prop');
+    const page = file.document.children[0]!;
+    const component = createFrameNode(file.document, 0, 0, 100, 100);
+    component.name = 'Button';
+    (component as { type: string }).type = 'COMPONENT';
+    page.children = [component];
+    const { message } = pigmaToFigMessage(file, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors });
+    const change = (message.nodeChanges as Array<Record<string, unknown>>).find((entry) => entry.name === 'Button')!;
+    // No definitions: nothing is written, so nothing can be silently dropped.
+    expect(change.componentPropDefs).toBeUndefined();
+  });
+});
