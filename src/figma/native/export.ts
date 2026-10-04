@@ -14,7 +14,7 @@
  * importer keeps working without it.
  */
 import { FigmaImportError } from '../errors';
-import { decodeBinarySchema } from './kiwi';
+import { decodeBinarySchema, type KiwiSchema } from './kiwi';
 import { readZipEntries, type Decompressors } from './zip';
 
 /** Compression for the message chunk. Figma requires zstd when writing. */
@@ -102,6 +102,39 @@ function assemble(prelude: string, version: number, chunks: Uint8Array[]): Uint8
 }
 
 /**
+ * The schema a seed archive provides, decoded once.
+ *
+ * Shared by the encoder and by the export's field check, so neither re-derives
+ * it and the check costs one decode per export.
+ */
+export interface SeedSchema {
+  schema: KiwiSchema;
+  prelude: string;
+  version: number;
+  schemaChunk: Uint8Array;
+  chunks: Uint8Array[];
+}
+
+export function readSeedSchema(schemaFrom: Uint8Array, decompress: Decompressors): SeedSchema {
+  const seedBytes =
+    schemaFrom[0] === 0x50 && schemaFrom[1] === 0x4b
+      ? (readZipEntries(schemaFrom, decompress).get('canvas.fig') ?? (() => {
+          throw new FigmaImportError('UNSUPPORTED_ARCHIVE', 'Seed archive has no canvas.fig');
+        })())
+      : schemaFrom;
+  const seed = readCanvasChunks(seedBytes);
+  const schemaChunk = seed.chunks[0];
+  if (!schemaChunk) throw new FigmaImportError('INVALID_BINARY', 'Seed has no schema chunk');
+  return {
+    schema: decodeBinarySchema(decompress.inflateRaw(schemaChunk)),
+    prelude: seed.prelude,
+    version: seed.version,
+    schemaChunk,
+    chunks: seed.chunks,
+  };
+}
+
+/**
  * Encode a decoded Kiwi message into `canvas.fig` bytes, reusing the seed's
  * schema chunk (so the schema is never re-derived).
  */
@@ -110,20 +143,9 @@ export async function exportFigBinary(
   options: ExportOptions,
 ): Promise<Uint8Array> {
   // Accept either a bare canvas.fig or a full .fig/.deck/.jam archive.
-  const seedBytes =
-    options.schemaFrom[0] === 0x50 && options.schemaFrom[1] === 0x4b
-      ? (readZipEntries(options.schemaFrom, options.decompress).get('canvas.fig') ?? (() => {
-          throw new FigmaImportError('UNSUPPORTED_ARCHIVE', 'Seed archive has no canvas.fig');
-        })())
-      : options.schemaFrom;
-  const seed = readCanvasChunks(seedBytes);
-  const schemaChunk = seed.chunks[0];
-  if (!schemaChunk) throw new FigmaImportError('INVALID_BINARY', 'Seed has no schema chunk');
-
-  const schemaBinary = options.decompress.inflateRaw(schemaChunk);
-  const schema = decodeBinarySchema(schemaBinary);
+  const seed = readSeedSchema(options.schemaFrom, options.decompress);
   const kiwi = await loadKiwiSchema();
-  const compiled = kiwi.compileSchema(schema);
+  const compiled = kiwi.compileSchema(seed.schema);
   const encoded = compiled.encodeMessage(message);
 
   let messageChunk: Uint8Array;
@@ -139,7 +161,7 @@ export async function exportFigBinary(
   }
 
   return assemble(options.prelude ?? seed.prelude, options.version ?? seed.version, [
-    schemaChunk,
+    seed.schemaChunk,
     messageChunk,
     ...(options.extraChunks ?? seed.chunks.slice(2)),
   ]);

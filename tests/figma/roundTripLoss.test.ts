@@ -135,3 +135,56 @@ describe('dashPattern: is the loss schema-dependent?', () => {
     ).toEqual([]);
   });
 });
+
+describe('the export reports fields the schema cannot encode', () => {
+  it('warns once per unencodable field, naming it and the change', () => {
+    const file = emptyFile('Warn');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(file.document, 0, 0, 100, 50);
+    rect.name = 'Subject';
+    // `dashPattern` is WRITTEN by the exporter (as `strokeDashes`) but the schema
+    // has no such field, which is exactly the class this check catches. A field
+    // the exporter never writes is a missing write, not a dropped one, so it
+    // cannot appear here.
+    rect.dashPattern = [4, 2];
+    page.children = [rect];
+
+    const { warnings } = pigmaToFigMessage(file, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors });
+    const dropped = warnings.filter((line) => line.includes('is not defined by this .fig schema'));
+    expect(dropped).toHaveLength(1);
+    expect(dropped[0]).toContain('"strokeDashes"');
+    // The change is named, and a field a user would notice says so.
+    expect(dropped[0]).toMatch(/RECTANGLE "Subject"/);
+    expect(dropped[0]).toContain('a user would notice this');
+  });
+
+  it('does not warn about fields the schema defines', () => {
+    const file = emptyFile('Clean');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(file.document, 0, 0, 100, 50);
+    rect.name = 'Plain';
+    rect.locked = true;
+    rect.visible = false;
+    rect.opacity = 0.5;
+    rect.cornerRadius = 4;
+    page.children = [rect];
+    const { warnings } = pigmaToFigMessage(file, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors });
+    expect(warnings.filter((line) => line.includes('is not defined by this .fig schema'))).toEqual([]);
+  });
+
+  it('covers a silently WRONG value too: windingRule now round-trips', async () => {
+    // It was not a loss but a wrong value: the exporter hardcoded NONZERO in the
+    // geometry entry, so an EVENODD path came back NONZERO.
+    const file = emptyFile('Winding');
+    const page = file.document.children[0]!;
+    const vector = createRectNode(file.document, 0, 0, 100, 50);
+    vector.name = 'Subject';
+    (vector as { type: string }).type = 'VECTOR';
+    (vector as { pathData: string }).pathData = 'M 0 0 L 10 0 L 10 10 Z';
+    vector.windingRule = 'EVENODD';
+    page.children = [vector];
+    const reimported = await roundTrip(file, 'circle.fig');
+    // The schema spells it ODD; the import maps it back to the model's EVENODD.
+    expect(byName(reimported, 'Subject')!.windingRule).toBe('EVENODD');
+  });
+});
