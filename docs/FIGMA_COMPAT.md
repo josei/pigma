@@ -31,6 +31,52 @@ not as safe.
 
 ---
 
+## 0. The governing principle: prefer Figma's shape
+
+**Prefer Figma's shape. If we diverge, record the reason.**
+
+**This is not a style preference - it is the lesson of this run, and the evidence is
+that every divergence we chose became a bug:**
+
+- **nine** vocabulary instances, all of them **name mismatches** against a shape we
+  had chosen differently;
+- a **shape blindness** the name check cannot see (a map written under the right
+  name as an empty list);
+- the **guid-vs-id** match in style bindings;
+- the **second-pass ordering** problem (a table built after the nodes are converted);
+- **two fields invented purely to bridge the two models**.
+
+**A divergence is a place a translation can be wrong - and ours have been wrong at a
+measurable rate.** Where the wire's shape can be adopted instead, adopting it removes
+a translation step, and with it a place to be wrong.
+
+### The divergences, with a verdict on each
+
+| Our shape | Figma's shape | Verdict |
+| --- | --- | --- |
+| styles as a **file-level table** | styles are **NODES** | **CHANGE IT** - in progress now |
+| `NodeStyleBinding` keyed by **id** | keyed by **GUID** | **CHANGE IT** - queued |
+| `StyleType` with **3** members | the wire has **7** | **CHANGE IT** - queued |
+| `boundVariables` as `Record<field, id>` | the wire's **per-field `VariableData`** | **CHANGE IT** - queued |
+| grid **track sizes** | the wire cannot carry `px`/`fr` | **KEEP** - a **WIRE LIMIT**, not our divergence |
+| `SCROLL_TO` withdrawn | the shape is fine | **KEEP withdrawn** - we lack the **SEMANTICS**, not the shape |
+
+**One row is in progress, three are queued, and two are deliberate keeps.** None is
+claimed done until a round trip proves it.
+
+### What this rule does NOT fix
+
+It is **not a cure-all**, and it should not be read as one. It does not touch:
+
+- **wire-shape limits** - where the wire genuinely cannot express what we hold;
+- **unknown semantics** - `SCROLL_TO` is withdrawn for meaning, not for form;
+- the **memory-sourced parity numbers** - a shape cannot make an unverified value
+  verified;
+- the **environment blockers** - hosted infrastructure, the Tauri **system
+  libraries**, and the **unit transient**.
+
+**Fewer places to be wrong is not no places.**
+
 ## 1. Round-trip matrix (native `.fig`)
 
 Legend: **✅** survives · **≈** survives with a stated approximation ·
@@ -279,6 +325,42 @@ pre-encode warning keeps **reporting the loss**, rather than the export silently
 carrying less. **Removing a write is a product decision, not a passing one** - a
 silent export that omits a field is worse than a loud one that names it.
 
+### A SECOND CLASS: the name check is STRUCTURALLY BLIND to shape
+
+The name diff catches **name** mismatches. `componentPropDefs` found the form it
+**cannot catch by construction**: the mapper wrote a **MAP** under the **CORRECT
+FIELD NAME**, encoded as an **EMPTY LIST**. Every definition was lost with **NO
+WARNING**, because the **name was right** and only the **VALUE SHAPE** was wrong.
+
+That is the **NINTH** instance of this family, in a **NEW FORM**:
+
+| | Form |
+| --- | --- |
+| Instances 1-8 | **name** losses - written under a name the schema does not define |
+| **Instance 9** | a **SHAPE** loss - the right name, the wrong value shape |
+
+**The field-name check cannot catch this by construction**, which is why a **SHAPE
+check is now being built** - so the next one is caught the same way the name ones
+are, by looking.
+
+### componentPropDefs: landed BOTH ways
+
+`VARIANT` / `BOOLEAN` / `TEXT` definitions survive the binary round trip with their
+**names** and their **defaults**, and **two negatives are pinned**.
+
+**A TYPE VOCABULARY difference sits underneath:** the wire's property-type enum has
+**NINE** members against our **FIVE** - writing `BOOLEAN` through unchanged would
+have **dropped every boolean**.
+
+**And the values are boxed:** `boolValue` / `textValue` / `guidValue` / `floatValue`
+/ `easingData` - where **`textValue` is a `TextData` STRUCT**, not a bare string.
+
+### Styles: BLOCKED ON A MODEL DECISION - not work in progress
+
+A **third cause** is established, and it is the decisive one: **Figma styles are
+NODES; ours are a table.** The three options have been put to the product owner, so
+this is **awaiting that decision** - not in progress, and not fixed.
+
 ### The schema diff - a STANDING TOOL, not a one-off
 
 The most reusable thing this project has produced is a **method**. The editor
@@ -359,9 +441,9 @@ Everything the earlier rounds landed still survives; these are what is still ope
 
 | Gap | Nature |
 | --- | --- |
-| **Style bindings** | **EXPORT landed; IMPORT does not survive** (two causes: guid-vs-id matched against a table built too late, and the style table itself not crossing the wire). **Plus a model gap**: 5 wire fields vs 3 model fields. The wire `StyleType` also has **7** members against our **3** |
+| **Style bindings** | **BLOCKED ON A MODEL DECISION** - a third cause is established (Figma styles are NODES, ours are a table) and three options are with the product owner, so this is **awaiting that decision, not in progress**. The EXPORT half landed; the IMPORT does not survive; plus a **model gap** (5 wire fields vs 3) and a `StyleType` that has **7** members against our **3** |
 | **Variable bindings** | a **NAME MISMATCH** - written as `variableBindings`, which the schema does not define, so `kiwi` drops it silently (being fixed) |
-| **Component property definitions** | a **NAME MISMATCH** - written as `componentPropertyDefinitions`, likewise (being fixed) |
+| **Component property definitions** | **landed BOTH ways** (`componentPropDefs`: VARIANT/BOOLEAN/TEXT with names and defaults; two negatives pinned). What it *found* is a **SHAPE** loss - a map written under the RIGHT name as an EMPTY LIST - which is **instance 9** and which the name check is blind to; a **shape check is being built** |
 | **Grid track sizes** | still lost (the **track guids** half is closed) |
 | **`assetRef`** | not carried |
 | **`FIXED_MIN` / `FIXED_MAX`** | a **MODEL gap** - deliberately unmapped rather than coerced into `MIN`/`MAX` |
