@@ -31,6 +31,7 @@ import type {
 } from '../../model/types';
 import { invert, toMatrix } from '../../model/matrix';
 import { bytesToDataUrl, bytesToHex } from '../internal/base64';
+import { isRecord } from '../internal/json';
 import type { FigColor, FigEffect, FigNode, FigPaint } from '../native/parse';
 import type { FigmaEffect, FigmaPaint, FigmaRestNode, FigmaTypeStyle } from '../rest/types';
 import type { ReportBuilder } from './report';
@@ -444,12 +445,58 @@ export function mapRestAutoLayout(node: FigmaRestNode, ctx: MapperContext): Auto
   return layout;
 }
 
+/**
+ * Grid auto layout, from the wire.
+ *
+ * The mode, the gaps, the spans and the anchors are all readable, and the track
+ * GUIDs come from the `GUIDPositionMap` (carried in `gridColumnGuids`/
+ * `gridRowGuids` because our tracks are numeric). What the wire does NOT give is
+ * the track SIZES — the map carries guids and positions, not px/fr — so a grid's
+ * tracks come back as the implicit single flex track. That is a documented gap,
+ * reported below rather than guessed.
+ */
+function mapNativeGrid(node: FigNode, ctx: MapperContext): AutoLayout | undefined {
+  const columnGuids = guidMapOf(node.gridColumns);
+  const rowGuids = guidMapOf(node.gridRows);
+  const hasGrid =
+    columnGuids.length > 0 ||
+    rowGuids.length > 0 ||
+    typeof node.gridColumnGap === 'number' ||
+    typeof node.gridRowGap === 'number';
+  if (!hasGrid) {
+    ctx.report.addUnsupported({ nodeId: ctx.nodeId, path: ctx.path, feature: 'autoLayout:GRID' });
+    return undefined;
+  }
+  return {
+    layoutMode: 'GRID',
+    primaryAxisSizingMode: 'FIXED',
+    counterAxisSizingMode: 'FIXED',
+    ...(columnGuids.length > 0 ? { gridColumns: columnGuids.map(() => ({ type: 'FLEX' as const, value: 1 })), gridColumnGuids: columnGuids } : {}),
+    ...(rowGuids.length > 0 ? { gridRows: rowGuids.map(() => ({ type: 'FLEX' as const, value: 1 })), gridRowGuids: rowGuids } : {}),
+    ...(typeof node.gridColumnGap === 'number' ? { gridColumnGap: node.gridColumnGap } : {}),
+    ...(typeof node.gridRowGap === 'number' ? { gridRowGap: node.gridRowGap } : {}),
+  };
+}
+
+/** The guids a native GUIDPositionMap carries, in entry order. */
+function guidMapOf(value: unknown): string[] {
+  if (!isRecord(value) || !Array.isArray(value.entries)) return [];
+  return value.entries
+    .filter(isRecord)
+    .map((entry) => {
+      const guid = entry.guid;
+      if (!isRecord(guid)) return null;
+      const session = guid.sessionID;
+      const local = guid.localID;
+      return typeof session === 'number' && typeof local === 'number' ? `${session}:${local}` : null;
+    })
+    .filter((id): id is string => id !== null);
+}
+
 export function mapNativeAutoLayout(node: FigNode, ctx: MapperContext): AutoLayout | undefined {
   const mode = node.stackMode;
+  if (mode === 'GRID') return mapNativeGrid(node, ctx);
   if (mode !== 'HORIZONTAL' && mode !== 'VERTICAL') {
-    if (mode === 'GRID') {
-      ctx.report.addUnsupported({ nodeId: ctx.nodeId, path: ctx.path, feature: 'autoLayout:GRID' });
-    }
     return undefined;
   }
   const layout: AutoLayout = { layoutMode: mode };

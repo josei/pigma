@@ -75,6 +75,12 @@ export interface NormalizedNode {
   strokeJoin?: StrokeJoin;
   dashPattern?: number[];
   layoutGrids?: LayoutGrid[];
+  gridColumnSpan?: number;
+  gridRowSpan?: number;
+  gridColumnAnchorGuid?: string;
+  gridRowAnchorGuid?: string;
+  gridColumnGuids?: string[];
+  gridRowGuids?: string[];
   /** The native `mask` flag, carried into the model's `isMask`. */
   isMask?: boolean;
   /** The auto-layout child fields, under their native names. */
@@ -640,6 +646,26 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
   }
   const interactions = fromNativeInteractions(node);
   if (interactions) normalized.interactions = interactions;
+  // Grid: the tracks arrive as a GUIDPositionMap, our tracks are numeric, so the
+  // guids are carried alongside (and the anchors as child guids).
+  const gridGuids = (value: unknown): string[] | undefined => {
+    if (!isRecord(value) || !Array.isArray(value.entries)) return undefined;
+    const guids = value.entries
+      .filter(isRecord)
+      .map((entry) => idOfGuid(entry.guid))
+      .filter((id): id is string => id !== null);
+    return guids.length > 0 ? guids : undefined;
+  };
+  if (typeof node.gridColumnSpan === 'number') normalized.gridColumnSpan = node.gridColumnSpan;
+  if (typeof node.gridRowSpan === 'number') normalized.gridRowSpan = node.gridRowSpan;
+  const columnAnchor = idOfGuid(node.gridColumnAnchor);
+  if (columnAnchor) normalized.gridColumnAnchorGuid = columnAnchor;
+  const rowAnchor = idOfGuid(node.gridRowAnchor);
+  if (rowAnchor) normalized.gridRowAnchorGuid = rowAnchor;
+  const columnGuids = gridGuids(node.gridColumns);
+  const rowGuids = gridGuids(node.gridRows);
+  if (columnGuids) normalized.gridColumnGuids = columnGuids;
+  if (rowGuids) normalized.gridRowGuids = rowGuids;
   const autoLayout = mapNativeAutoLayout(node, ctx);
   if (autoLayout) normalized.autoLayout = autoLayout;
   if (typeof node.clipsContent === 'boolean') normalized.clipsContent = node.clipsContent;

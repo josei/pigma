@@ -145,6 +145,11 @@ function buildBase(node: NormalizedNode, type: NodeType, state: ConvertState): B
   if (node.strokeJoin) base.strokeJoin = node.strokeJoin;
   if (node.dashPattern) base.dashPattern = node.dashPattern;
   if (node.isMask === true) base.isMask = true;
+  // Grid placement, including the wire guids carried alongside the indices.
+  if (typeof node.gridColumnSpan === 'number') base.gridColumnSpan = node.gridColumnSpan;
+  if (typeof node.gridRowSpan === 'number') base.gridRowSpan = node.gridRowSpan;
+  if (node.gridColumnAnchorGuid) base.gridColumnAnchorGuid = node.gridColumnAnchorGuid;
+  if (node.gridRowAnchorGuid) base.gridRowAnchorGuid = node.gridRowAnchorGuid;
   if (node.layoutAlign) base.layoutAlign = node.layoutAlign;
   if (typeof node.layoutGrow === 'number') base.layoutGrow = node.layoutGrow;
   if (node.constraints) base.constraints = node.constraints;
@@ -189,7 +194,13 @@ function convertScene(node: NormalizedNode, parentAbs: Box | null, state: Conver
 
   if (isContainer(type) || children.length > 0) {
     const container: ContainerNode = { ...base, type: type as ContainerKind, children };
-    if (node.autoLayout) container.autoLayout = node.autoLayout;
+    if (node.autoLayout) {
+      // The track guids ride alongside the tracks, so a round-tripped grid keeps them.
+      const layout = { ...node.autoLayout };
+      if (node.gridColumnGuids) layout.gridColumnGuids = node.gridColumnGuids;
+      if (node.gridRowGuids) layout.gridRowGuids = node.gridRowGuids;
+      container.autoLayout = layout;
+    }
     if (node.layoutGrids && node.layoutGrids.length > 0) container.layoutGrids = node.layoutGrids;
     if (node.clipsContent !== undefined) container.clipsContent = node.clipsContent;
     if (node.overflowDirection !== undefined) container.overflowDirection = node.overflowDirection as 'NONE';

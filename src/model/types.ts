@@ -227,6 +227,16 @@ export interface AutoLayout {
    */
   gridColumns?: GridTrackSize[];
   gridRows?: GridTrackSize[];
+  /**
+   * The wire GUIDs for the tracks, in track order.
+   *
+   * Our tracks are purely numeric (`GridTrackSize` is a size, not a node), so the
+   * native `gridColumns`/`gridRows` GUIDPositionMap cannot be derived from them:
+   * the guids are carried here instead of inventing track nodes. Absent for a
+   * grid created in Pigma that has never been round-tripped.
+   */
+  gridColumnGuids?: string[];
+  gridRowGuids?: string[];
   gridColumnGap?: number;
   gridRowGap?: number;
 }
@@ -339,6 +349,9 @@ export interface BaseNode {
    */
   gridColumnAnchorIndex?: number;
   gridRowAnchorIndex?: number;
+  /** The wire GUID of the anchored track, alongside the index (see above). */
+  gridColumnAnchorGuid?: string;
+  gridRowAnchorGuid?: string;
   gridColumnSpan?: number;
   gridRowSpan?: number;
   /** VECTOR / BOOLEAN_OPERATION geometry, in node-local coordinates. */
