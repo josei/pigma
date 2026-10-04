@@ -8,6 +8,7 @@ import type {
   DevStatus,
   DocumentNode,
   Effect,
+  GridTrackSize,
   Paint,
   PigmaFile,
   RGB,
@@ -54,6 +55,10 @@ const BASE_KEYS = [
   'constraints',
   'layoutAlign',
   'layoutGrow',
+  'gridColumnAnchorIndex',
+  'gridRowAnchorIndex',
+  'gridColumnSpan',
+  'gridRowSpan',
   'interactions',
   'styles',
   'boundVariables',
@@ -277,9 +282,35 @@ function normalizeLayoutGrids(value: unknown): LayoutGrid[] | undefined {
   return grids.length > 0 ? grids : undefined;
 }
 
+/** A grid track list in Figma's shape; anything malformed is dropped. */
+/** A non-negative whole number, or false. */
+function wholeNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value >= 0;
+}
+
+function normalizeTracks(value: unknown): GridTrackSize[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const tracks = value
+    .filter(isRecord)
+    .map((track) => ({
+      type: track.type === 'FIXED' ? ('FIXED' as const) : ('FLEX' as const),
+      value: typeof track.value === 'number' && Number.isFinite(track.value) && track.value > 0 ? track.value : 1,
+    }));
+  return tracks.length > 0 ? tracks : undefined;
+}
+
 function normalizeAutoLayout(value: unknown): AutoLayout | undefined {
   if (!isRecord(value)) return undefined;
-  return { layoutMode: str(value.layoutMode, 'NONE') as AutoLayout['layoutMode'], ...value } as AutoLayout;
+  const layout = { layoutMode: str(value.layoutMode, 'NONE') as AutoLayout['layoutMode'], ...value } as AutoLayout;
+  // Grid tracks are kept only when they are well formed: the layout pass trusts
+  // them, so a malformed list is dropped rather than carried into geometry.
+  const columns = normalizeTracks(value.gridColumns);
+  const rows = normalizeTracks(value.gridRows);
+  if (columns) layout.gridColumns = columns;
+  else delete layout.gridColumns;
+  if (rows) layout.gridRows = rows;
+  else delete layout.gridRows;
+  return layout;
 }
 
 function normalizeInteractions(value: unknown): Node['interactions'] {
@@ -340,6 +371,12 @@ function normalizeNode(value: unknown, warnings: string[], path: string): SceneN
       ? { devStatus: value.devStatus as DevStatus }
       : {}),
     ...(value.isMask === true ? { isMask: true } : {}),
+    // Grid placement (Figma's terms). Kept only when they are whole numbers, so
+    // the layout pass never sees a fractional track index.
+    ...(wholeNumber(value.gridColumnAnchorIndex) ? { gridColumnAnchorIndex: value.gridColumnAnchorIndex } : {}),
+    ...(wholeNumber(value.gridRowAnchorIndex) ? { gridRowAnchorIndex: value.gridRowAnchorIndex } : {}),
+    ...(wholeNumber(value.gridColumnSpan) ? { gridColumnSpan: value.gridColumnSpan } : {}),
+    ...(wholeNumber(value.gridRowSpan) ? { gridRowSpan: value.gridRowSpan } : {}),
     transform: normalizeTransform(value.transform),
     width: Math.max(0, num(value.width, 0)),
     height: Math.max(0, num(value.height, 0)),

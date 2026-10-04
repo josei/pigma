@@ -40,7 +40,7 @@ import {
 } from '../model/variants';
 import type { ComponentNode, ComponentPropertyValue, InstanceNode } from '../model/types';
 import { staleLibraryInstances } from '../model/library';
-import type { Constraints, LayoutGrid } from '../model/types';
+import type { AutoLayout, Constraints, GridTrackSize, LayoutGrid } from '../model/types';
 import type { Effect } from '../model/types';
 import { absoluteBounds, findNode } from '../model/tree';
 import { roundTo as round } from '../model/matrix';
@@ -1165,6 +1165,89 @@ const SIZING_OPTIONS: Array<{ value: 'FIXED' | 'AUTO'; label: string }> = [
   { value: 'AUTO', label: 'Hug' },
 ];
 
+/**
+ * Grid track editor: one row per column and per row, each a fixed size or an
+ * `fr` share, plus the two gaps. This is Figma's `gridColumns`/`gridRows`, and it
+ * is deliberately its own control — the Constraints section's layout GUIDES draw
+ * over a frame without moving anything.
+ */
+function GridTracks({ layout, onChange }: { layout: AutoLayout; onChange: (patch: Partial<AutoLayout>) => void }) {
+  const track = (list: GridTrackSize[] | undefined, index: number): GridTrackSize => list?.[index] ?? { type: 'FLEX', value: 1 };
+  const edit = (key: 'gridColumns' | 'gridRows', list: GridTrackSize[] | undefined, index: number, patch: Partial<GridTrackSize>) => {
+    const next = [...(list ?? [])];
+    while (next.length <= index) next.push({ type: 'FLEX', value: 1 });
+    next[index] = { ...next[index]!, ...patch };
+    onChange({ [key]: next });
+  };
+  const remove = (key: 'gridColumns' | 'gridRows', list: GridTrackSize[] | undefined, index: number) => {
+    const next = [...(list ?? [])];
+    next.splice(index, 1);
+    onChange({ [key]: next.length > 0 ? next : undefined });
+  };
+  const rows: Array<{ key: 'gridColumns' | 'gridRows'; label: string; gapKey: 'gridColumnGap' | 'gridRowGap'; gapLabel: string }> = [
+    { key: 'gridColumns', label: 'Columns', gapKey: 'gridColumnGap', gapLabel: 'Column gap' },
+    { key: 'gridRows', label: 'Rows', gapKey: 'gridRowGap', gapLabel: 'Row gap' },
+  ];
+  return (
+    <div className="prop-stack" data-testid="grid-tracks">
+      {rows.map(({ key, label, gapKey, gapLabel }) => {
+        const list = layout[key];
+        const count = Math.max(1, list?.length ?? 1);
+        return (
+          <div key={key}>
+            <div className="prop-row">
+              <span className="prop-row__label">{label}</span>
+              <span className="prop-row__value">{count}</span>
+              <button
+                type="button"
+                className="icon-button"
+                data-tooltip={`Add a ${label.toLowerCase().replace(/s$/, '')} track`}
+                aria-label={`Add ${label.toLowerCase().replace(/s$/, '')} track`}
+                onClick={() => onChange({ [key]: [...(list ?? [{ type: 'FLEX' as const, value: 1 }]), { type: 'FLEX' as const, value: 1 }] })}
+              >
+                <Icon name="plus" size={12} />
+              </button>
+            </div>
+            {Array.from({ length: count }, (_, index) => {
+              const value = track(list, index);
+              return (
+                <div className="prop-row" key={`${key}-${index}`}>
+                  <button
+                    type="button"
+                    className="segmented__option"
+                    aria-label={`${label} track ${index + 1} sizing`}
+                    data-tooltip={value.type === 'FIXED' ? 'Fixed size — click for a fraction' : 'Fraction of the space — click for a fixed size'}
+                    onClick={() => edit(key, list, index, { type: value.type === 'FIXED' ? 'FLEX' : 'FIXED' })}
+                  >
+                    {value.type === 'FIXED' ? 'px' : 'fr'}
+                  </button>
+                  <NumberField
+                    label={`${label} track ${index + 1}`}
+                    value={value.value}
+                    min={value.type === 'FIXED' ? 0 : 1}
+                    onCommit={(next) => edit(key, list, index, { value: next })}
+                  />
+                  {count > 1 ? (
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Remove ${label.toLowerCase().replace(/s$/, '')} track ${index + 1}`}
+                      onClick={() => remove(key, list, index)}
+                    >
+                      <Icon name="trash" size={12} />
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+            <NumberField label={gapLabel} value={layout[gapKey] ?? 0} min={0} onCommit={(next) => onChange({ [gapKey]: next })} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Real auto-layout controls; every change reflows the frame immediately. */
 function AutoLayoutSection({ node }: { node: SceneNode }) {
   const setAutoLayout = useEditor((state) => state.setAutoLayout);
@@ -1186,14 +1269,20 @@ function AutoLayoutSection({ node }: { node: SceneNode }) {
             { value: 'NONE', label: 'None' },
             { value: 'HORIZONTAL', label: 'Row' },
             { value: 'VERTICAL', label: 'Column' },
+            { value: 'GRID', label: 'Grid' },
           ]}
           onChange={(value) =>
             value === 'NONE'
               ? clearAutoLayout()
-              : setAutoLayout({ ...defaultAutoLayout(value === 'HORIZONTAL' ? 'HORIZONTAL' : 'VERTICAL'), ...layout, layoutMode: value })
+              : setAutoLayout({ ...defaultAutoLayout(value), ...layout, layoutMode: value })
           }
         />
-        {active ? (
+        {layout.layoutMode === 'GRID' ? (
+          // Grid TRACKS, not the layout GUIDES in the Constraints section: this
+          // decides where children go, a guide is only drawn over them.
+          <GridTracks layout={layout} onChange={setAutoLayout} />
+        ) : null}
+        {active && layout.layoutMode !== 'GRID' ? (
           <>
             <div className="prop-stack">
               <NumberField

@@ -189,7 +189,17 @@ export interface Constraints {
   vertical: ConstraintType;
 }
 
-export type LayoutMode = 'NONE' | 'HORIZONTAL' | 'VERTICAL';
+export type LayoutMode = 'NONE' | 'HORIZONTAL' | 'VERTICAL' | 'GRID';
+
+/**
+ * Figma's `GridTrackSize`: a track is either a fixed pixel size or a fractional
+ * (`fr`) share of what is left after the fixed tracks and gaps.
+ */
+export interface GridTrackSize {
+  type: 'FIXED' | 'FLEX';
+  /** Pixels for FIXED, the fr weight for FLEX (1 for "1fr"). */
+  value: number;
+}
 export type LayoutAlign = 'MIN' | 'CENTER' | 'MAX' | 'SPACE_BETWEEN';
 export type LayoutCounterAlign = 'MIN' | 'CENTER' | 'MAX' | 'BASELINE';
 export type LayoutSizing = 'FIXED' | 'HUG' | 'FILL';
@@ -210,6 +220,15 @@ export interface AutoLayout {
   counterAxisSpacing?: number;
   layoutSizingHorizontal?: LayoutSizing;
   layoutSizingVertical?: LayoutSizing;
+  /**
+   * Grid auto layout (Figma's third flow). `layoutMode: 'GRID'` uses these; the
+   * other modes ignore them. Track sizes follow Figma's `GridTrackSize`, and the
+   * gaps are Figma's `gridColumnGap`/`gridRowGap`.
+   */
+  gridColumns?: GridTrackSize[];
+  gridRows?: GridTrackSize[];
+  gridColumnGap?: number;
+  gridRowGap?: number;
 }
 
 export type TextAlignHorizontal = 'LEFT' | 'CENTER' | 'RIGHT' | 'JUSTIFIED';
@@ -303,6 +322,15 @@ export interface BaseNode {
   /** Present when the node is inside an auto-layout parent. */
   layoutAlign?: 'INHERIT' | 'STRETCH';
   layoutGrow?: number;
+  /**
+   * Grid placement inside a `layoutMode: 'GRID'` parent, in Figma's terms. An
+   * anchor index places the child at that 0-based track instead of letting
+   * auto-placement choose; spans widen the cell. Absent means auto-placed.
+   */
+  gridColumnAnchorIndex?: number;
+  gridRowAnchorIndex?: number;
+  gridColumnSpan?: number;
+  gridRowSpan?: number;
   /** VECTOR / BOOLEAN_OPERATION geometry, in node-local coordinates. */
   pathData?: string;
   windingRule?: 'NONZERO' | 'EVENODD';

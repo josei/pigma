@@ -1,5 +1,5 @@
 import { clampSize } from './sizing';
-import type { AnyNode, AutoLayout, SceneNode } from './types';
+import type { AnyNode, AutoLayout, GridTrackSize, SceneNode } from './types';
 import { hasChildren } from './types';
 
 /**
@@ -66,8 +66,163 @@ function pinAxis<T extends AnyNode>(child: T, widthChanged: boolean, heightChang
   return { ...child, autoLayout: next } as T;
 }
 
+/**
+ * Resolve one axis of tracks against the space available.
+ *
+ * Figma's order: FIXED tracks take their pixel size, and what is left after the
+ * fixed tracks and the gaps is shared by the FLEX tracks in proportion to their
+ * `fr` weights. `available` is the content box; when a track list runs out the
+ * last track repeats, so a child placed past the declared columns still lands.
+ */
+function trackSizes(tracks: GridTrackSize[], available: number, gap: number, count: number): number[] {
+  const list = tracks.length > 0 ? tracks : [{ type: 'FLEX' as const, value: 1 }];
+  // The last declared track repeats, so a child past the declared tracks lands.
+  const picked: GridTrackSize[] = [];
+  for (let index = 0; index < count; index += 1) picked.push(list[Math.min(index, list.length - 1)]!);
+  const gaps = gap * Math.max(0, count - 1);
+  const fixed = picked.reduce((sum, track) => sum + (track.type === 'FIXED' ? track.value : 0), 0);
+  const weight = picked.reduce((sum, track) => sum + (track.type === 'FLEX' ? track.value : 0), 0);
+  const flexible = Math.max(0, available - gaps - fixed);
+  return picked.map((track) => {
+    if (track.type === 'FIXED') return track.value;
+    if (weight <= 0) return 0;
+    return (flexible * track.value) / weight;
+  });
+}
+
+/** The grid cell a child occupies, resolved to a track index and a span. */
+function gridCell(child: SceneNode, columnCount: number, rowCount: number): { column: number; row: number; columnSpan: number; rowSpan: number } {
+  const columnSpan = Math.max(1, Math.min(columnCount, Math.round(child.gridColumnSpan ?? 1)));
+  const rowSpan = Math.max(1, Math.min(rowCount, Math.round(child.gridRowSpan ?? 1)));
+  return {
+    column: Math.max(0, Math.min(columnCount - columnSpan, Math.round(child.gridColumnAnchorIndex ?? 0))),
+    row: Math.max(0, Math.min(rowCount - rowSpan, Math.round(child.gridRowAnchorIndex ?? 0))),
+    columnSpan,
+    rowSpan,
+  };
+}
+
+/** Lay out one grid container. Returns the same node when nothing moved. */
+function layoutGridContainer<T extends AnyNode>(node: T, layout: AutoLayout): T {
+  if (!hasChildren(node)) return node;
+  const children = node.children as SceneNode[];
+  if (children.length === 0) return node;
+
+  const pad = paddings(layout);
+  const columnGap = layout.gridColumnGap ?? 0;
+  const rowGap = layout.gridRowGap ?? 0;
+  const declaredColumns = layout.gridColumns ?? [];
+  const declaredRows = layout.gridRows ?? [];
+  const columnCount = Math.max(1, declaredColumns.length);
+  // Auto-placement can need more rows than declared; a manual anchor can too.
+  const neededRows = children.reduce((max, child) => Math.max(max, Math.round(child.gridRowAnchorIndex ?? 0) + Math.max(1, Math.round(child.gridRowSpan ?? 1))), 0);
+  const autoRows = Math.max(1, Math.ceil(children.length / columnCount));
+  const rowCount = Math.max(1, declaredRows.length, neededRows, autoRows);
+
+  // Width hugs when the primary axis is AUTO (a grid has no orientation, so the
+  // two sizing modes are read as width and height), and height likewise.
+  const hugWidth = layout.primaryAxisSizingMode === 'AUTO';
+  const hugHeight = layout.counterAxisSizingMode === 'AUTO';
+
+  // Auto-placement walks row-major and skips cells a manually placed child holds,
+  // so an explicit anchor keeps its cell instead of being pushed along.
+  const occupied = new Set<string>();
+  const cells = children.map((child) => {
+    const manual = child.gridColumnAnchorIndex !== undefined || child.gridRowAnchorIndex !== undefined;
+    return { child, cell: gridCell(child, columnCount, rowCount), manual };
+  });
+  for (const { cell, manual } of cells) {
+    if (!manual) continue;
+    for (let row = cell.row; row < cell.row + cell.rowSpan; row += 1) {
+      for (let column = cell.column; column < cell.column + cell.columnSpan; column += 1) occupied.add(`${column}:${row}`);
+    }
+  }
+  let cursor = { column: 0, row: 0 };
+  const advance = (at: { column: number; row: number }) =>
+    at.column + 1 >= columnCount ? { column: 0, row: at.row + 1 } : { column: at.column + 1, row: at.row };
+  for (const entry of cells) {
+    if (entry.manual) continue;
+    const holds = (column: number, row: number): boolean => {
+      if (column + entry.cell.columnSpan > columnCount || row + entry.cell.rowSpan > rowCount) return false;
+      for (let rowOffset = 0; rowOffset < entry.cell.rowSpan; rowOffset += 1) {
+        for (let columnOffset = 0; columnOffset < entry.cell.columnSpan; columnOffset += 1) {
+          if (occupied.has(`${column + columnOffset}:${row + rowOffset}`)) return false;
+        }
+      }
+      return true;
+    };
+    // A bounded scan: every cell of the grid is tried once. If nothing fits (a
+    // span larger than the grid, or a fully pinned grid) the child takes the
+    // cursor cell anyway, so placement always terminates.
+    let placedAt: { column: number; row: number } | null = null;
+    let probe = cursor;
+    for (let tries = 0; tries < columnCount * rowCount + columnCount; tries += 1) {
+      if (holds(probe.column, probe.row)) {
+        placedAt = probe;
+        break;
+      }
+      probe = advance(probe);
+    }
+    const cell = placedAt ?? cursor;
+    entry.cell = { column: cell.column, row: cell.row, columnSpan: entry.cell.columnSpan, rowSpan: entry.cell.rowSpan };
+    for (let rowOffset = 0; rowOffset < entry.cell.rowSpan; rowOffset += 1) {
+      for (let columnOffset = 0; columnOffset < entry.cell.columnSpan; columnOffset += 1) {
+        occupied.add(`${cell.column + columnOffset}:${cell.row + rowOffset}`);
+      }
+    }
+    cursor = advance(cell);
+  }
+
+  // Track sizes: fixed px first, then the fr weights against what is left. A
+  // hugging axis has no leftover to share, so a FLEX track takes the largest
+  // child that lands in it — that is what makes a hugging grid wrap its content.
+  const natural = (index: number, axis: 'column' | 'row'): number =>
+    cells.reduce((max, entry) => {
+      const start = axis === 'column' ? entry.cell.column : entry.cell.row;
+      const span = axis === 'column' ? entry.cell.columnSpan : entry.cell.rowSpan;
+      if (index < start || index >= start + span) return max;
+      return Math.max(max, axis === 'column' ? entry.child.width : entry.child.height);
+    }, 0);
+  const hugAxis = (tracks: GridTrackSize[], count: number, gap: number, axis: 'column' | 'row'): number => {
+    const list = tracks.length > 0 ? tracks : [{ type: 'FLEX' as const, value: 1 }];
+    const sizes = trackSizes(list, 0, gap, count);
+    return sizes.reduce((sum, size, index) => {
+      const track = list[Math.min(index, list.length - 1)]!;
+      return sum + (track.type === 'FLEX' ? Math.max(size, natural(index, axis)) : size);
+    }, gap * Math.max(0, count - 1));
+  };
+  const width = hugWidth ? pad.left + pad.right + hugAxis(declaredColumns, columnCount, columnGap, 'column') : node.width;
+  const height = hugHeight ? pad.top + pad.bottom + hugAxis(declaredRows, rowCount, rowGap, 'row') : node.height;
+  const columnSizes = trackSizes(declaredColumns, Math.max(0, width - (pad.left + pad.right)), columnGap, columnCount);
+  const rowSizes = trackSizes(declaredRows, Math.max(0, height - (pad.top + pad.bottom)), rowGap, rowCount);
+  const columnOffsets: number[] = [];
+  const rowOffsets: number[] = [];
+  columnSizes.reduce((offset, size) => (columnOffsets.push(offset), offset + size + columnGap), pad.left);
+  rowSizes.reduce((offset, size) => (rowOffsets.push(offset), offset + size + rowGap), pad.top);
+
+  let changed = width !== node.width || height !== node.height;
+  const nextChildren = children.map((child, index) => {
+    const { cell } = cells[index]!;
+    const spanWidth = columnSizes.slice(cell.column, cell.column + cell.columnSpan).reduce((sum, size) => sum + size, 0) + columnGap * (cell.columnSpan - 1);
+    const spanHeight = rowSizes.slice(cell.row, cell.row + cell.rowSpan).reduce((sum, size) => sum + size, 0) + rowGap * (cell.rowSpan - 1);
+    const tx = columnOffsets[cell.column] ?? pad.left;
+    const ty = rowOffsets[cell.row] ?? pad.top;
+    const moved = child.transform.tx !== tx || child.transform.ty !== ty;
+    const resized = child.width !== spanWidth || child.height !== spanHeight;
+    if (!moved && !resized) return child;
+    changed = true;
+    // A grid child fills its cell, exactly as a stretched auto-layout child does.
+    const placed = { ...child, width: spanWidth, height: spanHeight, transform: { ...child.transform, tx, ty } };
+    return resized ? reflowTree(pinAxis(placed, child.width !== spanWidth, child.height !== spanHeight)) : placed;
+  });
+
+  if (!changed) return node;
+  return { ...node, width, height, children: nextChildren } as T;
+}
+
 /** Lay out one auto-layout container. Returns the same node when nothing moved. */
 function layoutContainer<T extends AnyNode>(node: T, layout: AutoLayout): T {
+  if (layout.layoutMode === 'GRID') return layoutGridContainer(node, layout);
   if (!hasChildren(node)) return node;
   const children = node.children as SceneNode[];
   if (children.length === 0) return node;
@@ -244,7 +399,24 @@ export function reflowTree<T extends AnyNode>(root: T): T {
   return layoutContainer(withChildren, layout);
 }
 
-export function defaultAutoLayout(mode: 'HORIZONTAL' | 'VERTICAL'): AutoLayout {
+export function defaultAutoLayout(mode: 'HORIZONTAL' | 'VERTICAL' | 'GRID'): AutoLayout {
+  if (mode === 'GRID') {
+    // Figma's grid starts as two equal columns with even gaps; a grid with no
+    // tracks would be a single implicit column, which is not a useful start.
+    return {
+      layoutMode: 'GRID',
+      primaryAxisSizingMode: 'FIXED',
+      counterAxisSizingMode: 'FIXED',
+      paddingTop: 16,
+      paddingRight: 16,
+      paddingBottom: 16,
+      paddingLeft: 16,
+      gridColumns: [{ type: 'FLEX', value: 1 }, { type: 'FLEX', value: 1 }],
+      gridRows: [{ type: 'FLEX', value: 1 }],
+      gridColumnGap: 12,
+      gridRowGap: 12,
+    };
+  }
   return {
     layoutMode: mode,
     primaryAxisSizingMode: 'AUTO',
