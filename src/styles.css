@@ -789,7 +789,13 @@ select {
 }
 
 .prop-grid--4 {
-  grid-template-columns: repeat(4, 1fr);
+  /*
+   * Four equal columns clip their labels in a narrow panel: "Background" needs
+   * ~56px of text plus padding, and a 180px panel gives each column 36. Wrap into
+   * as many columns as fit instead — two at the narrowest supported width, four
+   * once there is room — so no label is ever cut off.
+   */
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
 }
 
 /*

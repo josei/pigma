@@ -607,6 +607,18 @@ export interface PigmaFile {
   comments?: CommentThread[];
 }
 
+/**
+ * Node kinds Figma lets a designer mark with a development status.
+ *
+ * Figma's Dev Mode guide lists frames, components, instances and sections as
+ * markable assets — not only top-level frames. The status is stored on the node
+ * and badged wherever it appears, so the panel offers it for the same kinds.
+ */
+export function canHaveDevStatus(node: AnyNode | null | undefined): boolean {
+  if (!node) return false;
+  return node.type === 'FRAME' || node.type === 'COMPONENT' || node.type === 'INSTANCE' || node.type === 'SECTION';
+}
+
 export function hasChildren(node: AnyNode): node is ParentNode {
   return Array.isArray((node as ParentNode).children);
 }

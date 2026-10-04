@@ -109,6 +109,40 @@ export function actionOfKind(
   }
 }
 
+/**
+ * One step of a trigger's action list: the action, and the frame it applies to.
+ *
+ * A trigger's actions run IN ORDER, and a navigate makes its destination the
+ * current frame for the actions after it — Figma's model, and the only coherent
+ * one, since the origin is no longer on screen. So a navigate-then-overlay opens
+ * the overlay ON THE DESTINATION. `frameId` is the frame the action resolves
+ * against when the plan is built; `null` means the plan cannot know it (a BACK
+ * moves to a frame only the run-time stack knows), and such a step resolves
+ * against whatever frame is current when it runs.
+ */
+export interface PrototypeStep {
+  action: PrototypeAction;
+  frameId: string | null;
+}
+
+/** Resolve a trigger's actions into the steps playback runs, in order. */
+export function planActions(actions: PrototypeAction[], startFrameId: string | null): PrototypeStep[] {
+  const steps: PrototypeStep[] = [];
+  let current = startFrameId;
+  for (const action of actions) {
+    if (action.type === 'NODE') {
+      if (!action.destinationId) continue;
+      steps.push({ action, frameId: current });
+      if (!action.overlay) current = action.destinationId;
+      continue;
+    }
+    // BACK leaves the frame to the stack, so later steps resolve at run time.
+    steps.push({ action, frameId: action.type === 'BACK' ? null : current });
+    if (action.type === 'BACK') current = null;
+  }
+  return steps;
+}
+
 export function defaultInteraction(
   destinationId?: string,
   kind: PrototypeActionKind = 'NAVIGATE',

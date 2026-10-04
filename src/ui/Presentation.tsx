@@ -5,7 +5,7 @@ import { overlayBox } from '../model/overlay';
 import { useEditor, type OverlayEntry } from '../store/editorStore';
 import { boundsOf } from '../model/matrix';
 import { findNode, worldTransform } from '../model/tree';
-import { interactionsOf } from '../model/prototype';
+import { interactionsOf, planActions } from '../model/prototype';
 import type { PigmaFile, PrototypeAction, SceneNode } from '../model/types';
 
 /**
@@ -99,26 +99,33 @@ export function Presentation() {
     [overlays, file],
   );
 
+  /**
+   * Run EVERY action of a trigger, in order. `planActions` decides the ordering
+   * rule (a navigate makes its destination current for the steps after it), and
+   * the store commits each navigate synchronously, so a following overlay really
+   * does resolve against the destination rather than the frame it came from.
+   */
   const run = (actions: PrototypeAction[]) => {
-    const action = actions[0];
-    if (!action) return;
-    switch (action.type) {
-      case 'NODE':
-        if (!action.destinationId) return;
-        if (action.overlay) openOverlay(action.destinationId, action);
-        else navigateWithTransition(action.destinationId, action);
-        return;
-      case 'BACK':
-        back();
-        return;
-      case 'CLOSE':
-        closeOverlay();
-        return;
-      case 'URL':
-        if (action.url) window.open(action.url, '_blank', 'noopener');
-        return;
-      default:
-        return;
+    for (const step of planActions(actions, frameId)) {
+      const { action } = step;
+      switch (action.type) {
+        case 'NODE':
+          if (!action.destinationId) continue;
+          if (action.overlay) openOverlay(action.destinationId, action);
+          else navigateWithTransition(action.destinationId, action);
+          continue;
+        case 'BACK':
+          back();
+          continue;
+        case 'CLOSE':
+          closeOverlay();
+          continue;
+        case 'URL':
+          if (action.url) window.open(action.url, '_blank', 'noopener');
+          continue;
+        default:
+          continue;
+      }
     }
   };
 

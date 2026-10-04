@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useEditor } from '../store/editorStore';
 import { cssDeclarations, measurements, measurementSummary, toCompose, toCss, toReact, toSwiftUI } from '../model/codegen';
-import { findNode, findParent } from '../model/tree';
+import { findNode } from '../model/tree';
+import { canHaveDevStatus } from '../model/types';
 import { copyText } from './clipboard';
 
 /**
@@ -25,10 +26,11 @@ export function InspectPanel() {
   const swift = id ? toSwiftUI(file, id) : '';
   const compose = id ? toCompose(file, id) : '';
   const code = tab === 'css' ? css : tab === 'react' ? react : tab === 'swift' ? swift : compose;
-  // Development status belongs to a top-level frame: that is the unit a developer
-  // is handed, and the unit the layers list badges.
-  const parent = id ? findParent(file.document, id) : null;
-  const isTopLevelFrame = node?.type === 'FRAME' && parent?.type === 'CANVAS';
+  // Development status is offered for the node kinds Figma marks: frames,
+  // components, instances and sections — wherever they sit, because the badge
+  // shows wherever the node appears. Anything else (a rectangle, text, a group)
+  // is not a hand-off asset and has no status.
+  const canMark = canHaveDevStatus(node);
   const tabLabel = tab === 'css' ? 'CSS' : tab === 'react' ? 'React' : tab === 'swift' ? 'SwiftUI' : 'Compose';
 
   const copy = (text: string, label: string) => {
@@ -49,7 +51,7 @@ export function InspectPanel() {
 
   return (
     <>
-      {isTopLevelFrame ? (
+      {canMark ? (
         <div className="section" data-testid="dev-status">
           <div className="section__header">
             <span>Development</span>
