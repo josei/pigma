@@ -17,7 +17,7 @@ import { exportPigmaFile, pigmaToFigMessage } from '../../src/figma/native/model
 import { nodeExportCompressors } from '../../src/figma/native/export.node';
 import { parseFigArchive } from '../../src/figma/native/parse';
 import { emptyFile } from '../../src/model/validate';
-import { createRectNode } from '../../src/model/factory';
+import { createFrameNode, createRectNode, createTextNode } from '../../src/model/factory';
 import type { PigmaFile, SceneNode } from '../../src/model/types';
 
 const fixture = (name: string): Uint8Array =>
@@ -184,5 +184,52 @@ describe('the export reports fields the schema cannot encode', () => {
     const reimported = await roundTrip(file, 'circle.fig');
     // The schema spells it ODD; the import maps it back to the model's EVENODD.
     expect(byName(reimported, 'Subject')!.windingRule).toBe('EVENODD');
+  });
+});
+
+describe('batch 1: the fields the schema defines now round-trip', () => {
+  it('keeps isMask, constraints, layoutAlign/Grow and textAutoResize', async () => {
+    const file = emptyFile('Batch 1');
+    const page = file.document.children[0]!;
+    const frame = createFrameNode(file.document, 0, 0, 300, 200);
+    frame.name = 'Outer';
+    const mask = createRectNode(file.document, 0, 0, 100, 100);
+    mask.name = 'Mask';
+    mask.isMask = true;
+    const child = createRectNode(file.document, 0, 0, 50, 50);
+    child.name = 'Child';
+    child.constraints = { horizontal: 'MAX', vertical: 'CENTER' };
+    child.layoutAlign = 'STRETCH';
+    child.layoutGrow = 2;
+    const text = createTextNode(file.document, 0, 0, 'Resize me');
+    text.name = 'Label';
+    text.style = { ...text.style, textAutoResize: 'HEIGHT' };
+    frame.children = [mask, child, text];
+    page.children = [frame];
+
+    const reimported = await roundTrip(file, 'circle.fig');
+    expect(byName(reimported, 'Mask')!.isMask, 'isMask (wire `mask`)').toBe(true);
+    expect(byName(reimported, 'Child')!.constraints, 'constraints').toEqual({ horizontal: 'MAX', vertical: 'CENTER' });
+    expect(byName(reimported, 'Child')!.layoutAlign, 'layoutAlign (wire `stackCounterAlign`)').toBe('STRETCH');
+    expect(byName(reimported, 'Child')!.layoutGrow, 'layoutGrow (wire `stackChildPrimaryGrow`)').toBe(2);
+    const label = byName(reimported, 'Label')!;
+    expect(label.type).toBe('TEXT');
+    expect((label as { style: { textAutoResize?: string } }).style.textAutoResize, 'textAutoResize').toBe('HEIGHT');
+  });
+
+  it('does not warn for any of them: the schema defines every one', () => {
+    const file = emptyFile('Batch 1 warnings');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(file.document, 0, 0, 100, 50);
+    rect.name = 'Subject';
+    rect.isMask = true;
+    rect.constraints = { horizontal: 'MIN', vertical: 'MAX' };
+    rect.layoutAlign = 'INHERIT';
+    rect.layoutGrow = 1;
+    page.children = [rect];
+    const { warnings } = pigmaToFigMessage(file, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors });
+    const dropped = warnings.filter((line) => line.includes('is not defined by this .fig schema'));
+    // `overflowDirection` is not written here, so nothing should be reported.
+    expect(dropped).toEqual([]);
   });
 });

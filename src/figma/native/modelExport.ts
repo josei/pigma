@@ -451,6 +451,9 @@ function nodeChange(
     // warning: the importer reads `locked === true` and a missing field is false.
     // Written only when true, like the other optional flags.
     ...(node.locked ? { locked: true } : {}),
+    // `mask` is the native wire name (the schema's own); the importer reads it
+    // back into the model's `isMask`.
+    ...(node.isMask ? { mask: true } : {}),
     opacity: node.opacity,
     transform: {
       m00: node.transform.a,
@@ -466,6 +469,13 @@ function nodeChange(
   };
   if (parentGuid && position) change.parentIndex = { guid: parentGuid, position };
   if (node.blendMode && BLEND[node.blendMode]) change.blendMode = BLEND[node.blendMode];
+  // Constraints and the auto-layout child fields, under the schema's names.
+  if (node.constraints) {
+    change.horizontalConstraint = node.constraints.horizontal;
+    change.verticalConstraint = node.constraints.vertical;
+  }
+  if (node.layoutAlign) change.stackCounterAlign = node.layoutAlign === 'STRETCH' ? 'STRETCH' : 'AUTO';
+  if (typeof node.layoutGrow === 'number') change.stackChildPrimaryGrow = node.layoutGrow;
   if (node.strokeWeight !== undefined) change.strokeWeight = node.strokeWeight;
   if (node.strokeAlign) change.strokeAlign = node.strokeAlign;
   if (node.strokeCap) change.strokeCap = node.strokeCap;
@@ -482,7 +492,15 @@ function nodeChange(
       change.backgroundEnabled = true;
     }
   }
-  if (node.type === 'TEXT') Object.assign(change, textFields(node as TextNode));
+  if (node.type === 'TEXT') {
+    Object.assign(change, textFields(node as TextNode));
+    // The schema's TextAutoResize enum has no TRUNCATE member, so only a member
+    // is written; TRUNCATE stays unwritten and is reported by the field check.
+    const autoResize = (node as TextNode).style.textAutoResize;
+    if (autoResize === 'NONE' || autoResize === 'WIDTH_AND_HEIGHT' || autoResize === 'HEIGHT') {
+      change.textAutoResize = autoResize;
+    }
+  }
   if ('cornerRadius' in node && node.cornerRadius !== undefined) change.cornerRadius = node.cornerRadius;
   if ('rectangleCornerRadii' in node && node.rectangleCornerRadii) {
     const [topLeft, topRight, bottomRight, bottomLeft] = node.rectangleCornerRadii;
