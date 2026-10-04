@@ -76,11 +76,29 @@ appears because it is **still** written under a name the schema lacks.
 cannot carry `px`/`fr`) and `SCROLL_TO` is a **SEMANTICS** gap (the shape is fine) -
 neither is our divergence, and neither should be "changed" to satisfy the rule.
 
+### The inventory, measured
+
+`scripts/divergence-inventory.ts` reads the real schema and diffs what we **write**
+against what the schema **defines**. Measured, with its own limits stated:
+
+- **the wire is FLAT**: `NodeChange` is **one message with 556 fields**, so "per node
+  type" collapses to a single vocabulary - which is why the vocabulary bugs kept
+  looking scattered when they were all in one place;
+- **we write 42** of those 556;
+- **kind 1** - a name **the schema does not define**, the **silent** kind - is
+  **exactly 2**, and both are the **known `variableBindings`** case;
+- **kind 2** - the wire has it, we do not write it - is the **capability gap**, 556
+  vs 42;
+- **kind 3** is **38**, and **mostly legitimate** nested-struct fields.
+
+**Kind 1's count is COVERAGE-DEPENDENT**: it is **0 on a plain document**. **Two is
+the count for the enriched document, not a proof the exporter is clean.**
+
 ### The divergences, with a verdict on each
 
 | Our shape | Figma's shape | Verdict |
 | --- | --- | --- |
-| styles as a **file-level table** | styles are **NODES** | **CHANGE IT** - in progress now |
+| styles as a **file-level table** | styles travel as their **OWN MESSAGES** (`MessageType` carries `STYLE` / `STYLE_SET`, and `Message` carries `styleSetName` / `styleSetType` / `styleSetContentType`) - **NOT nodes** | **CHANGE IT** - to a **second message on the wire**, not to a node kind. **Not started: the payload has not been opened yet** |
 | `NodeStyleBinding` keyed by **id** | keyed by **GUID** | **CHANGE IT** - queued |
 | `StyleType` with **3** members | the wire has **7** | **CHANGE IT** - queued |
 | `boundVariables` as `Record<field, id>` | the wire's **per-field `VariableData`** | **CHANGE IT** - queued |
@@ -89,6 +107,28 @@ neither is our divergence, and neither should be "changed" to satisfy the rule.
 
 **One row is in progress, three are queued, and two are deliberate keeps.** None is
 claimed done until a round trip proves it.
+
+### The styles row was WRONG - and the reason is the lesson
+
+This table first said styles should become **NODES**. **That was wrong**, and it was
+found by **opening the schema**: `NodeType` has **61 members and not one is a
+STYLE**. A style **node cannot be written** - a file containing one is a file Figma
+cannot read. Styles travel as their **own messages**.
+
+**The reason the row was wrong is the point.** We inferred *"Figma's styles are
+nodes"* from **`sharedStyleMasterData` being a node field** - and it **is** one - but
+the node **KIND** does not exist, so a node cannot be a style. **A field's presence
+is not evidence of the shape that carries it.**
+
+That is the **third partial-read conclusion of this run** (round 98, round 102, and
+this one), and **each time opening the source killed it** - which is the strongest
+argument for the rule this section states.
+
+**And the consequence: the exclusions I called the real work DO NOT EXIST.** With no
+style nodes there is nothing to filter in `walk`, the layers panel, hit testing,
+marquee, `settleDocument`'s passes, the MCP enumeration, or export. The change is a
+**second message on the wire** - contained in the exporter and the parser - which is
+**smaller** than the node change the table promised.
 
 ### What this rule does NOT fix
 
