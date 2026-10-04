@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1041 unit tests / 111 files**, **255 browser tests passing / 0 failing**,
+Last verified: **1042 unit tests / 111 files**, **255 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -144,7 +144,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 **No failing specs.** The suite is green: `CI=true npm run test:browser` = **255
 passed / 0 failed**, measured twice back-to-back, with **0 orphan processes**;
-`npx vitest run` = **1041 passing / 111 files**, deterministic whether or not
+`npx vitest run` = **1042 passing / 111 files**, deterministic whether or not
 `dist/` has been built. Every item previously listed here
 (B29c, B29d, B31b, B31c, B33a, B33b, B28b) now passes and has been removed.
 
@@ -226,15 +226,29 @@ row is a statement about our own consistency, not about Figma.
 | 6 | the instance property panel | a documented "switch per variant property plus BOOLEAN/TEXT/INSTANCE_SWAP controls" on an instance | **the precise scope: an instance of a STANDALONE component lost every property control (BOOLEAN, TEXT, INSTANCE_SWAP), while an instance inside a component set worked.** The panel resolved the definitions from `componentSetOf(instance.componentId)` and fell back to the instance's own node, which owns none. **FIXED** - `propertyOwnerOf(file, node)` (`src/model/variants.ts:263`) resolves the node that OWNS the definitions, and the panel is now one call. Pinned by `b58-component-slots`, now asserting the control is present |
 | 7 | `nodesEquivalent` | instance override propagation | it did **not** compare `componentPropertyReferences`, so a **binding** change never reached an instance's materialised children. Found the same way - by making the propagation test pass. |
 
-Items 6 and 7 are both **resolved** - they stay in the table because the LESSON is the point, not the bug. **A named sub-class: decisions reasoned against the WRONG vocabulary.** Three
-times a capability was judged from the **REST** API's vocabulary when the
-**NATIVE** wire disagrees: `dashPattern` (we wrote the REST spelling
-`strokeDashes` into the native message), `windingRule` (the schema says `ODD`, we
-wrote `EVENODD`), and now `CHANGE_TO` / `SCROLL_TO` - withdrawn as inexpressible
-against the REST vocabulary, while the native wire has **`SWAP_STATE`** with a
-destination GUID. The first two were bugs that a name mismatch disguised; the third
-is a **decision** that may have to be reversed. Anyone reading this project should
-check which vocabulary a claim was reasoned against before trusting it.
+Items 6 and 7 are both **resolved** - they stay in the table because the LESSON is the point, not the bug. **A named sub-class, and it is now FIVE instances: decisions reasoned against the
+WRONG vocabulary.** Time after time a capability was judged from the **REST** API's
+vocabulary when the **NATIVE** wire disagrees:
+
+| # | Pigma / REST | Native wire | What it caused |
+| --- | --- | --- | --- |
+| 1 | `strokeDashes` | `dashPattern` | dashes dropped in every schema, silently |
+| 2 | `EVENODD` | `ODD` | a silently **wrong** fill rule (`NONZERO`) |
+| 3 | `CHANGE_TO` | `SWAP_STATE` | the variant swap was **withdrawn as inexpressible** when it was not |
+| 4 | `ON_DRAG` | `DRAG` | the drag trigger was unmapped |
+| 5 | `MOUSE_ENTER` / `MOUSE_LEAVE` | `MOUSE_IN` / `MOUSE_OUT` | the hover pair was unmapped |
+
+**The remedy is now demonstrated rather than asserted.** Fixing the triggers by
+**listing the NATIVE vocabulary** immediately surfaced instances 4 and 5 - the same
+class, found by the same method. The rule: **list the NATIVE vocabulary in every
+map on the conversion path**, and treat the REST spelling as an importer alias
+where a document may arrive that way (`CHANGE_TO` -> `SWAP_STATE`). The editor is
+**auditing the other maps this round** - connections, transitions, easings,
+navigation types and overlay positions - so the count may still grow. **In
+progress.**
+
+Anyone reading this project should check which vocabulary a claim was reasoned
+against before trusting it.
 
 **And the remedy has now been APPLIED, not merely described.** The withdrawn
 variant swap was restored (`SWAP_STATE`), and the fix for the naming problem is a
