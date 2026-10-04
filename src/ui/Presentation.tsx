@@ -57,6 +57,7 @@ export function Presentation() {
   const frameId = useEditor((state) => state.presentationFrameId);
   const overlays = useEditor((state) => state.presentationOverlays);
   const navigate = useEditor((state) => state.navigatePrototype);
+  const swapPrototype = useEditor((state) => state.swapPrototype);
   const back = useEditor((state) => state.prototypeBack);
   const openOverlay = useEditor((state) => state.openOverlay);
   const closeOverlay = useEditor((state) => state.closeOverlay);
@@ -112,6 +113,7 @@ export function Presentation() {
         case 'NODE':
           if (!action.destinationId) continue;
           if (action.overlay) openOverlay(action.destinationId, action);
+          else if (action.navigation === 'SWAP') swapWithTransition(action.destinationId, action);
           else navigateWithTransition(action.destinationId, action);
           continue;
         case 'BACK':
@@ -134,6 +136,31 @@ export function Presentation() {
    * transition into place. Overrides are cleared on the next frame so the CSS
    * transition runs, then the animation context is dropped.
    */
+  /**
+   * SWAP differs from NAVIGATE only in the stack: the frame is replaced rather
+   * than pushed, so Back skips the frame that was swapped out. The transition is
+   * the same one.
+   */
+  const swapWithTransition = (destinationId: string, action: PrototypeAction) => {
+    const transition = action.transition;
+    if (transition?.type === 'SMART_ANIMATE' && frameId && frameId !== destinationId) {
+      const plan = planSmartAnimate(file, frameId, destinationId, { duration: transition.duration ?? 300 });
+      if (plan.matches.length > 0) {
+        setAnimation({
+          frameId: destinationId,
+          ids: Object.fromEntries(plan.matches.map((match) => [match.toId, true as const])),
+          overrides: Object.fromEntries(plan.matches.map((match) => [match.toId, match.fromRelative])),
+          transition: `transform ${plan.duration}ms ${plan.easing}`,
+          duration: plan.duration,
+        });
+        swapPrototype(destinationId);
+        return;
+      }
+    }
+    setAnimation(null);
+    swapPrototype(destinationId);
+  };
+
   const navigateWithTransition = (destinationId: string, action: PrototypeAction) => {
     const transition = action.transition;
     if (transition?.type === 'SMART_ANIMATE' && frameId && frameId !== destinationId) {
