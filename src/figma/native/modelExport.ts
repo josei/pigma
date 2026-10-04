@@ -23,7 +23,8 @@ import type {
   TextNode,
 } from '../../model/types';
 import { hasChildren } from '../../model/types';
-import { exportFigBinary, zipArchive, type ExportCompressors } from './export';
+import { exportFigBinary, readSeedSchema, zipArchive, type ExportCompressors } from './export';
+import type { KiwiSchema } from './kiwi';
 import type { Decompressors } from './zip';
 
 export interface ModelExportOptions {
@@ -492,7 +493,17 @@ function nodeChange(
   if ('pathData' in node && node.pathData) {
     const blob = encodeCommandsBlob(node.pathData);
     if (blob) {
-      change.fillGeometry = [{ windingRule: 'NONZERO', commandsBlob: ctx.blobs.length, styleID: 0 }];
+      // The schema's `WindingRule` enum spells the even-odd rule `ODD`, not
+      // `EVENODD` (the REST API's spelling). Writing the model's value verbatim
+      // made the encoder throw; writing NONZERO made an EVENODD path silently
+      // wrong. Map it, and the importer maps `ODD` back.
+      change.fillGeometry = [
+        {
+          windingRule: node.windingRule === 'EVENODD' ? 'ODD' : 'NONZERO',
+          commandsBlob: ctx.blobs.length,
+          styleID: 0,
+        },
+      ];
       ctx.blobs.push(blob);
     } else {
       ctx.warnings.push(`node ${node.id}: pathData uses unsupported commands; geometry omitted`);
@@ -539,6 +550,69 @@ function toNativeBindings(bindings: Record<string, string>): Record<string, unkn
 }
 
 /** Build the decoded-message shape for a Pigma file. */
+/**
+ * Fields a user would notice losing, so the warning can say so rather than
+ * emitting one generic line per field.
+ */
+const NOTICEABLE_FIELDS = new Set([
+  'isMask',
+  'interactions',
+  'constraints',
+  'minWidth',
+  'minHeight',
+  'maxWidth',
+  'maxHeight',
+  'styles',
+  'componentProperties',
+  'componentPropertyReferences',
+  'devStatus',
+  'layoutGrids',
+  // The message key, not the model field name: this list is matched against the
+  // change object the encoder sees.
+  'strokeDashes',
+  'dashPattern',
+]);
+
+/**
+ * Warn for every field a node change carries that the export's SCHEMA cannot
+ * encode.
+ *
+ * The encoder is `kiwi-schema`'s, driven entirely by the `.fig` schema: it writes
+ * the fields the schema defines and drops the rest with no warning. That is how
+ * 15 model fields were lost silently. This does not make them encodable — the
+ * schema is what it is — it makes the loss REPORTED, which is what the compat
+ * table promises.
+ *
+ * One schema decode per export, and a warning names the field and the change.
+ */
+function warnUnencodableFields(
+  nodeChanges: Array<Record<string, unknown>>,
+  schema: KiwiSchema,
+  warnings: string[],
+): void {
+  const byName = new Map(schema.definitions.map((definition) => [definition.name, definition]));
+  // The top-level message names each array's element type; `nodeChanges` holds
+  // `NodeChange`s. Without that definition every field is treated as encodable.
+  const messageDefinition = schema.definitions.find((definition) => definition.fields.some((field) => field.name === 'nodeChanges'));
+  const elementName = messageDefinition?.fields.find((field) => field.name === 'nodeChanges')?.type;
+  const element = typeof elementName === 'string' ? byName.get(elementName) : undefined;
+  if (!element) return;
+  const encodable = new Set(element.fields.map((field) => field.name));
+  const reported = new Set<string>();
+  for (const change of nodeChanges) {
+    const label = `${String(change.type ?? 'NODE')} ${JSON.stringify(change.name ?? '')}`;
+    for (const key of Object.keys(change)) {
+      if (encodable.has(key)) continue;
+      const notice = NOTICEABLE_FIELDS.has(key) ? ' (a user would notice this)' : '';
+      const line = `${label}: "${key}" is not defined by this .fig schema, so it cannot be written${notice}`;
+      // One line per field per export: the same omission repeats on every node.
+      if (reported.has(key)) continue;
+      reported.add(key);
+      warnings.push(line);
+    }
+  }
+}
+
 export function pigmaToFigMessage(
   file: PigmaFile,
   options: ModelExportOptions,
@@ -563,6 +637,15 @@ export function pigmaToFigMessage(
     const children = page.children;
     children.forEach((child, index) => emit(child, guidFor(page.id, ctx.sessionID), positionFor(index, children.length)));
   });
+
+  // Report what the schema cannot carry, before the caller encodes. A seed whose
+  // schema cannot be read is left to the encoder to reject: this is a report, not
+  // a new failure mode.
+  try {
+    warnUnencodableFields(nodeChanges, readSeedSchema(options.schemaFrom, options.decompress).schema, ctx.warnings);
+  } catch {
+    // No schema to check against; the export will fail on its own if it must.
+  }
 
   return {
     message: {
