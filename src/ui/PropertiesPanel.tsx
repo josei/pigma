@@ -1658,6 +1658,7 @@ function DashRow({ dash, onChange }: { dash: number[]; onChange: (pattern: numbe
 const ACTION_KINDS: Array<{ value: PrototypeActionKind; label: string }> = [
   { value: 'NAVIGATE', label: 'Navigate to' },
   { value: 'OVERLAY', label: 'Open overlay' },
+  { value: 'SWAP_STATE', label: 'Swap variant' },
   { value: 'BACK', label: 'Back' },
   { value: 'CLOSE', label: 'Close' },
   { value: 'URL', label: 'Open URL' },
@@ -1976,7 +1977,10 @@ function PrototypeSection({ node }: { node: SceneNode | null }) {
                   >
                     <option value="">No action</option>
                     {destinations.map((destination) => (
-                      <option key={destination.id} value={destination.id}>{destination.name}</option>
+                      // A variant shows its set, so a swap target is findable.
+                      <option key={destination.id} value={destination.id}>
+                        {destination.group ? `${destination.group} / ${destination.name}` : destination.name}
+                      </option>
                     ))}
                   </select>
                 </div>

@@ -370,6 +370,16 @@ export function mapRestConstraints(node: FigmaRestNode): Constraints | undefined
   return { vertical, horizontal };
 }
 
+/**
+ * Constraints, in the NATIVE vocabulary.
+ *
+ * `VERTICAL`/`HORIZONTAL` list the native `ConstraintType` members — including
+ * `SCALE`. `FIXED_MIN` and `FIXED_MAX` are native members the MODEL CANNOT
+ * EXPRESS (`ConstraintType` is MIN/CENTER/MAX/STRETCH/SCALE), so they are
+ * deliberately unmapped: coercing them into MIN/MAX would be silently wrong, and
+ * an unmapped value leaves the constraint absent instead of inventing one. That
+ * is a MODEL GAP to report, not a mapping to guess.
+ */
 export function mapNativeConstraints(node: FigNode): Constraints | undefined {
   const vertical = typeof node.verticalConstraint === 'string' ? VERTICAL[node.verticalConstraint] : undefined;
   const horizontal = typeof node.horizontalConstraint === 'string' ? HORIZONTAL[node.horizontalConstraint] : undefined;
@@ -647,19 +657,41 @@ export function textRuns(source: {
 
 // ─── Prototype interactions ─────────────────────────────────────────────────
 
+/**
+ * The `InteractionType` members, in the NATIVE vocabulary.
+ *
+ * Figma spells the drag trigger `DRAG` and the hover pair `MOUSE_IN`/`MOUSE_OUT`
+ * as well as `MOUSE_ENTER`/`MOUSE_LEAVE`; listing only our names dropped those
+ * triggers. The native spelling comes first, the model's own names are kept so a
+ * document that already uses them still maps.
+ */
 const TRIGGERS: Record<string, PrototypeInteraction['trigger']['type']> = {
   ON_CLICK: 'ON_CLICK',
   ON_HOVER: 'ON_HOVER',
   ON_PRESS: 'ON_PRESS',
+  DRAG: 'ON_DRAG',
   ON_DRAG: 'ON_DRAG',
   AFTER_TIMEOUT: 'AFTER_TIMEOUT',
+  MOUSE_IN: 'MOUSE_ENTER',
   MOUSE_ENTER: 'MOUSE_ENTER',
+  MOUSE_OUT: 'MOUSE_LEAVE',
   MOUSE_LEAVE: 'MOUSE_LEAVE',
   MOUSE_UP: 'MOUSE_UP',
   MOUSE_DOWN: 'MOUSE_DOWN',
 };
 
-const ACTIONS: Record<string, PrototypeAction['type']> = { NODE: 'NODE', BACK: 'BACK', CLOSE: 'CLOSE', URL: 'URL' };
+/**
+ * The `ConnectionType` members. The wire says `INTERNAL_NODE` for what the model
+ * calls `NODE`; `NONE` maps to nothing, so the action is dropped rather than
+ * invented.
+ */
+const ACTIONS: Record<string, PrototypeAction['type']> = {
+  INTERNAL_NODE: 'NODE',
+  NODE: 'NODE',
+  BACK: 'BACK',
+  CLOSE: 'CLOSE',
+  URL: 'URL',
+};
 
 /**
  * The navigation members playback honours. Figma also sends SCROLL_TO and

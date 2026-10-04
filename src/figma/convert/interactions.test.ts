@@ -15,8 +15,9 @@ import { describe, expect, it } from 'vitest';
 import { mapRestInteractions } from './mappers';
 import { ReportBuilder } from './report';
 import { useEditor } from '../../store/editorStore';
+import { actionOfKind, prototypeDestinations } from '../../model/prototype';
 import { emptyFile } from '../../model/validate';
-import { createRectNode } from '../../model/factory';
+import { createFrameNode, createRectNode } from '../../model/factory';
 
 /** One Figma interaction with a single NODE action carrying `navigation`. */
 function interaction(navigation: string | undefined, destinationId = 'dest:1') {
@@ -158,5 +159,57 @@ describe('SWAP playback differs from NAVIGATE', () => {
     expect(store().presentationStack).toEqual([page.id]);
     store().navigatePrototype('frame-c');
     expect(store().presentationStack, 'NAVIGATE pushes').toEqual([page.id, 'frame-b']);
+  });
+});
+
+describe('the REST map lists the native vocabulary too', () => {
+  it('maps DRAG, MOUSE_IN and MOUSE_OUT', () => {
+    for (const [native, expected] of [['DRAG', 'ON_DRAG'], ['MOUSE_IN', 'MOUSE_ENTER'], ['MOUSE_OUT', 'MOUSE_LEAVE']] as const) {
+      const report = new ReportBuilder();
+      const interactions = mapRestInteractions(
+        [{ trigger: { type: native }, actions: [{ type: 'NODE', destinationId: 'dest:1' }] }] as never,
+        { report, nodeId: 'n:1', path: 'page/0' },
+      )!;
+      expect(interactions, `${native} must map`).toHaveLength(1);
+      expect(interactions[0]!.trigger.type, `${native} -> ${expected}`).toBe(expected);
+      expect(report.unsupported, `${native} must not be reported`).toEqual([]);
+    }
+  });
+
+  it('maps the REST connectionType INTERNAL_NODE onto NODE', () => {
+    const report = new ReportBuilder();
+    const interactions = mapRestInteractions(
+      [{ trigger: { type: 'ON_CLICK' }, actions: [{ type: 'NODE', connectionType: 'INTERNAL_NODE', destinationId: 'dest:1' }] }] as never,
+      { report, nodeId: 'n:1', path: 'page/0' },
+    )!;
+    expect(interactions[0]!.actions[0]!.type).toBe('NODE');
+    expect(report.unsupported).toEqual([]);
+  });
+});
+
+describe('a swap action can be AUTHORED, not only imported', () => {
+  it('offers the kind, and builds an action that plays back in place', () => {
+    // The kind exists in the model's own vocabulary now.
+    const action = actionOfKind('SWAP_STATE', 'variant:2');
+    expect(action.navigation).toBe('SWAP_STATE');
+    expect(action.destinationId).toBe('variant:2');
+    expect(action.overlay).toBeUndefined();
+  });
+
+  it('offers a component set’s variants as destinations, grouped by set', () => {
+    const file = emptyFile('Picker');
+    const page = file.document.children[0]!;
+    const plain = createFrameNode(file.document, 0, 0, 100, 100);
+    plain.name = 'Plain frame';
+    const variantA = { ...createRectNode(file.document, 0, 0, 50, 50), type: 'COMPONENT' as const, name: 'State=Default' };
+    const variantB = { ...createRectNode(file.document, 0, 0, 50, 50), type: 'COMPONENT' as const, name: 'State=Hover' };
+    const set = { ...createRectNode(file.document, 0, 0, 50, 50), type: 'COMPONENT_SET' as const, name: 'Button', children: [variantA, variantB] };
+    page.children = [plain, set] as never;
+    const destinations = prototypeDestinations(file, page.id);
+    expect(destinations.map((entry) => entry.id)).toContain(plain.id);
+    // The variants are offered, grouped by the set's name.
+    const variants = destinations.filter((entry) => entry.group === 'Button');
+    expect(variants.map((entry) => entry.name).sort()).toEqual(['State=Default', 'State=Hover']);
+    expect(variants.every((entry) => entry.group === 'Button')).toBe(true);
   });
 });
