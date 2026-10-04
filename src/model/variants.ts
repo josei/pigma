@@ -1,4 +1,5 @@
 import type {
+  AnyNode,
   ComponentNode,
   ComponentPropertyDefinition,
   ComponentPropertyValue,
@@ -7,6 +8,7 @@ import type {
   SceneNode,
 } from './types';
 import { findNode, insertChild, parentAndIndex, removeNode, updateNode, walk } from './tree';
+import { hasChildren } from './types';
 import { nextNodeId } from './ids';
 import { syncInstances } from './instances';
 
@@ -249,6 +251,26 @@ export function componentLibrary(file: PigmaFile): Array<{ id: string; name: str
   walk(file.document, (node) => {
     if (node.type === 'COMPONENT') out.push({ id: node.id, name: node.name });
   });
+  return out;
+}
+
+/**
+ * The component nodes that ARE slots.
+ *
+ * A slot is a SLOT property bound to a frame through
+ * `componentPropertyReferences.slot`, and the content an instance supplies for it
+ * is an override of that frame's children. (The binding key is ours: the importer
+ * keeps Figma's property definitions but does not map its slot binding.)
+ */
+export function slotTargetsOf(owner: ComponentNode | null): Array<{ property: string; nodeId: string }> {
+  if (!owner) return [];
+  const out: Array<{ property: string; nodeId: string }> = [];
+  const visit = (node: AnyNode): void => {
+    const property = node.componentPropertyReferences?.slot;
+    if (property) out.push({ property, nodeId: node.id });
+    if (hasChildren(node)) for (const child of node.children as AnyNode[]) visit(child);
+  };
+  for (const child of ((owner.children ?? []) as AnyNode[])) visit(child);
   return out;
 }
 
