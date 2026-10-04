@@ -146,7 +146,13 @@ function componentProperties(
   return Object.keys(properties).length > 0 ? properties : undefined;
 }
 
-const COMPONENT_PROPERTY_TYPES: readonly ComponentPropertyType[] = ['VARIANT', 'BOOLEAN', 'TEXT', 'INSTANCE_SWAP'];
+/**
+ * Figma's component property types. SLOT is a property whose value is instance
+ * content: the definition (its name and default node id) is kept here, and the
+ * content itself arrives as an override of the slot frame's children, which the
+ * instance sync merges rather than replaces.
+ */
+const COMPONENT_PROPERTY_TYPES: readonly ComponentPropertyType[] = ['VARIANT', 'BOOLEAN', 'TEXT', 'INSTANCE_SWAP', 'SLOT'];
 
 /**
  * Validates raw `componentPropertyDefinitions` into the model shape. Entries

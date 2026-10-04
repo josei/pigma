@@ -459,6 +459,12 @@ export interface NodeOverride {
   y?: number;
   width?: number;
   height?: number;
+  /**
+   * Slot content: the children an instance supplies for this node. A component
+   * edit re-materializes the subtree, and this is what makes the supplied content
+   * SURVIVE that — the sync merges the override rather than replacing it.
+   */
+  children?: SceneNode[];
 }
 
 export interface InstanceNode extends BaseNode, ChildrenMixin {
@@ -551,7 +557,12 @@ export interface Rect {
   width: number;
   height: number;
 }
-export type ComponentPropertyType = 'VARIANT' | 'BOOLEAN' | 'TEXT' | 'INSTANCE_SWAP';
+/**
+ * Figma's component property types. `SLOT` is a property whose value is instance
+ * CONTENT supplied through an override of the slot frame's children, rather than
+ * a string, a boolean or a preferred component.
+ */
+export type ComponentPropertyType = 'VARIANT' | 'BOOLEAN' | 'TEXT' | 'INSTANCE_SWAP' | 'SLOT';
 
 /** A component property definition (Figma's `componentPropertyDefinitions`). */
 export interface ComponentPropertyDefinition {

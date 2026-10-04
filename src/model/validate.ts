@@ -398,6 +398,11 @@ function normalizeNode(value: unknown, warnings: string[], path: string): SceneN
     ...(normalizeInteractions(value.interactions) ? { interactions: normalizeInteractions(value.interactions) } : {}),
     ...(isRecord(value.styles) ? { styles: value.styles as never } : {}),
     ...(isRecord(value.boundVariables) ? { boundVariables: value.boundVariables as never } : {}),
+    // Component property values and their bindings are generic node fields: an
+    // instance's values and a layer's references were silently dropped on load,
+    // which lost an INSTANCE_SWAP choice across a save.
+    ...(isRecord(value.componentPropertyReferences) ? { componentPropertyReferences: value.componentPropertyReferences as never } : {}),
+    ...(isRecord(value.componentProperties) ? { componentProperties: value.componentProperties as never } : {}),
     ...(raw ? { raw } : {}),
   };
 
