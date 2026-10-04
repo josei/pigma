@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **994 unit tests / 106 files**, **249 browser tests passing / 0 failing**,
+Last verified: **1009 unit tests / 108 files**, **253 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -32,7 +32,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 | M7 | Persistence & interchange — local, library, Figma import | **Shipped** | `b7-persistence`, `b8-interchange`, `b11-figma-import` (7/7 incl. embedded image), `b25-round11` (IndexedDB library, FS Access), `b27-storage` (crash marker) |
 | M8 | Pages & input — pages, shortcuts, nudging | **Shipped** | `b6-pages`, `b3-manipulation` (arrow nudge 1px / Shift 10px) |
 | M9 | UI fidelity vs Figma's documented UI | **Shipped** | `b9-layout`, `b10-fidelity`; parity diff 11/11, every delta 0 — reproducible: `node scripts/parity-spec.mjs` against a running dev server (exits non-zero on any row over tolerance) |
-| M10 | Layout systems — auto layout, wrap, sizing, constraints | **Shipped** | `b13-autolayout`, `b23-round9` (wrap packs lines, line gap, counter align), `b22-round8` (min/max + persistence), `b25-round11` (constraint icons, no overflow) |
+| M10 | Layout systems — auto layout, wrap, sizing, constraints | **Shipped** | Row/Column: `b13-autolayout`, `b23-round9` (wrap packs lines, line gap, counter align), `b22-round8` (min/max + persistence), `b25-round11` (constraint icons, no overflow). **Grid auto layout — shipped for a SUBSET**: `LayoutMode` gains `GRID`, with Figma's own field names (`gridColumns`/`gridRows`/`GridTrackSize`, per-child `gridColumnAnchorIndex`/`gridColumnSpan`/...), FIXED tracks taking their pixels and the remainder shared by FLEX weights, row-major placement that skips manually anchored cells, honoured spans and a bounded scan; it is reached through `reflowTree`, the same choke point as the row/column flows, so every write path reflows a grid. Evidence: unit `src/model/gridLayout.test.ts`, browser `b57-grid-autolayout` (a 300-wide frame places three children at x 16 / 156 / 16 with the third wrapping to row 2; a column switched to FIXED 1px reflows to widths 1 / 255 / 1; resizing the frame resizes the fractional track). **Gaps, named: NOT full grid parity.** `gridRowSizing` is not implemented (the row count is derived); implicit tracks repeat the **last** declared track; **negative anchors** (Figma's -1) are unsupported; there is **no dense packing**; the track list **cannot be reordered** in the UI. Source: https://help.figma.com/hc/en-us/articles/31289469907863-Use-the-grid-auto-layout-flow |
 | M11 | Components & design systems | **Shipped** | Components, instances and override isolation: `b12-components`. Variant sets: `b12` (two components combine into a set). Styles, variable collections and binding: `b20-vector-styles-variables`. Library publish and instance insertion: `b31-libraries` (`B31a` publish status, `B31b` an `INSTANCE` node appears, `B31c` master edit + republish). Unit: `library.test.ts`, `instances.test.ts` |
 | M12 | Prototyping — interactions, flows, overlays, presentation | **Shipped** | Start frame + hotspot: `b14-presentation`. Triggers incl. ON_HOVER, flows, overlay stacking: `b21-prototype-inspect`. Frame **scrolling** in presentation and **smart-animate interpolation** (35 intermediate samples between the two endpoints, read from the animated layer's computed CSS transform): `b33-animate-scroll`. Unit: `animate.test.ts`, `overlay.test.ts`, `prototype.test.ts` |
 | M13 | Collaboration — presence, follow, conflict, E2E rooms | **Shipped** (local relay) | Presence, cursors, follow: `b28-rooms` 4/4 — two contexts join the same room with different nicknames, the remote cursor is a `<g>` carrying an arrow path and a `<text>` label with the peer nickname, remote edits reach the peer view, follow changes the viewBox and Esc stops it. Conflict resolution: `b32-conflict` — edits to different nodes both survive, edits to the same node converge to one value on both sides. Share links: `b35-share-link` 4/4. Unit: `merge.test.ts`, `presence.test.ts`, `e2e.test.ts`, `share.test.ts`. **Caveat: every spec here runs against a LOCAL relay started by the fixture; the hosted relay at getpigma.com is not exercised by QA.** |
@@ -132,7 +132,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 **No failing specs.** The suite is green: `CI=true npm run test:browser` = **249
 passed / 0 failed**, measured twice back-to-back, with **0 orphan processes**;
-`npx vitest run` = **994 passing / 106 files**, deterministic whether or not
+`npx vitest run` = **1009 passing / 108 files**, deterministic whether or not
 `dist/` has been built. Every item previously listed here
 (B29c, B29d, B31b, B31c, B33a, B33b, B28b) now passes and has been removed.
 
@@ -241,7 +241,7 @@ implied):
 
 | Gap | Figma has | Pigma has | Milestone |
 | --- | --- | --- | --- |
-| **Grid auto layout** | a third auto-layout flow: row/column tracks, fractional fill sizing, automatic/manual placement, spanning children | `LayoutMode` is only `NONE / HORIZONTAL / VERTICAL`, and the Cols/Rows/Grid controls are layout **GUIDES** (`LayoutGrid`) rather than grid auto layout | unmet part of **M10** |
+| **Grid auto layout** | a third auto-layout flow: row/column tracks, fractional fill sizing, automatic/manual placement, spanning children | **Shipped for a subset** (tracks, fractional fill, placement, spans) in `LayoutMode = GRID`; still missing `gridRowSizing`, negative anchors, dense packing, track reordering, and implicit tracks repeat the last declared track. The Cols/Rows/Grid controls remain layout **GUIDES** (`LayoutGrid`), a separate control by design | **M10** - partly closed |
 | **Component slots** | native slot properties | `ComponentPropertyType` is `VARIANT / BOOLEAN / TEXT / INSTANCE_SWAP` - **there is no `SLOT`** | gap in **M11** |
 | **Prototype variables and conditionals** | `Set variable` actions and expressions | not implemented; plus a **multi-action execution defect** the editor is fixing | **M12** |
 
