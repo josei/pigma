@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1026 unit tests / 110 files**, **255 browser tests passing / 0 failing**,
+Last verified: **1034 unit tests / 111 files**, **255 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -121,8 +121,20 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
   `http://127.0.0.1:<port>/mcp`) and a self-hosted server remain available for
   users who want the endpoint on their own machine; `stdio` stays an optional
   extra transport in the same binary.
-- **Relay-only transport; P2P deferred.** Collaboration goes through a relay
-  server; there is no direct peer-to-peer path.
+- **Relay-only transport; peer-to-peer is NOT IMPLEMENTED.** Not *deferred* and
+  not *planned* - collaboration goes through a relay server and there is no direct
+  peer-to-peer path. This is **not** because NAT makes it impractical: ICE
+  hole-punching works through **most** NATs (full-cone, restricted-cone and
+  port-restricted-cone, which is what home routers almost always are - commonly
+  cited STUN-only success is around 80-90% of connections), IPv6 usually has no
+  NAT at all, and a LAN needs no traversal. The minority that cannot punch - 
+  symmetric NAT (roughly 10-20%, higher on mobile and corporate networks) and
+  UDP-blocking firewalls - needs **TURN**, which is a fallback for that remainder
+  rather than the norm. The argument against it is therefore not feasibility: it
+  is a **latency optimisation with a permanent dual-path cost**, on design-op
+  traffic that is already tiny messages, over a relay that costs almost nothing -
+  and the fallback for the minority is already owned, because the relay can carry
+  those ops.
 - **No server-side document storage.** Documents live in the browser
   (`localStorage`, IndexedDB) or in a file the user picks; the relay stores room
   snapshots only.
@@ -132,7 +144,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 **No failing specs.** The suite is green: `CI=true npm run test:browser` = **255
 passed / 0 failed**, measured twice back-to-back, with **0 orphan processes**;
-`npx vitest run` = **1026 passing / 110 files**, deterministic whether or not
+`npx vitest run` = **1034 passing / 111 files**, deterministic whether or not
 `dist/` has been built. Every item previously listed here
 (B29c, B29d, B31b, B31c, B33a, B33b, B28b) now passes and has been removed.
 
