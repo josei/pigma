@@ -1,4 +1,5 @@
-import type { AnyNode, InstanceNode, NodeOverride, SceneNode } from './types';
+import type { AnyNode, ComponentPropertyValue, InstanceNode, NodeOverride, SceneNode } from './types';
+import { instancePropertiesOf } from './variants';
 import { hasChildren } from './types';
 import { updateNode } from './tree';
 
@@ -29,6 +30,7 @@ export function componentNodeIdOf(childId: string): string | null {
 export function applyOverride(node: SceneNode, override: NodeOverride | undefined): SceneNode {
   if (!override) return node;
   const next = { ...node } as SceneNode;
+  if (override.children !== undefined) return { ...next, children: override.children } as SceneNode;
   if (override.name !== undefined) next.name = override.name;
   if (override.visible !== undefined) next.visible = override.visible;
   if (override.locked !== undefined) next.locked = override.locked;
@@ -59,7 +61,12 @@ function materializeInstance(instance: InstanceNode, component: SceneNode): Scen
   const overrides = instance.overrides ?? {};
   const build = (node: SceneNode): SceneNode => {
     const copy = { ...node, id: instanceChildId(instance.id, node.id) } as SceneNode;
-    const withOverride = applyOverride(copy, overrides[node.id]);
+    const override = overrides[node.id];
+    // Slot content wins over the component's own children: this is the merge that
+    // lets a component edit re-materialize the subtree WITHOUT wiping what the
+    // instance put in the slot.
+    if (override?.children !== undefined) return { ...(copy as typeof node), children: override.children } as SceneNode;
+    const withOverride = applyOverride(copy, override);
     if (hasChildren(node)) {
       const children = (node.children as SceneNode[]).map(build);
       return { ...(withOverride as typeof node), children };
@@ -109,6 +116,19 @@ function nodesEquivalent(a: SceneNode, b: SceneNode): boolean {
  * Refresh every instance in the tree from its component. Returns the same node
  * when nothing changed, so this is safe to run after every edit.
  */
+/**
+ * The component an instance should use, when a `mainComponent` property
+ * reference swaps it. Figma keeps an INSTANCE_SWAP property's value on the ROOT
+ * instance, so the values are threaded down from there rather than read off each
+ * nested instance.
+ */
+function swappedComponentOf(instance: InstanceNode, values: Record<string, ComponentPropertyValue> | undefined): string | null {
+  const property = instance.componentPropertyReferences?.mainComponent;
+  if (!property || !values) return null;
+  const value = values[property];
+  return typeof value === 'string' && value !== '' ? value : null;
+}
+
 export function syncInstances<T extends AnyNode>(root: T): T {
   // Resolve components through one index, built lazily on the first instance so
   // a document with no instances pays no index walk at all. Looking each
@@ -139,12 +159,16 @@ function indexById(node: AnyNode, index: Map<string, AnyNode>): void {
  * first use: components can live on a different page than the instance, so
  * lookups must not be limited to the local subtree.
  */
-function syncWithin<T extends AnyNode>(root: T, lookup: (id: string) => AnyNode | undefined): T {
+function syncWithin<T extends AnyNode>(
+  root: T,
+  lookup: (id: string) => AnyNode | undefined,
+  values?: Record<string, ComponentPropertyValue>,
+): T {
   if (!hasChildren(root)) return root;
   const source = root.children as AnyNode[];
   let changed = false;
   const children = source.map((child) => {
-    const synced = syncWithin(child, lookup);
+    const synced = syncWithin(child, lookup, values);
     if (synced !== child) changed = true;
     return synced;
   });
@@ -153,7 +177,10 @@ function syncWithin<T extends AnyNode>(root: T, lookup: (id: string) => AnyNode 
   if (node.type !== 'INSTANCE') return node;
 
   const instance = node as unknown as InstanceNode;
-  const component = lookup(instance.componentId);
+  // The values a nested instance's swap reads come from the ROOT instance, so
+  // they are threaded down rather than taken from the child.
+  const rootValues = values ?? instancePropertiesOf(instance);
+  const component = lookup(swappedComponentOf(instance, rootValues) ?? instance.componentId);
   if (!component || !hasChildren(component) || component.type === 'DOCUMENT' || component.type === 'CANVAS') {
     return node;
   }
