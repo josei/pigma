@@ -27,7 +27,7 @@ past drawing:
 - MCP bridge (connect, resilience, remote edit + undo round trip) and
   collaboration presence (cursors, follow)
 
-Evidence: **954 unit tests across 100 files**, **246 browser tests passing / 0 failing**
+Evidence: **955 unit tests across 100 files**, **247 browser tests passing / 0 failing**
 (`CI=true npm run test:browser`), and a parity diff against Figma's documented UI
 that passes 11/11 with zero deltas. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for
 the milestone-by-milestone status, the specs that prove each claim, and the known
