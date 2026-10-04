@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1047 unit tests / 111 files**, **261 browser tests passing / 0 failing**,
+Last verified: **1049 unit tests / 111 files**, **261 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -144,14 +144,18 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 **No failing specs.** The suite is green: `CI=true npm run test:browser` = **255
 passed / 0 failed**, measured twice back-to-back, with **0 orphan processes**;
-`npx vitest run` = **1047 passing / 111 files**, deterministic whether or not
+`npx vitest run` = **1049 passing / 111 files**, deterministic whether or not
 `dist/` has been built. Every item previously listed here
 (B29c, B29d, B31b, B31c, B33a, B33b, B28b) now passes and has been removed.
 
-One unit run recorded `1 failed | 787 passed` immediately after two heavy browser
-runs; the failing test's name was not captured and it has not reproduced in 7
-subsequent or prior runs of the same tree. Files that spawn processes are the
-likely sensitivity - the same load effect seen in the browser intermittency.
+**UNRESOLVED INTERMITTENT: the first unit run of a burst occasionally reports one
+failure.** The pattern, now seen at rounds 97 and 101 (twice): it appears on the
+**first** unit run of a burst, **never** on the second, and **never** when the
+suite runs in isolation - and it could not be captured in **several deliberate
+attempts**, so the failing test is still **unnamed**. It is recorded here as an
+unresolved intermittent rather than as a one-off or as passing, because that is
+the honest form and the one a future reader needs. Files that spawn processes are
+the likely sensitivity - the same load effect seen in the browser intermittency.
 
 Coverage added since: PWA offline reload (`b37-pwa-offline`), the line tool
 (`b36-shapes`), polygon and star creation and editing (`b40`/`b41`), a committed

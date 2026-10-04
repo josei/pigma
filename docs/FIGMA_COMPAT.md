@@ -261,6 +261,24 @@ swap *does* carry a transition in the model and the exporter writes it, but
 place, with no animation). Offering the row for a swap would therefore **promise an
 animation that does not play** - so it is withheld, on purpose.
 
+### The two name mismatches are MAPPERS, not renames - and the writes stay
+
+The same probe established the two real wire names behind the round-99 findings:
+
+| We write | The schema's name |
+| --- | --- |
+| `componentPropertyDefinitions` | **`componentPropDefs`** |
+| `variableBindings` | **`variableData`** |
+
+**Neither is a rename, because the SHAPES differ** - so each needs a **mapper**, not
+a string swap. Treating either as a rename would be the same mistake as the
+assumptions above.
+
+**Standing decision: the mismatched writes are KEPT.** They stay so that the
+pre-encode warning keeps **reporting the loss**, rather than the export silently
+carrying less. **Removing a write is a product decision, not a passing one** - a
+silent export that omits a field is worse than a loud one that names it.
+
 ### The schema diff - a STANDING TOOL, not a one-off
 
 The most reusable thing this project has produced is a **method**. The editor
@@ -277,17 +295,61 @@ vocabulary class **by looking**, rather than by losing another round to them:
 names and diff them against the names our mapper writes.** The next instance
 should be found by looking, not by losing a document.
 
-**And the sweep stopped a WRONG BUILD.** The style mapper was about to be built
-against **`styleIdForFill`** - an assumption made in round 95. The diff showed the
-wire's **node-level binding is `styleID`**, alongside `isFillStyle`, `isStrokeStyle`,
-`styleType`, `sharedStyleMasterData`, `sharedStyleReference` and the
-`inherit*StyleID` family. So the sweep prevented what would have been the eighth
-instance. **The style mapper now starts by establishing what `styleID` POINTS AT**,
-rather than assuming the name.
+**A correction that undoes an earlier correction - and it is the same error class.**
+Round 98 recorded here that the wire's node-level binding is `styleID` and **not**
+`styleIdForFill`. **That was wrong.** The field list had been read as a **slice of
+16 names**, and the truncation cut off **exactly the five being looked for**. Checked
+against the decoded schema (**3189 field names**), **all five DO exist**:
+`styleIdForFill`, `styleIdForStrokeFill`, `styleIdForText`, `styleIdForEffect`,
+`styleIdForGrid` - plus a **separate legacy `styleID`** and the `inherit*StyleID`
+family.
+
+**So round 95 was right, and the round-98 "correction" was the error** - an
+assumption drawn from an **INCOMPLETE READ**, which is the same class as the
+vocabulary instances this section exists to catalogue. **Nothing was ever built on
+it.** The style mapper shape is **CONFIRMED and being built**.
+
+**The lesson applies to the standing tool itself:** a diff is only as good as the
+**completeness** of what it diffs - a truncated field list produced a confident
+wrong answer. Trust the next sweep only after checking the sweep did not truncate.
 
 **The same sweep exposed a second gap in that area:** the wire `StyleType` has
 **SEVEN** members - `NONE`, `FILL`, `STROKE`, `TEXT`, `EFFECT`, `EXPORT`, `GRID` -
 against our **three** (`FILL`, `TEXT`, `EFFECT`).
+
+### Style bindings: the EXPORT half landed, the IMPORT half does not
+
+**Export - landed.** The exporter writes the **five per-property binding fields** -
+`styleIdForFill`, `styleIdForStrokeFill`, `styleIdForText`, `styleIdForEffect`,
+`styleIdForGrid` - as **`StyleId { guid }`**, resolved through the file's **style
+table**. A binding that has **no wire guid writes nothing**, which is deliberate: the
+pre-encode check then **reports** it rather than the export quietly carrying less.
+
+**Import - does NOT survive, with two established causes:**
+
+- **(a)** the wire value is a style **GUID** while the model binds by **style ID**,
+  so the guid has to be matched against the file's style **table** - and that table
+  is built **after** the nodes are converted;
+- **(b)** **the style table itself does not cross the wire.** Measured: on reimport,
+  `styles["style:1"].guid` is **undefined**.
+
+Both are being closed now. **The binding does not survive a round trip**, and
+nothing here claims otherwise.
+
+**And a MODEL gap sits underneath.** The wire has **five** binding fields, and
+`NodeStyleBinding` has **three**:
+
+| Wire | Model |
+| --- | --- |
+| `styleIdForFill` | `fill` |
+| `styleIdForText` | `text` |
+| `styleIdForEffect` | `effect` |
+| `styleIdForStrokeFill` | **no source field** |
+| `styleIdForGrid` | **no source field** |
+
+`styleIdForStrokeFill` and `styleIdForGrid` are **reported, not invented** - writing
+a guessed value would be worse than writing none. Carrying them would need a **model
+change**.
 
 ### Open model gaps - the remaining list
 
@@ -297,7 +359,7 @@ Everything the earlier rounds landed still survives; these are what is still ope
 
 | Gap | Nature |
 | --- | --- |
-| **Style bindings** | **corrected shape, being built** - the wire binding is `styleID`, not the assumed `styleIdForFill`, and it starts by establishing what `styleID` **points at**. The wire `StyleType` also has **7** members against our **3** |
+| **Style bindings** | **EXPORT landed; IMPORT does not survive** (two causes: guid-vs-id matched against a table built too late, and the style table itself not crossing the wire). **Plus a model gap**: 5 wire fields vs 3 model fields. The wire `StyleType` also has **7** members against our **3** |
 | **Variable bindings** | a **NAME MISMATCH** - written as `variableBindings`, which the schema does not define, so `kiwi` drops it silently (being fixed) |
 | **Component property definitions** | a **NAME MISMATCH** - written as `componentPropertyDefinitions`, likewise (being fixed) |
 | **Grid track sizes** | still lost (the **track guids** half is closed) |
