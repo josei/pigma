@@ -72,6 +72,11 @@ export interface NormalizedNode {
   strokeCap?: StrokeCap;
   strokeJoin?: StrokeJoin;
   dashPattern?: number[];
+  /** The native `mask` flag, carried into the model's `isMask`. */
+  isMask?: boolean;
+  /** The auto-layout child fields, under their native names. */
+  layoutAlign?: 'INHERIT' | 'STRETCH';
+  layoutGrow?: number;
   effects: Effect[];
   constraints?: Constraints;
   /** Variable bindings, normalised to the model's property names. */
@@ -524,6 +529,11 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
       node.rectangleCornerRadii[3] as number,
     ];
   }
+  if (node.mask === true) normalized.isMask = true;
+  const stackAlign = node.stackCounterAlign;
+  if (stackAlign === 'STRETCH') normalized.layoutAlign = 'STRETCH';
+  else if (typeof stackAlign === 'string') normalized.layoutAlign = 'INHERIT';
+  if (typeof node.stackChildPrimaryGrow === 'number') normalized.layoutGrow = node.stackChildPrimaryGrow;
   const autoLayout = mapNativeAutoLayout(node, ctx);
   if (autoLayout) normalized.autoLayout = autoLayout;
   if (typeof node.clipsContent === 'boolean') normalized.clipsContent = node.clipsContent;

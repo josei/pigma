@@ -144,6 +144,9 @@ function buildBase(node: NormalizedNode, type: NodeType, state: ConvertState): B
   if (node.strokeCap) base.strokeCap = node.strokeCap;
   if (node.strokeJoin) base.strokeJoin = node.strokeJoin;
   if (node.dashPattern) base.dashPattern = node.dashPattern;
+  if (node.isMask === true) base.isMask = true;
+  if (node.layoutAlign) base.layoutAlign = node.layoutAlign;
+  if (typeof node.layoutGrow === 'number') base.layoutGrow = node.layoutGrow;
   if (node.constraints) base.constraints = node.constraints;
   if (node.interactions) base.interactions = node.interactions;
   if (node.bindings) base.boundVariables = node.bindings;
