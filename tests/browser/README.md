@@ -94,9 +94,9 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **255 browser tests passing / 0 failing**, measured twice
+Current state: **261 browser tests passing / 0 failing**, measured twice
 back-to-back (exit 0 both runs) with **0 orphan processes**. `npx vitest run` =
-1042 passing across 111 files.
+1046 passing across 111 files.
 
 ### Round 12 - what is and is not covered
 
@@ -503,6 +503,16 @@ none. `propertyOwnerOf` fixed that, so the spec now asserts the swap control is
 PRESENT and that choosing a component reaches the canvas - with a negative case
 (a component with no properties offers no such control) so it cannot pass
 vacuously.
+
+`b59-prototype-swap-authoring` drives the Prototype panel to author a variant
+swap - and it is why the panel works today. Driving it found that the kind control
+IS a `<select>` (the editor's smoke had reported otherwise) and that the real
+defects were two panel CONDITIONS: the Target row omitted `SWAP_STATE`, so the
+destination vanished, and the create button was enabled with no destination, so a
+swap could be created pointing at nothing. With both fixed, the spec asserts the
+destination appears grouped by set, the button is DISABLED until a variant is
+chosen, applying creates a `SWAP_STATE` action at that variant, and playback swaps
+IN PLACE (frame and stack untouched). The `Back` kind is a negative control.
 
 New specs: `b36-shapes` (line tool geometry and rendering), `b37-pwa-offline`
 (service-worker registration and an offline reload against the built app served
