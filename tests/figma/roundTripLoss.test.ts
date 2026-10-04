@@ -266,3 +266,55 @@ describe('batch 2: layout grids round-trip', () => {
     expect(warnings.filter((line) => line.includes('is not defined by this .fig schema'))).toEqual([]);
   });
 });
+
+describe('prototype interactions: the export side writes them', () => {
+  it('writes the container, the event, the destination and the transition', () => {
+    const file = emptyFile('Prototype export');
+    const page = file.document.children[0]!;
+    const frame = createFrameNode(file.document, 0, 0, 200, 100);
+    frame.name = 'From';
+    const to = createFrameNode(file.document, 300, 0, 200, 100);
+    to.name = 'To';
+    frame.interactions = [
+      {
+        trigger: { type: 'ON_CLICK' },
+        actions: [
+          {
+            type: 'NODE',
+            destinationId: to.id,
+            navigation: 'NAVIGATE',
+            transition: { type: 'SMART_ANIMATE', duration: 250, easing: 'IN_CUBIC' },
+          },
+        ],
+      },
+      {
+        trigger: { type: 'ON_HOVER' },
+        actions: [{ type: 'NODE', destinationId: to.id, navigation: 'SWAP_STATE' }],
+      },
+    ];
+    page.children = [frame, to];
+
+    const { message, warnings } = pigmaToFigMessage(file, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors });
+    const change = (message.nodeChanges as Array<Record<string, unknown>>).find((entry) => entry.name === 'From')!;
+    const interactions = change.prototypeInteractions as Array<Record<string, unknown>>;
+    expect(interactions, 'no interactions were written').toHaveLength(2);
+    // Container + event.
+    expect(interactions[0]!.isDeleted).toBe(false);
+    expect((interactions[0]!.event as Record<string, unknown>).interactionType).toBe('ON_CLICK');
+    expect((interactions[1]!.event as Record<string, unknown>).interactionType).toBe('ON_HOVER');
+    // Action: the destination as a GUID, the connection kind and the transition.
+    const navigate = (interactions[0]!.actions as Array<Record<string, unknown>>)[0]!;
+    expect(navigate.connectionType).toBe('INTERNAL_NODE');
+    expect(typeof navigate.transitionNodeID).toBe('object');
+    expect(navigate.navigationType).toBe('NAVIGATE');
+    expect(navigate.transitionType).toBe('SMART_ANIMATE');
+    expect(navigate.transitionDuration).toBe(250);
+    expect(navigate.easingType).toBe('IN_CUBIC');
+    expect(navigate.transitionShouldSmartAnimate).toBe(true);
+    // The recovered member is written too.
+    const swap = (interactions[1]!.actions as Array<Record<string, unknown>>)[0]!;
+    expect(swap.navigationType, 'SWAP_STATE must be written').toBe('SWAP_STATE');
+    // And the schema defines every field, so nothing is reported.
+    expect(warnings.filter((line) => line.includes('is not defined by this .fig schema'))).toEqual([]);
+  });
+});
