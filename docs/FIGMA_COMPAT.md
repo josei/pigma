@@ -175,24 +175,44 @@ styles as **strings** and carries **neither** - so there is nothing to write int
 the guid field. The minimal fix is a **model change** (carry a guid per style);
 its cost is being reported by the editor. **It is not done.**
 
-### `CHANGE_TO` and `SCROLL_TO`: UNDER RE-EXAMINATION
+### The variant swap was RESTORED - a feature recovered, not a bug fixed
 
-The model declares only `NAVIGATE` / `SWAP` / `OVERLAY` and documents a
-withdrawal of `SCROLL_TO` and `CHANGE_TO` on the grounds that **"the model cannot
-express either target"** (`src/model/types.ts`). **That reasoning was made against
-the REST vocabulary, and the round-74 withdrawal may therefore be wrong.**
+**The round-74 withdrawal was WRONG.** It was reasoned against the **REST**
+vocabulary, where the variant swap is `CHANGE_TO` and the target looked
+inexpressible; the **NATIVE** wire disagrees on both counts - it names the swap
+**`SWAP_STATE`** and carries **`transitionNodeID`** as the destination GUID. It is
+now **IMPLEMENTED**.
 
-The **NATIVE** wire has **`SWAP_STATE`** - Figma's own name for that variant swap -
-carrying a **destination GUID** in the action. If the destination is expressible
-after all, the premise is false and the withdrawal **reverses**.
+What works that did not before:
 
-**State: UNDER RE-EXAMINATION, not settled.** The editor is re-examining it now.
-If it reverses, this is a **feature recovered**, not a bug fixed.
+- a **navigate -> swap -> open** trigger runs **ALL THREE actions in order**; before,
+  the middle one was silently dropped on import;
+- playback **swaps the instance variant IN PLACE with the stack untouched**, so
+  **Back still returns correctly**.
 
-**The class is worth naming** (see the pattern section of the ROADMAP): this is the
-**third** decision made against the **REST** vocabulary that the **NATIVE** one
-contradicts - after `dashPattern` (`strokeDashes` vs `dashPattern`) and
-`windingRule` (`EVENODD` vs `ODD`).
+**The naming decision, which is the lesson applied rather than described:** the
+model uses Figma's **NATIVE** name **`SWAP_STATE`** rather than the REST name
+`CHANGE_TO`, and handles the REST spelling as an importer **ALIAS**
+(`NAVIGATION_ALIASES = { CHANGE_TO: 'SWAP_STATE' }`). So the model keeps **one
+vocabulary** while a REST-sourced document still lands - which is exactly the
+remedy for the sub-class named in the ROADMAP's pattern section.
+
+**`SCROLL_TO` STAYS WITHDRAWN, on evidence rather than as deferred.** It is one
+field short in **form** - `extraScrollOffset` is a `Vector` and the model has no
+offset - but the missing part is the **semantics**: which coordinate space it
+targets, whether it clamps to the scroll range, and how playback applies it.
+
+### Two gaps remain, named
+
+- **`prototypeInteractions` - the `.fig` mapper - is still NOT written**, so
+  prototype links **still do not survive a `.fig` round trip** even though the
+  model now supports the swap. **Nothing here claims the mapper is done** until a
+  round trip proves it.
+- **`prototypeDestinations` offers only the PAGE frames**, so a variant
+  **`COMPONENT` cannot be chosen** when *creating* a swap action in the UI - even
+  though an imported document will play it. 
+
+Both are **in progress this round**.
 
 ### The two shapes the editor established - the plan for the writes in progress
 
