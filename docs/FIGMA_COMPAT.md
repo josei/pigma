@@ -13,12 +13,21 @@ Source of truth, by direction:
 | Figma REST JSON → Pigma | `src/figma/rest/parse.ts` |
 | Loss reporting | `src/figma/convert/report.ts` |
 
-**Nothing is lost silently.** Every import produces an `ImportReport` with a
+**The table pins what is KNOWN; it is not a promise that nothing is lost
+silently.** Every import produces an `ImportReport` with a
 structured `unsupported` list (`{ nodeId?, path, feature, detail? }`), using
 stable feature keys such as `nodeType:STICKY`, `paint:VIDEO`,
 `autoLayout:GRID`. The UI surfaces it. `rawPreserved` is always `true`: each node
 keeps its original source object, so unknown fields survive inside Pigma even
 when they cannot be mapped onto the model.
+
+**A field with no row here and no mapping can still be dropped without a
+warning, and one was.** `locked` was never written on export and had no row in
+this table, so a locked layer came back unlocked silently - the importer reads
+`locked === true`, and a missing field is false. The exporter now writes it
+(`src/figma/native/modelExport.ts`); this table still has no row for it, which is
+the gap this paragraph exists to admit. Treat an unlisted field as **unknown**,
+not as safe.
 
 ---
 
@@ -48,7 +57,7 @@ Legend: **✅** survives · **≈** survives with a stated approximation ·
 | Blend modes | ✅ | ✅ | Full enum mapped in `modelExport.ts` | documented-from-code: the `BLEND` table in `modelExport.ts` |
 | Drop / inner shadow | ✅ | ≈ | float32 precision on colour, radius, offset | documented-from-code: the effect branch of `modelExport.ts` |
 | Layer / background blur | ✅ | ✅ | | documented-from-code: the effect branch of `modelExport.ts` |
-| Stroke weight, align, cap, join, dashes | ✅ | ✅ | | documented-from-code: the stroke branch of `modelExport.ts` |
+| Stroke weight, align, cap, join, dashes | ✅ | **❌** | The exporter writes `strokeDashes` but it is **lost in the binary round trip across all four fixture schemas** (probe, `tests/figma/roundTripLoss.test.ts`). Weight, align, cap and join are unaffected; **dashes are not**. | test-backed: `tests/figma/roundTripLoss.test.ts` |
 | Corner radius / per-corner radii | ✅ | ✅ | | test-backed: `b41-polygon-star-editing` `B41c` (rendering) + `src/render/svgExport.test.ts` |
 | **Text: family + named style** | ✅ | ✅ | Modelled as `fontName { family, style }` | test-backed: `b42-figma-italic-roundtrip` |
 | **Text: numeric weight** |  ≈ | **❌** | See below — the wire carries a *named style*, not a number | test-backed: `b42-figma-italic-roundtrip` (`B42b` native, `B42d` REST) |
@@ -59,13 +68,60 @@ Legend: **✅** survives · **≈** survives with a stated approximation ·
 | Auto layout (direction, spacing, padding, alignment, sizing) | ✅ | ✅ | | test-backed: `src/figma` unit suite |
 | Auto layout: wrap | ✅ | ✅ | | test-backed: `src/figma` unit suite |
 | Auto layout: **grid** | ❌ | ❌ | No model equivalent — reported as `autoLayout:GRID` | documented-from-code: no model equivalent, reported as `autoLayout:GRID` |
-| Prototype interactions (triggers, actions, overlay) | ✅ | ✅ | | test-backed: `b14-presentation`, `b21-prototype-inspect` |
+| Prototype interactions (triggers, actions, overlay) | ✅ | **❌** | `interactions` goes **1 -> 0** across the binary round trip (probe). The editor and the REST import are unaffected - this is the `.fig` EGRESS losing them. | test-backed: `b14-presentation`, `b21-prototype-inspect`; loss measured by `tests/figma/roundTripLoss.test.ts` |
 | Prototype transitions incl. smart animate | ✅ | ✅ | Duration and type carried | test-backed: `b33-animate-scroll` |
 | Unknown / future node types | ❌ | ❌ | Reported as `nodeType:<TYPE>`; the source object is still preserved in `raw` | documented-from-code: reported as `nodeType:<TYPE>` |
 
-## 2. The known losses, stated plainly
+## 2. What the round-trip probe measured
 
-### 2.1 `COMPONENT_SET` cannot be represented on the wire
+The compat table above pins what is **known**. A probe drove the **real** binary
+round trip (`exportPigmaFile` -> `parseFigArchive` -> `figDocumentToPigmaFile`)
+against the fixture schemas and measured what actually survives, which is how the
+two rows above were corrected.
+
+**Root cause, and it is not ours:** the encoder is
+**`kiwi-schema`'s `compileSchema(...).encodeMessage(...)`** (`src/figma/native/export.ts`)
+- a **third-party** encoder driven by the `.fig` **schema**. It writes only the
+fields the schema defines and **drops the rest with no warning**. So a field
+Pigma models, and even writes into the message, can still be discarded on its way
+to bytes.
+
+**15 fields are CONFIRMED LOST** across the round trip:
+
+`isMask`, `interactions`, `layoutGrids`, `minWidth` / `minHeight`, `maxWidth` /
+`maxHeight`, `layoutAlign`, `layoutGrow`, `windingRule`, `devStatus`,
+`constraints`, `styles`, `componentPropertyReferences`, `dashPattern`,
+`overflowDirection`, `textAutoResize`.
+
+**9 probed fields SURVIVE** - recorded because a probe that clears nine
+candidates is as valuable as one that finds fifteen: `visible`, `clipsContent`,
+`cornerRadius`, `rectangleCornerRadii`, `blendMode`, `effects`, `strokeWeight`,
+`strokeAlign`, `raw`.
+
+### Missing is one thing; WRONG is another
+
+`windingRule` deserves its own paragraph, because it does not vanish: it comes
+back **`EVENODD` -> `NONZERO`**. A lost field leaves a default you can notice; a
+**silently wrong** one changes how a path fills while looking perfectly healthy.
+For a design tool that is worse than a loss, and it is the one field in the list
+where the result is actively incorrect rather than merely absent.
+
+### Still unknown
+
+**Image, grid and `componentProperties` fields remain UNPROBED.** They are
+recorded here as **unknown**, not as safe - which is the whole point of the
+correction above.
+
+### In progress
+
+The editor is building a **pre-encode warning**, so these losses stop being
+silent and a caller can **learn** about a dropped field rather than having to
+read this table. **That is in progress, not landed** - the table remains the only
+source of truth until it ships.
+
+## 3. The known losses, stated plainly
+
+### 3.1 `COMPONENT_SET` cannot be represented on the wire
 
 `modelExport.ts`:
 
@@ -82,7 +138,7 @@ first-class model type, and variant sets are browser-verified via combination an
 instance overrides); it is the *export* that cannot express it. **Figma → Pigma is
 unaffected** — a set imported from Figma stays a set.
 
-### 2.2 No numeric font weight on the wire
+### 3.2 No numeric font weight on the wire
 
 The wire carries a **named style**, not a number. Export maps a weight through a
 fixed table:
@@ -102,7 +158,7 @@ Consequences:
 - Pigma's model does keep a numeric `fontWeight`, so this is a wire limitation,
   not a model one.
 
-### 2.3 Colours are float32
+### 3.3 Colours are float32
 
 The codec transports floats as 32-bit (`kiwi.ts`: `Float32Array` over a shared
 `ArrayBuffer`). Colour components, gradient stops, effect radii and offsets are
@@ -113,19 +169,19 @@ therefore rounded to float32 precision on the wire. In practice:
 - It is a precision loss, not a correctness one: 32-bit floats are what Figma's
   own format uses.
 
-### 2.4 Geometry can be dropped for unparseable paths
+### 3.4 Geometry can be dropped for unparseable paths
 
 If `pathData` contains commands the importer/exporter does not understand, the
 geometry is omitted and a warning is emitted rather than a wrong shape being
 produced. The node survives; its outline does not.
 
-### 2.5 Boolean results are flattened
+### 3.5 Boolean results are flattened
 
 Boolean operations are carried as a flattened path, not as a live polygon op.
 Figma → Pigma works and the *rendered result* is correct; what is not preserved
 is the parametric operation with its inputs recoverable as such.
 
-### 2.6 Archive-level limits
+### 3.6 Archive-level limits
 
 `.fig` is a ZIP container read by `zip.ts`. An entry using a compression method
 the reader does not implement raises `UNSUPPORTED_ARCHIVE` rather than returning
@@ -133,7 +189,7 @@ corrupt data. Native `.fig` import also needs the `fflate` and `fzstd`
 decompressors; without them the import fails with a clear
 `UNSUPPORTED_COMPRESSION` error instead of hanging.
 
-## 3. What this means in practice
+## 4. What this means in practice
 
 | If you need… | Do this |
 | --- | --- |
@@ -142,7 +198,7 @@ decompressors; without them the import fails with a clear
 | To hand a file back to Figma | `.fig` export. Expect the losses above, and read the export warnings |
 | Variant sets to survive | Keep them in Pigma JSON; `.fig` export flattens sets to components |
 
-## 4. Honesty notes
+## 5. Honesty notes
 
 - The matrix describes **the code as it stands**, not a target. Where a row says
   ❌, there is no partial support to discover — the `unsupported` report is the
