@@ -11,7 +11,7 @@
  */
 import type { EditorState } from '../store/editorStore';
 import type { PigmaFile } from '../model/types';
-import type { DocumentSession } from './session';
+import { prepareWrite, type DocumentSession } from './session';
 
 /** Structural view of a zustand store, so no zustand import is needed. */
 export interface EditorStoreLike {
@@ -32,7 +32,13 @@ export function createEditorSession(store: EditorStoreLike): DocumentSession {
   return {
     getFile: () => store.getState().file,
     setFile: (file: PigmaFile) => {
-      store.getState().apply('MCP: update document', () => file);
+      // The same settle + invariant check the in-memory session runs, and it runs
+      // BEFORE the store sees anything: a refused write must leave the document
+      // and the undo history untouched, so the throw cannot come from inside
+      // `apply`. The store settles again, which is idempotent and free on an
+      // already-settled document, and skips a write that changes nothing.
+      const settled = prepareWrite(file);
+      store.getState().apply('MCP: update document', () => settled);
     },
     getSelection: () => [...store.getState().selection],
     setSelection: (ids: string[]) => {

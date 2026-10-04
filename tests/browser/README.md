@@ -335,6 +335,14 @@ style), and the 2x pass proves the values are scale independent.
   waits for the relay to register the client, and the resilience tests read
   before they write.
 
+## Verification baseline
+
+`/home/jose/Code/pigma` is a git repository with a committed verified-green state
+(`697d88b`). QA changes are reported against it with `git status --porcelain` and
+`git diff --stat` - a real diff against a real baseline - instead of the
+content/mtime comparisons used before the repo had one. Nothing QA-side commits
+on its own; the coordinator decides.
+
 ## Round 25 additions
 
 `b40-polygon-star` covers the polygon and star tools end to end: each tool

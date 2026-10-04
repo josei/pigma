@@ -41,6 +41,30 @@ export interface DocumentSnapshot {
   revision: number;
 }
 
+/**
+ * Settle a document and refuse it when it breaks the invariants.
+ *
+ * Every MCP write goes through this, whichever session it lands on, so the
+ * guarantee cannot differ between the in-memory session and the live editor.
+ * Settling first matters: a pass could itself produce a problem, and what gets
+ * committed is the settled document.
+ *
+ * `settleDocument` is pure and idempotent — it returns the *same* file object
+ * when no pass changed anything, so repeated writes cannot churn — and the throw
+ * happens before anything is assigned, so a refused write leaves the previous
+ * document (and, on the editor session, its undo history) untouched.
+ */
+export function prepareWrite(next: PigmaFile): PigmaFile {
+  const settled = settleDocument(next);
+  const problems = documentProblems(settled);
+  if (problems.length > 0) {
+    const shown = problems.slice(0, 3).join('; ');
+    const more = problems.length > 3 ? ` (+${problems.length - 3} more)` : '';
+    throw new McpToolError(`The document this write would produce is invalid: ${shown}${more}`);
+  }
+  return settled;
+}
+
 /** In-memory session, used by tests and by servers started with a loaded file. */
 export function createSession(initial: PigmaFile | null = null): DocumentSession {
   let file = initial;
@@ -48,26 +72,7 @@ export function createSession(initial: PigmaFile | null = null): DocumentSession
   return {
     getFile: () => file,
     setFile: (next) => {
-      // Every MCP write lands here, so this is the single place derived geometry
-      // is settled: auto-sized text boxes follow their content, BOOLEAN_OPERATION
-      // nodes re-evaluate, instances sync, the tree reflows — the same passes the
-      // editor's store runs. A tool cannot forget it, and a document built
-      // entirely through the MCP is never left with stale derived geometry.
-      //
-      // `settleDocument` is pure and idempotent: it returns the *same* file object
-      // when no pass changed anything, so repeated writes cannot churn.
-      const settled = settleDocument(next);
-      // Then refuse a document the rest of the system assumes is impossible — a
-      // negative size, an out-of-range opacity, a malformed colour — with a clear
-      // error naming the node, instead of committing it. Nothing is assigned on
-      // failure, so the previous document survives intact.
-      const problems = documentProblems(settled);
-      if (problems.length > 0) {
-        const shown = problems.slice(0, 3).join('; ');
-        const more = problems.length > 3 ? ` (+${problems.length - 3} more)` : '';
-        throw new McpToolError(`The document this write would produce is invalid: ${shown}${more}`);
-      }
-      file = settled;
+      file = prepareWrite(next);
     },
     getSelection: () => [...selection],
     setSelection: (ids) => {
