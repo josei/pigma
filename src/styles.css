@@ -1,0 +1,1794 @@
+/**
+ * Pigma stylesheet — owner: UI shell agent (see docs/UI_CONTRACT.md).
+ *
+ * Class and token names here are frozen: the editor agent writes components
+ * against them. Additions are fine; renames and removals are not.
+ *
+ * Note on `.input`: the editor applies `.input` to a <label> wrapper that holds
+ * a `.prop-row__label` (prefix/suffix) plus the real <input>. Bare
+ * `<input class="input">` elements exist too (opacity fields, colour picker).
+ * Both shapes are styled below.
+ */
+
+/* ==========================================================================
+   Tokens — Figma UI3 light theme
+   ========================================================================== */
+
+:root {
+  --figma-bg: #ffffff;
+  --figma-bg-secondary: #f5f5f5;
+  --figma-bg-tertiary: #e6e6e6;
+  --figma-border: #e6e6e6;
+  --figma-border-strong: #d9d9d9;
+  --figma-text: #000000;
+  --figma-text-secondary: rgba(0, 0, 0, 0.5);
+  --figma-text-tertiary: rgba(0, 0, 0, 0.3);
+  --figma-brand: #0d99ff;
+  --figma-brand-hover: #007be5;
+  --figma-selected-bg: #e5f4ff;
+  --figma-selected-border: #0d99ff;
+  --figma-onselected-border: #bde3ff;
+  --canvas-bg: #e5e5e5;
+  --toolbar-radius: 14px;
+  --panel-width: 240px;
+  --rail-width: 56px;
+
+  /* Additions (not in the contract; used by .button--danger and .toast). */
+  --figma-danger: #f24822;
+  --figma-success: #14ae5c;
+
+  /* Density */
+  --control-height: 24px;
+  --panel-padding: 8px;
+  --row-gap: 4px;
+  --control-radius: 6px;
+
+  --shadow-menu: 0 4px 16px rgba(0, 0, 0, 0.15);
+  --shadow-toolbar: 0 2px 14px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.25);
+
+  color-scheme: light;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: Inter, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--figma-text);
+  background: var(--figma-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+  user-select: text;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/*
+ * Text-entry controls are unstyled boxes; `.input` draws the chrome.
+ * Checkboxes and radios keep their own styling (see the checkbox block below).
+ */
+input:not([type='checkbox']):not([type='radio']),
+textarea,
+select {
+  appearance: none;
+}
+
+:focus-visible {
+  outline: 1px solid var(--figma-brand);
+  outline-offset: 1px;
+}
+
+/* Scrollbars: 8px, rgba(0,0,0,.2) thumb, no track. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ==========================================================================
+   Layout shell
+   ========================================================================== */
+
+.app {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--figma-bg);
+  user-select: none;
+}
+
+.app__rail {
+  flex: none;
+  width: var(--rail-width);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--row-gap);
+  padding: var(--panel-padding) 0;
+  background: var(--figma-bg);
+  border-right: 1px solid var(--figma-border);
+  z-index: 10;
+}
+
+.app__left {
+  flex: none;
+  width: var(--panel-width);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--figma-bg);
+  border-right: 1px solid var(--figma-border);
+  z-index: 5;
+}
+
+.presence {
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.follow-banner {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--figma-bg);
+  border: 1px solid var(--figma-border);
+  box-shadow: var(--shadow-menu);
+  font-size: 11px;
+  color: var(--figma-text-secondary);
+  z-index: 12;
+}
+
+.presence__avatar {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.presence__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.presence__count {
+  font-size: 11px;
+  color: var(--figma-text-secondary);
+}
+
+.panel-resizer {
+  flex: none;
+  width: 5px;
+  align-self: stretch;
+  cursor: col-resize;
+  background: transparent;
+  touch-action: none;
+  z-index: 6;
+  transition: background 120ms ease;
+}
+
+.panel-resizer:hover,
+.panel-resizer:focus-visible,
+.panel-resizer:active {
+  background: var(--figma-brand);
+  outline: none;
+}
+
+.app__canvas {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--canvas-bg);
+}
+
+.app__right {
+  flex: none;
+  width: var(--panel-width);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--figma-bg);
+  border-left: 1px solid var(--figma-border);
+  z-index: 5;
+}
+
+/* ==========================================================================
+   Left rail
+   ========================================================================== */
+
+.rail__logo {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--row-gap);
+  flex: none;
+}
+
+.rail__button {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--control-radius);
+  background: transparent;
+  color: var(--figma-text-secondary);
+  cursor: pointer;
+}
+
+.rail__button:hover {
+  background: var(--figma-bg-secondary);
+}
+
+.rail__button--active {
+  background: var(--figma-bg-secondary);
+  color: var(--figma-text);
+}
+
+/* Rail tooltips open to the right so they never clip against the panel. */
+.app__rail [data-tooltip]::after {
+  left: calc(100% + 6px);
+  right: auto;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+/* ==========================================================================
+   Panels
+   ========================================================================== */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background: var(--figma-bg);
+}
+
+.panel__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--panel-padding);
+}
+
+/* File name on its own line, project/summary beneath it. */
+.panel-header {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: var(--panel-padding);
+  border-bottom: 1px solid var(--figma-border);
+}
+
+.panel-header__title {
+  width: 100%;
+  min-width: 0;
+  height: var(--control-height);
+  padding: 0 var(--row-gap);
+  border: 1px solid transparent;
+  border-radius: var(--control-radius);
+  background: transparent;
+  font-weight: 600;
+  outline: none;
+}
+
+.panel-header__title:hover {
+  background: var(--figma-bg-secondary);
+}
+
+.panel-header__title:focus {
+  background: var(--figma-bg);
+  border-color: var(--figma-brand);
+}
+
+.panel-header__subtitle {
+  min-width: 0;
+  padding: 0 var(--row-gap);
+  color: var(--figma-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panel-header__chevron {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--figma-text-secondary);
+}
+
+/* ==========================================================================
+   Sections
+   ========================================================================== */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--row-gap);
+  padding: var(--row-gap) 0 6px;
+  border-bottom: 1px solid var(--figma-border);
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+.section__header {
+  display: flex;
+  align-items: center;
+  gap: var(--row-gap);
+  min-height: var(--control-height);
+  padding: 0 var(--row-gap);
+  font-weight: 600;
+  color: var(--figma-text);
+}
+
+.section__header > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Dev Mode: the per-frame development status, as a chip in the Inspect panel and
+   as a badge in the layers list. */
+.dev-status {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid var(--figma-border-strong);
+  color: var(--figma-text-secondary);
+  white-space: nowrap;
+}
+
+.dev-status[data-status='READY_FOR_DEVELOPMENT'] {
+  color: var(--figma-brand);
+  border-color: var(--figma-brand);
+}
+
+.dev-status[data-status='COMPLETED'] {
+  color: var(--figma-text);
+  border-color: var(--figma-text-secondary);
+}
+
+.dev-status--badge {
+  padding: 0 5px;
+  font-size: 9px;
+}
+
+.tab--dev {
+  cursor: default;
+  color: var(--figma-brand);
+}
+
+/* The Inspect code tabs (CSS / React / SwiftUI / Compose). Four labels do not fit
+   the panel width on one line, and the header used to clip the last one out of
+   reach; this row wraps instead, so every tab stays clickable at any panel width. */
+.code-tabs {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* The tabs keep their label width and wrap instead of shrinking: a squeezed tab
+   is as unusable as a clipped one. */
+.code-tabs .segmented__option {
+  flex: 0 0 auto;
+}
+
+.section__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--row-gap);
+  min-width: 0;
+  padding: 0 var(--row-gap);
+}
+
+/* ==========================================================================
+   Pages
+   ========================================================================== */
+
+.page-row {
+  display: flex;
+  align-items: center;
+  gap: var(--row-gap);
+  height: var(--control-height);
+  min-width: 0;
+  padding: 0 var(--row-gap);
+  border-radius: var(--control-radius);
+  cursor: default;
+  white-space: nowrap;
+}
+
+.page-row:hover {
+  background: var(--figma-bg-secondary);
+}
+
+.page-row--active {
+  background: var(--figma-selected-bg);
+  font-weight: 500;
+}
+
+.page-row__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   Layers tree — the editor renders its own `.section__header` above it
+   ========================================================================== */
+
+.layers {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 var(--row-gap);
+}
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: var(--row-gap);
+  height: var(--control-height);
+  min-width: 0;
+  padding-right: var(--row-gap);
+  cursor: default;
+  white-space: nowrap;
+}
+
+.layer-row:hover {
+  background: var(--figma-bg-secondary);
+}
+
+.layer-row--selected,
+.layer-row--selected:hover {
+  background: var(--figma-selected-bg);
+}
+
+.layer-row--hidden {
+  color: var(--figma-text-tertiary);
+}
+
+/* Depth indent: width is supplied inline per level; this only fixes the box. */
+.layer-row__indent {
+  flex: none;
+  align-self: stretch;
+}
+
+.layer-row__chevron {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--figma-text-secondary);
+  cursor: pointer;
+}
+
+.layer-row__chevron[hidden] {
+  visibility: hidden;
+}
+
+.layer-row__icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--figma-text);
+}
+
+.layer-row__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layer-row__rename-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 20px;
+  padding: 0 var(--row-gap);
+  border: 1px solid var(--figma-brand);
+  border-radius: 3px;
+  background: var(--figma-bg);
+  outline: none;
+}
+
+.layer-row__actions {
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+/* Hidden until the row is hovered/focused: scoped to layer rows, because the
+   same class is used for always-visible header controls (e.g. Inspect > Code). */
+.layer-row .layer-row__actions {
+  display: none;
+}
+
+.layer-row:hover .layer-row__actions,
+.layer-row--selected .layer-row__actions,
+.layer-row:focus-within .layer-row__actions {
+  display: flex;
+}
+
+/* Rows whose actions are the point of the panel (comments, version history) keep
+   them visible: a hidden control is not discoverable and cannot be tapped. */
+.layer-row--always-actions .layer-row__actions {
+  display: flex;
+}
+
+/*
+ * Document rows (the local library). Deliberately NOT `.layer-row`: that class is
+ * the layers panel's contract (and what QA counts), so documents use their own
+ * row with the same visual language.
+ */
+.doc-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: var(--control-height);
+  padding: 0 2px;
+  border-radius: var(--control-radius);
+  cursor: pointer;
+}
+
+.doc-row:hover {
+  background: var(--figma-bg-secondary);
+}
+
+.doc-row--active {
+  background: var(--figma-selected-bg);
+}
+
+.doc-row__icon {
+  flex: none;
+  display: inline-flex;
+  color: var(--figma-text-secondary);
+}
+
+.doc-row__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doc-row__actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Plugin rows keep Run/Edit/Delete visible: they are the row's main affordance,
+   not a hover extra like a layer's visibility toggle. */
+.plugin-row .layer-row__actions {
+  display: flex;
+}
+
+.layer-row__action {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--figma-text-secondary);
+  cursor: pointer;
+}
+
+.layer-row__action:hover {
+  background: var(--figma-bg-tertiary);
+  color: var(--figma-text);
+}
+
+/* An action that is currently on (a layer acting as a mask). */
+.layer-row__action--active {
+  color: var(--figma-brand);
+  background: var(--figma-selected-bg);
+}
+
+/* An action that carries a word next to its icon. Icon-only actions stay square;
+   this one grows, so a threaded action (Resolve, Restore) reads as a control
+   instead of a mystery glyph. */
+.layer-row__action--text {
+  width: auto;
+  min-width: 0;
+  gap: 4px;
+  padding: 0 6px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Tabs (right panel)
+   ========================================================================== */
+
+.tabs {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: var(--panel-padding);
+  border-bottom: 1px solid var(--figma-border);
+}
+
+.tab {
+  flex: 1 1 0;
+  min-width: 0;
+  height: var(--control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--control-radius);
+  background: transparent;
+  color: var(--figma-text-secondary);
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: var(--figma-bg-secondary);
+}
+
+.tab--active {
+  background: var(--figma-bg-tertiary);
+  color: var(--figma-text);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Properties
+   ========================================================================== */
+
+.prop-row {
+  display: flex;
+  align-items: center;
+  gap: var(--row-gap);
+  min-height: var(--control-height);
+  min-width: 0;
+}
+
+/* Label sits to the left of a control. The floor keeps short labels readable;
+   long ones ellipsize rather than crushing the control beside them. */
+.prop-row > .prop-row__label {
+  flex: 0 1 auto;
+  min-width: 60px;
+  color: var(--figma-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prop-row > .prop-row__label + * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.prop-grid {
+  display: grid;
+  gap: var(--row-gap);
+  min-width: 0;
+}
+
+.prop-grid > * {
+  min-width: 0;
+}
+
+.prop-grid--2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Rows whose label needs the full width (Figma stacks these too). */
+.prop-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--row-gap);
+  min-width: 0;
+}
+
+.prop-grid--4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/*
+ * `.input` chrome. Applied to a wrapping <label> (prefix + input) or directly
+ * to a bare <input>.
+ */
+.input {
+  position: relative;
+  height: var(--control-height);
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: var(--control-radius);
+  background: var(--figma-bg-secondary);
+}
+
+label.input {
+  display: flex;
+  align-items: center;
+  gap: var(--row-gap);
+  padding: 0 6px;
+  overflow: hidden;
+}
+
+/* The real field inside the wrapper is invisible chrome. */
+label.input > input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-overflow: ellipsis;
+  outline: none;
+}
+
+label.input > input::-webkit-outer-spin-button,
+label.input > input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+/* Prefix/suffix inside a field: X, Y, W, H, °, % */
+.input .prop-row__label {
+  flex: none;
+  color: var(--figma-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: var(--control-height);
+}
+
+.input .prop-row__label:last-of-type {
+  color: var(--figma-text-secondary);
+}
+
+input.input {
+  width: 100%;
+  padding: 0 6px;
+  font: inherit;
+  color: inherit;
+  outline: none;
+}
+
+.input:hover {
+  border-color: var(--figma-border-strong);
+}
+
+.input:focus-within,
+.input:focus {
+  border-color: var(--figma-brand);
+  background: var(--figma-bg);
+}
+
+.input--numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+.input--numeric > input {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Drag-to-scrub: the component overlays the entire field with an
+ * `.input__scrub-handle` (inset: 0 inline). Confine it to the prefix so the
+ * value area stays clickable for typing, matching Figma (drag the label,
+ * click the number).
+ */
+.input--scrub {
+  cursor: text;
+}
+
+/* Checkboxes (Visible / Locked and friends) — a real 16px control. */
+input[type='checkbox'],
+input[type='radio'] {
+  position: relative;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1px solid var(--figma-border-strong);
+  border-radius: 3px;
+  background: var(--figma-bg);
+  cursor: pointer;
+  appearance: none;
+}
+
+input[type='radio'] {
+  border-radius: 50%;
+}
+
+input[type='checkbox']:hover,
+input[type='radio']:hover {
+  border-color: var(--figma-text-tertiary);
+}
+
+input[type='checkbox']:checked,
+input[type='radio']:checked {
+  border-color: var(--figma-brand);
+  background: var(--figma-brand);
+}
+
+input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1.5px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 1.6px 1.6px 0;
+  transform: rotate(45deg);
+}
+
+input[type='radio']:checked::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* Drag-to-scrub overlay placed by the component (position/inset are inline). */
+.input__scrub-handle {
+  inset: auto auto auto 0 !important;
+  width: 18px !important;
+  height: 100% !important;
+  border-radius: inherit;
+  background: transparent;
+  cursor: ew-resize;
+}
+
+/* Colour picker rendered as a small swatch. */
+input.input[type='color'] {
+  height: var(--control-height);
+  padding: 0;
+  border: 1px solid var(--figma-border);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+input.input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+input.input[type='color']::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+.input::placeholder {
+  color: var(--figma-text-tertiary);
+}
+
+.input:disabled {
+  color: var(--figma-text-tertiary);
+  cursor: default;
+}
+
+.color-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--control-height);
+  height: var(--control-height);
+  padding: 0;
+  border: 1px solid var(--figma-border);
+  border-radius: 4px;
+  background: var(--figma-bg);
+  cursor: pointer;
+}
+
+.color-swatch:hover {
+  border-color: var(--figma-border-strong);
+}
+
+.color-swatch__fill {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.color-swatch__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Checkerboard for "no paint". */
+.color-swatch--empty .color-swatch__fill {
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, var(--figma-border-strong) 25%, transparent 25%, transparent 75%, var(--figma-border-strong) 75%),
+    linear-gradient(45deg, var(--figma-border-strong) 25%, transparent 25%, transparent 75%, var(--figma-border-strong) 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 4px 4px;
+}
+
+.segmented {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 2px;
+  border-radius: var(--control-radius);
+  background: var(--figma-bg-secondary);
+}
+
+.segmented__option {
+  flex: 1 1 0;
+  /* Never let a segment collapse into an unclickable sliver, and never let a
+     long label wrap out of the button (icon-only options carry no text). */
+  min-width: 28px;
+  white-space: nowrap;
+  overflow: hidden;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--figma-text-secondary);
+  cursor: pointer;
+}
+
+.segmented__option:hover {
+  color: var(--figma-text);
+}
+
+.segmented__option--active {
+  background: var(--figma-bg);
+  color: var(--figma-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.align-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  min-width: 0;
+}
+
+.align-grid .icon-button {
+  width: 100%;
+}
+
+.icon-button {
+  width: var(--control-height);
+  height: var(--control-height);
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--control-radius);
+  background: transparent;
+  color: var(--figma-text);
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: var(--figma-bg-secondary);
+}
+
+.icon-button--active {
+  background: var(--figma-bg-tertiary);
+}
+
+.icon-button:disabled {
+  background: transparent;
+  color: var(--figma-text-tertiary);
+  cursor: default;
+}
+
+/* ==========================================================================
+   Bottom floating toolbar — white, thin stroke, subtle shadow, 14px radius
+   ========================================================================== */
+
+.toolbar {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 2px;
+  padding: var(--row-gap);
+  background: var(--figma-bg);
+  border: 1px solid var(--figma-border);
+  border-radius: var(--toolbar-radius);
+  box-shadow: var(--shadow-toolbar);
+  z-index: 20;
+}
+
+.toolbar__group {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar__divider {
+  flex: none;
+  width: 1px;
+  height: 20px;
+  margin: 0 var(--row-gap);
+  background: var(--figma-border);
+}
+
+.toolbar__button {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--control-radius);
+  background: transparent;
+  color: var(--figma-text);
+  cursor: pointer;
+}
+
+.toolbar__button:hover {
+  background: var(--figma-bg-secondary);
+}
+
+/* Active tool: solid blue square with a white glyph. */
+.toolbar__button--active,
+.toolbar__button--active:hover {
+  background: var(--figma-brand);
+  color: #fff;
+}
+
+/* ==========================================================================
+   Canvas overlays
+   ========================================================================== */
+
+.canvas {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--canvas-bg);
+}
+
+.canvas__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.canvas__overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.canvas__marquee {
+  position: absolute;
+  border: 1px solid var(--figma-selected-border);
+  background: rgba(13, 153, 255, 0.1);
+  pointer-events: none;
+}
+
+/* Zoom / view readout: top-right of the canvas, per Figma's help docs. */
+.canvas__hud {
+  position: absolute;
+  top: var(--panel-padding);
+  right: var(--panel-padding);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--row-gap);
+  height: var(--control-height);
+  padding: 0 var(--panel-padding);
+  background: var(--figma-bg);
+  border: 1px solid var(--figma-border);
+  border-radius: var(--control-radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  color: var(--figma-text-secondary);
+  font-variant-numeric: tabular-nums;
+  z-index: 15;
+}
+
+.canvas__hud .icon-button {
+  width: 20px;
+  height: 20px;
+}
+
+/* Cursor-following size badge shown while dragging. Position is inline. */
+.canvas__tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--figma-brand);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(8px, 8px);
+  z-index: 30;
+}
+
+/* Textarea overlaid on a text node while editing. */
+.text-editor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--figma-brand);
+  border-radius: 0;
+  background: transparent;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  white-space: pre;
+  transform-origin: 0 0;
+  z-index: 25;
+}
+
+/* ==========================================================================
+   Menus
+   ========================================================================== */
+
+.menu {
+  position: absolute;
+  z-index: 100;
+  min-width: 180px;
+  padding: var(--row-gap);
+  background: var(--figma-bg);
+  border: 1px solid var(--figma-border);
+  border-radius: var(--control-radius);
+  box-shadow: var(--shadow-menu);
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--panel-padding);
+  height: var(--control-height);
+  padding: 0 var(--panel-padding);
+  border-radius: 4px;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.menu__item:hover {
+  background: var(--figma-brand);
+  color: #fff;
+}
+
+.menu__item--disabled,
+.menu__item--disabled:hover {
+  background: transparent;
+  color: var(--figma-text-tertiary);
+  pointer-events: none;
+}
+
+.menu__separator {
+  height: 1px;
+  margin: var(--row-gap) 0;
+  background: var(--figma-border);
+}
+
+.menu__shortcut {
+  margin-left: auto;
+  color: var(--figma-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.menu__item:hover .menu__shortcut {
+  color: inherit;
+  opacity: 0.8;
+}
+
+.menu__label {
+  padding: var(--row-gap) var(--panel-padding);
+  color: var(--figma-text-secondary);
+}
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.modal__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 320px;
+  max-width: min(90vw, 640px);
+  max-height: 80vh;
+  background: var(--figma-bg);
+  border-radius: 10px;
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+}
+
+.modal__title {
+  flex: none;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 16px 12px;
+}
+
+.modal__actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--panel-padding);
+  padding: 12px 16px;
+  border-top: 1px solid var(--figma-border);
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.button {
+  height: var(--control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--row-gap);
+  padding: 0 10px;
+  border: 1px solid var(--figma-border-strong);
+  border-radius: var(--control-radius);
+  background: var(--figma-bg);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.button:hover {
+  background: var(--figma-bg-secondary);
+}
+
+/* A button that sits inline in a dense row (comment reply composer). */
+.button--compact {
+  height: 24px;
+  min-height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.button:disabled {
+  color: var(--figma-text-tertiary);
+  cursor: default;
+}
+
+.button--primary {
+  background: var(--figma-brand);
+  border-color: var(--figma-brand);
+  color: #fff;
+}
+
+.button--primary:hover {
+  background: var(--figma-brand-hover);
+  border-color: var(--figma-brand-hover);
+}
+
+.button--ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.button--ghost:hover {
+  background: var(--figma-bg-secondary);
+}
+
+.button--danger {
+  background: var(--figma-danger);
+  border-color: var(--figma-danger);
+  color: #fff;
+}
+
+.button--danger:hover {
+  filter: brightness(0.95);
+}
+
+/* ==========================================================================
+   Toasts
+   ========================================================================== */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: var(--panel-padding);
+  padding: var(--panel-padding) 12px;
+  border-radius: var(--control-radius);
+  background: #1e1e1e;
+  color: #fff;
+  box-shadow: var(--shadow-menu);
+}
+
+.toast--error {
+  background: var(--figma-danger);
+}
+
+.toast--success {
+  background: var(--figma-success);
+}
+
+/* ==========================================================================
+   Presentation mode
+   ========================================================================== */
+
+.present {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+}
+
+.present__stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 24px;
+}
+
+.present__frame {
+  position: relative;
+  flex: none;
+  background: #fff;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.present__toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--panel-padding);
+  min-height: 40px;
+  padding: 0 12px;
+  background: #2c2c2c;
+  color: #fff;
+}
+
+.present__hotspot {
+  position: absolute;
+  border: 1px solid var(--figma-brand);
+  border-radius: 4px;
+  background: rgba(13, 153, 255, 0);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.present__hotspot:hover {
+  background: rgba(13, 153, 255, 0.3);
+}
+
+/* ==========================================================================
+   Tooltips — [data-tooltip] renders a dark bubble; never eats pointer events
+   ========================================================================== */
+
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  transform: translateX(-50%);
+  padding: var(--row-gap) var(--panel-padding);
+  border-radius: 4px;
+  background: #1e1e1e;
+  color: #fff;
+  white-space: nowrap;
+  display: none;
+  pointer-events: none;
+  z-index: 500;
+}
+
+/*
+ * Toggled with `display` rather than opacity: a laid-out (opacity: 0) bubble
+ * counts toward an ancestor's scrollWidth, which made the panels report
+ * horizontal overflow even though nothing was visible.
+ */
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+  display: block;
+}
+
+/* ==========================================================================
+   MCP bridge panel — markup owned by the MCP module, chrome owned here.
+   ========================================================================== */
+
+/* The panel lives in the 240px sidebar: one field per row, full width. */
+.bridge {
+  display: flex;
+  flex-direction: column;
+  gap: var(--row-gap);
+  padding: var(--panel-padding);
+  border-bottom: 1px solid var(--figma-border);
+}
+
+.bridge__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  min-width: 0;
+}
+
+.bridge__label {
+  color: var(--figma-text-secondary);
+}
+
+.bridge__row .input {
+  width: 100%;
+}
+
+.bridge__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--row-gap);
+  min-width: 0;
+}
+
+.bridge__status {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bridge__detail {
+  margin: 0;
+  color: var(--figma-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* The zoom read-out shows a percentage: wider than a square icon on desktop. */
+.toolbar__zoom-fit {
+  min-width: 40px;
+  width: auto;
+}
+
+/* ==========================================================================
+   Mobile (<= 900px)
+
+   The desktop layout is untouched above this breakpoint: panels become slide-over
+   drawers, the canvas keeps the full width, and the toolbar scrolls instead of
+   overflowing. Everything here is scoped to the media query.
+   ========================================================================== */
+/* Keep the 900px value in sync with MOBILE_MAX_WIDTH in src/ui/useIsMobile.ts:
+   the CSS owns the layout, the constant owns the behaviour. */
+@media (max-width: 900px) {
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+
+  /* Panels leave the flex row entirely: they float above the canvas.
+     Closed is `display: none` (not a transform), so the closed state is real:
+     the panel measures 0 wide, its controls are not reachable, and no hidden
+     copy of a control lingers in the layout. Opening animates in. */
+  .app__left,
+  .app__right {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: min(300px, 80vw);
+    max-width: 80vw;
+    z-index: 40;
+    box-shadow: var(--shadow-menu);
+    display: none;
+  }
+
+  .app__left {
+    left: var(--rail-width);
+  }
+
+  .app__right {
+    right: 0;
+  }
+
+  .app__left--open,
+  .app__right--open {
+    display: flex;
+  }
+
+  .app__left--open {
+    animation: drawer-in-left 180ms ease;
+  }
+
+  .app__right--open {
+    animation: drawer-in-right 180ms ease;
+  }
+
+  @keyframes drawer-in-left {
+    from {
+      transform: translateX(calc(-100% - var(--rail-width)));
+    }
+    to {
+      transform: none;
+    }
+  }
+
+  @keyframes drawer-in-right {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+
+  .drawer-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgba(0, 0, 0, 0.3);
+    border: none;
+    padding: 0;
+  }
+
+  .drawer__handle {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--figma-border);
+  }
+
+  .drawer__title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--figma-text-secondary);
+  }
+
+  /* Panel resizing is a desktop affordance. */
+  .panel-resizer {
+    display: none;
+  }
+
+  /* The canvas owns every touch gesture: our own pinch/pan replaces the browser's. */
+  .canvas {
+    touch-action: none;
+  }
+
+  /* Toolbar: fit the viewport and scroll horizontally when it cannot. */
+  .toolbar {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    transform: none;
+    max-width: calc(100vw - 16px);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Touch targets: every control in the shell is at least 44x44. Scoped to the
+     mobile breakpoint on purpose - desktop keeps its 32px controls. The zoom
+     read-out is wider than tall on desktop; here it grows to 44 as well. */
+  .app button,
+  .app .icon-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .toolbar__button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .toolbar__zoom-fit {
+    min-width: 44px;
+  }
+
+  .rail__button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .layer-row {
+    min-height: 44px;
+  }
+
+  .layer-row__action {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* A text action is as wide as its word: the 44px square above would clip
+     "Resolve" and push the icon into the neighbouring button. The 44px floor
+     still applies, so the target stays tappable. */
+  .layer-row__action--text {
+    width: auto;
+    min-width: 44px;
+  }
+
+  .input,
+  .button,
+  .segmented__option,
+  .select {
+    min-height: 44px;
+  }
+}
+
+/* ==========================================================================
+   Reduced motion
+
+   Kept last: these overrides have the same specificity as the rules they
+   cancel, so they must come after every layout block (including the mobile
+   one) to win.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  [data-tooltip]::after,
+  .present__hotspot {
+    transition: none;
+  }
+
+  /* The mobile drawers animate in; with reduced motion they simply appear. */
+  .app__left--open,
+  .app__right--open {
+    animation: none;
+  }
+}
