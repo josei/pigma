@@ -12,6 +12,7 @@
  */
 import { invert } from '../../model/matrix';
 import type {
+  PrototypeAction,
   LayoutGrid,
   AnyNode,
   AutoLayout,
@@ -531,6 +532,9 @@ function nodeChange(
     }
   }
   if ('autoLayout' in node && node.autoLayout) Object.assign(change, toNativeAutoLayout(node.autoLayout));
+  if (node.interactions && node.interactions.length > 0) {
+    change.prototypeInteractions = toNativeInteractions(node, ctx);
+  }
   if ('layoutGrids' in node && node.layoutGrids && node.layoutGrids.length > 0) {
     change.layoutGrids = node.layoutGrids.map(toNativeLayoutGrid);
   }
@@ -574,6 +578,71 @@ function toNativeLayoutGrid(grid: LayoutGrid): Record<string, unknown> {
     pattern: grid.pattern === 'GRID' ? 'GRID' : 'STRIPES',
     ...(grid.color ? { color: { ...grid.color, a: grid.color.a ?? 1 } } : {}),
   };
+}
+
+/**
+ * The model's trigger names as the schema's `InteractionType` members.
+ *
+ * One rename: the model says `ON_DRAG`, the wire says `DRAG`. Everything else is
+ * shared.
+ */
+const TRIGGER_TO_NATIVE: Record<string, string> = {
+  ON_CLICK: 'ON_CLICK',
+  ON_HOVER: 'ON_HOVER',
+  ON_PRESS: 'ON_PRESS',
+  ON_DRAG: 'DRAG',
+  AFTER_TIMEOUT: 'AFTER_TIMEOUT',
+  MOUSE_ENTER: 'MOUSE_ENTER',
+  MOUSE_LEAVE: 'MOUSE_LEAVE',
+  MOUSE_UP: 'MOUSE_UP',
+  MOUSE_DOWN: 'MOUSE_DOWN',
+};
+
+/** The model's action kind as the schema's `ConnectionType` member. */
+const CONNECTION_TO_NATIVE: Record<string, string> = { NODE: 'INTERNAL_NODE', BACK: 'BACK', CLOSE: 'CLOSE', URL: 'URL' };
+
+/** One prototype action as the schema's `PrototypeAction`. */
+function toNativeAction(action: PrototypeAction, ctx: ExportContext): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    connectionType: CONNECTION_TO_NATIVE[action.type] ?? 'NONE',
+    // The destination is a node GUID, which is what `transitionNodeID` holds —
+    // the same field SWAP_STATE uses, which is why the variant swap was always
+    // expressible.
+    ...(action.destinationId ? { transitionNodeID: guidFor(action.destinationId, ctx.sessionID) } : {}),
+    ...(action.url ? { connectionURL: action.url } : {}),
+    ...(action.navigation ? { navigationType: action.navigation } : {}),
+    ...(action.overlayPosition === 'CUSTOM'
+      ? { overlayRelativePosition: { x: action.overlayX ?? 0, y: action.overlayY ?? 0 } }
+      : {}),
+    ...(action.preserveScrollPosition ? { transitionPreserveScroll: true } : {}),
+  };
+  const transition = action.transition;
+  if (transition) {
+    out.transitionType = transition.type;
+    if (typeof transition.duration === 'number') out.transitionDuration = transition.duration;
+    if (typeof transition.easing === 'string') out.easingType = transition.easing;
+    if (transition.type === 'SMART_ANIMATE') out.transitionShouldSmartAnimate = true;
+  }
+  return out;
+}
+
+/**
+ * A node's prototype interactions as the schema's `PrototypeInteraction[]`.
+ *
+ * The importer reads NONE of this today, so writing it is the first half of a
+ * mapper that makes prototype links survive a `.fig` round trip.
+ */
+function toNativeInteractions(node: AnyNode, ctx: ExportContext): Array<Record<string, unknown>> {
+  return (node.interactions ?? []).map((interaction, index) => ({
+    id: guidFor(`${node.id}:interaction:${index}`, ctx.sessionID),
+    event: {
+      interactionType: TRIGGER_TO_NATIVE[interaction.trigger.type] ?? 'ON_CLICK',
+      ...(typeof interaction.trigger.delay === 'number' ? { interactionDuration: interaction.trigger.delay } : {}),
+    },
+    actions: interaction.actions.map((action) => toNativeAction(action, ctx)),
+    isDeleted: false,
+    stateManagementVersion: 0,
+  }));
 }
 
 /** Model binding keys → Figma's `boundVariables` property names (alias objects). */
