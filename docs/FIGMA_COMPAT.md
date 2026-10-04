@@ -57,7 +57,7 @@ Legend: **✅** survives · **≈** survives with a stated approximation ·
 | Blend modes | ✅ | ✅ | Full enum mapped in `modelExport.ts` | documented-from-code: the `BLEND` table in `modelExport.ts` |
 | Drop / inner shadow | ✅ | ≈ | float32 precision on colour, radius, offset | documented-from-code: the effect branch of `modelExport.ts` |
 | Layer / background blur | ✅ | ✅ | | documented-from-code: the effect branch of `modelExport.ts` |
-| Stroke weight, align, cap, join, dashes | ✅ | **❌** | The exporter writes `strokeDashes` but it is **lost in the binary round trip across all four fixture schemas** (probe, `tests/figma/roundTripLoss.test.ts`). Weight, align, cap and join are unaffected; **dashes are not**. | test-backed: `tests/figma/roundTripLoss.test.ts` |
+| Stroke weight, align, cap, join, dashes | ✅ | ✅ | **Dashes were lost and are FIXED.** The cause was a **WIRE-NAME bug, not a schema limit**: the exporter wrote `strokeDashes` - the **REST** API spelling - into the **NATIVE** message, where the schema says `dashPattern`, so the encoder dropped it in **every** schema silently. That is why the probe found it lost in all four and why it *looked* schema-dependent. Corrected on both sides; measured after, it survives the binary round trip in **all four fixture schemas** where it survived in **none** before, and the pre-encode warning no longer fires for it because it is encodable now. | test-backed: `tests/figma/roundTripLoss.test.ts` |
 | Corner radius / per-corner radii | ✅ | ✅ | | test-backed: `b41-polygon-star-editing` `B41c` (rendering) + `src/render/svgExport.test.ts` |
 | **Text: family + named style** | ✅ | ✅ | Modelled as `fontName { family, style }` | test-backed: `b42-figma-italic-roundtrip` |
 | **Text: numeric weight** |  ≈ | **❌** | See below — the wire carries a *named style*, not a number | test-backed: `b42-figma-italic-roundtrip` (`B42b` native, `B42d` REST) |
@@ -86,12 +86,33 @@ fields the schema defines and **drops the rest with no warning**. So a field
 Pigma models, and even writes into the message, can still be discarded on its way
 to bytes.
 
-**15 fields are CONFIRMED LOST** across the round trip:
+**15 fields were CONFIRMED LOST** by that probe. **Two are fixed** and **13 are
+being addressed** - none of the 13 is claimed fixed here, because a round trip has
+not proved it yet.
 
-`isMask`, `interactions`, `layoutGrids`, `minWidth` / `minHeight`, `maxWidth` /
-`maxHeight`, `layoutAlign`, `layoutGrow`, `windingRule`, `devStatus`,
-`constraints`, `styles`, `componentPropertyReferences`, `dashPattern`,
-`overflowDirection`, `textAutoResize`.
+**Fixed (2):** `dashPattern` and `windingRule` - both **wire-name** bugs, not
+schema limits (see below).
+
+**Being addressed (13), with the AUTHORITATIVE wire names** the editor read out of
+the decoded schema. These names are the **plan**, not a result:
+
+| Pigma field | Wire name in the schema |
+| --- | --- |
+| `isMask` | `mask` |
+| `constraints` | `horizontalConstraint` / `verticalConstraint` |
+| `layoutAlign` | `stackCounterAlign` |
+| `layoutGrow` | `stackChildPrimaryGrow` |
+| `minWidth` / `minHeight` / `maxWidth` / `maxHeight` | `minSize` / `maxSize` |
+| `styles` | the `styleIdFor*` set |
+| `interactions` | `prototypeInteractions` |
+| grid columns/rows/gaps | `gridColumns` / `gridRows` / the gaps |
+| grid anchors | `gridColumnAnchor` / `gridRowAnchor` - **`Anchor`, not `AnchorIndex`** |
+| `textAutoResize` | `textAutoResize` |
+| `layoutGrids` | `layoutGrids` |
+
+**No wire name exists for two of the fifteen** - so no rename can fix them:
+`overflowDirection` is **not in the schema at all**, and no wire name has been
+found for `componentPropertyReferences`.
 
 **9 probed fields SURVIVE** - recorded because a probe that clears nine
 candidates is as valuable as one that finds fifteen: `visible`, `clipsContent`,
@@ -100,11 +121,17 @@ candidates is as valuable as one that finds fifteen: `visible`, `clipsContent`,
 
 ### Missing is one thing; WRONG is another
 
-`windingRule` deserves its own paragraph, because it does not vanish: it comes
-back **`EVENODD` -> `NONZERO`**. A lost field leaves a default you can notice; a
-**silently wrong** one changes how a path fills while looking perfectly healthy.
-For a design tool that is worse than a loss, and it is the one field in the list
-where the result is actively incorrect rather than merely absent.
+`windingRule` does not vanish: it came back **`EVENODD` -> `NONZERO`**. A lost
+field leaves a default you can notice; a **silently wrong** one changes how a path
+fills while looking perfectly healthy - worse than a loss, because nothing looks
+broken. **It is FIXED, and the cause was again a naming mismatch:** the schema
+spells the enum **`ODD`**, and the exporter had hardcoded `NONZERO` because
+writing `EVENODD` made the encoder throw.
+
+Both of these are the same lesson, and it is why they are called out together: a
+**name mismatch can look exactly like a missing capability.** `dashPattern` and
+`windingRule` were filed as losses caused by the third-party encoder; both were
+really Pigma writing a name the schema does not use.
 
 ### Still unknown
 
