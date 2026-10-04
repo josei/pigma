@@ -1966,7 +1966,7 @@ function PrototypeSection({ node }: { node: SceneNode | null }) {
                   ))}
                 </select>
               </div>
-              {quickKind === 'NAVIGATE' || quickKind === 'OVERLAY' ? (
+              {quickKind === 'NAVIGATE' || quickKind === 'OVERLAY' || quickKind === 'SWAP_STATE' ? (
                 <div className="prop-row">
                   <span className="prop-row__label" style={{ minWidth: 60 }}>Target</span>
                   <select
@@ -2021,10 +2021,23 @@ function PrototypeSection({ node }: { node: SceneNode | null }) {
               <button
                 type="button"
                 className="button"
-                disabled={quickKind === 'NAVIGATE' || quickKind === 'OVERLAY' ? quickTarget === '' : quickKind === 'URL' ? quickUrl.trim() === '' : false}
+                // A swap needs a destination as much as a navigation does: without
+                // this the button was ENABLED with no target, so a swap action
+                // could be created pointing at nothing.
+                disabled={
+                  quickKind === 'NAVIGATE' || quickKind === 'OVERLAY' || quickKind === 'SWAP_STATE'
+                    ? quickTarget === ''
+                    : quickKind === 'URL'
+                      ? quickUrl.trim() === ''
+                      : false
+                }
                 onClick={() => {
                   // Smart animate is offered here too, not only after the link
                   // exists: a layer that matches by name animates between frames.
+                  // Deliberately NAVIGATE-only: a SWAP_STATE has no transition
+                  // semantics in playback (`swapInstanceState` changes the
+                  // component in place, with no animation), so offering the row
+                  // for a swap would promise an animation that does not play.
                   addInteraction(
                     node.id,
                     quickTarget,
