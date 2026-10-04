@@ -50,6 +50,32 @@ that every divergence we chose became a bug:**
 measurable rate.** Where the wire's shape can be adopted instead, adopting it removes
 a translation step, and with it a place to be wrong.
 
+### The inventory is now MECHANICAL, not archaeology
+
+The divergences above were all found **by hand, one at a time, by accident** - which
+is archaeology, not a rule. `scripts/divergence-inventory.ts`
+(`npx vite-node scripts/divergence-inventory.ts`) now **enumerates** them instead of
+remembering them: it reads the **real schema** out of a `.fig` fixture (nothing is
+hardcoded), encodes a document that exercises every node type **and the paths that
+have repeatedly gone wrong**, and diffs the field names we **WRITE** against the
+field names the schema **DEFINES**.
+
+It reports three kinds, worst first, and **fixes nothing** - the point is the count:
+
+| Kind | Meaning | Measured |
+| --- | --- | --- |
+| **1. We write a name the schema does not define** | the **silent** kind: `kiwi` drops it and nothing fails | **2** - `variableBindings` and its nested `fills`, i.e. the **known** divergence, now **confirmed mechanically** rather than remembered |
+| **2. The wire has a field we never write** | a **capability gap** | the wide `NodeChange` message defines **556** fields; we write **42** |
+| **3. Same name, a different message** | usually legitimate (a nested struct's own fields) | 38 |
+
+**Kind 1 is the one to watch**, and it is the kind the rule exists for. The
+inventory confirms the §0 rows rather than claiming discovery: `variableBindings`
+appears because it is **still** written under a name the schema lacks.
+
+**Classification, not just a list:** grid track sizes are a **WIRE LIMIT** (the wire
+cannot carry `px`/`fr`) and `SCROLL_TO` is a **SEMANTICS** gap (the shape is fine) -
+neither is our divergence, and neither should be "changed" to satisfy the rule.
+
 ### The divergences, with a verdict on each
 
 | Our shape | Figma's shape | Verdict |
