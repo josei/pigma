@@ -10,7 +10,7 @@
  * serving a stale cache.
  */
 import type { AnyNode, PigmaFile, SceneNode } from '../model/types';
-import { isSceneNode } from '../model/types';
+import { hasChildren, isSceneNode } from '../model/types';
 import { findNode, descendants } from '../model/tree';
 import { settleDocument } from '../model/settle';
 import { McpToolError } from './errors';
@@ -47,11 +47,27 @@ export interface DocumentSnapshot {
  * A write can delete a node the caller had selected — the document is replaced
  * wholesale — and nothing else prunes the selection, so a harness would be told
  * about an id that no longer resolves. Every session reports only live ids.
+ *
+ * ONE walk builds the set of ids present, and the walk stops as soon as every
+ * wanted id has been seen: calling `findNode` per selected id was
+ * O(selection x nodes), so select-all on a large document cost ~1.2 s per call.
+ * A small selection (the common case) usually stops almost immediately. Nothing
+ * is cached across calls — a stale cache here would silently drop live ids.
  */
 export function liveSelection(file: PigmaFile | null, ids: string[]): string[] {
-  if (!file) return [];
-  // `findNode` answers null for a missing id, so test for presence, not undefined.
-  return ids.filter((id) => findNode(file.document, id) !== null);
+  if (!file || ids.length === 0) return [];
+  const wanted = new Set(ids);
+  const found = new Set<string>();
+  const collect = (node: AnyNode): void => {
+    if (wanted.has(node.id)) found.add(node.id);
+    if (found.size === wanted.size || !hasChildren(node)) return;
+    for (const child of node.children as AnyNode[]) {
+      collect(child);
+      if (found.size === wanted.size) return;
+    }
+  };
+  collect(file.document);
+  return ids.filter((id) => found.has(id));
 }
 
 /**

@@ -147,6 +147,84 @@ the layers panel updated, and `Ctrl+Z` restored the exact baseline document
 
 ---
 
+## Writing: what a caller can rely on
+
+Three behaviours a harness must know before it writes. They hold on **every** path
+— an in-memory session (stdio or HTTP with a loaded file, and a self-hosted or
+hosted endpoint without a bridge) and the live-editor session (the browser bridge)
+— because all of them share one implementation in `src/mcp/session.ts`.
+
+### Every write settles, validates, and refuses a stale revision
+
+1. **Derived geometry is settled first.** Auto-sized text boxes follow their
+   content, `BOOLEAN_OPERATION` nodes re-evaluate, instances sync, the tree
+   reflows (`settleDocument`). A document built entirely through these tools never
+   has stale derived geometry — `get_metadata`, `get_design_context` and
+   `get_screenshot` all read the settled boxes.
+2. **The document is validated.** A write that would produce an invalid document —
+   a negative or non-finite size, an opacity outside 0..1, a malformed paint or
+   effect colour — is refused with `The document this write would produce is
+   invalid: …` naming the node and the problem. Nothing is stored, so the previous
+   document survives intact.
+3. **A stale write is refused.** See the revision contract below.
+
+The ordering matters: the revision is checked first (fail fast on a stale write),
+then the document is settled, then validated — and all of it happens **before** the
+editor store sees anything, so a refused write leaves the document *and the undo
+history* untouched.
+
+Evidence: `tests/mcp/write-revision.test.ts` (the guard, and that all sessions throw
+one shared message), `tests/mcp/bridge.test.ts` (the live-editor session runs the
+same settle + validate), `tests/mcp/invariants.test.ts` (the hostile-script
+matrix), `tests/browser/b55-mcp-invariants.spec.ts` (the same, at browser level
+through the live bridge).
+
+### The revision contract
+
+A document has a **revision** that advances on every accepted write (and on every
+accepted selection change). A write is guarded by the revision its author read:
+
+- **How a caller obtains it.** You do not have to: every write tool reads its own
+  authoritative snapshot — the file *and* the revision — and carries that revision
+  into the write it performs. There is no `expectedRevision` argument to pass, and
+  no tool result exposes the counter; the tool call is the unit of consistency.
+  (The bridge's own `/bridge/status` reports a revision for the editor panel — it
+  is how the panel shows "connected" — but it is not part of the tool surface and a
+  harness never needs it.)
+- **What can go wrong.** If the document changes *between* the tool's read and its
+  write — the user draws, moves or undoes something in the editor while the call is
+  in flight — the write is refused with
+  `stale revision: editor is at <current>, caller read <expected> (local changes
+  happened in between)`.
+- **What to do about it.** Re-read and retry: call the read tool again
+  (`get_metadata`, `get_design_context`, …) and issue the write once more against
+  what you just read. Do not guess the revision and do not retry blindly — the
+  error names both numbers, so a retry loop that re-reads converges.
+- **In-memory sessions** count revisions per session from 0; the live editor counts
+  its own. Either way a write carrying an older revision is refused rather than
+  silently overwriting a newer document.
+
+### Undo and history differ between the two paths — deliberately
+
+| Path | Effect on undo history |
+| --- | --- |
+| **In-memory session** (stdio, HTTP with a loaded file, self-host, hosted without a bridge) | **No undo history at all.** The document is a value the server holds; there is nothing to undo, and a caller that wants the previous state must have kept it. |
+| **Live editor** (browser bridge) | **Exactly one undo entry** per accepted write, so `Ctrl+Z` in the editor undoes the whole tool call. **No entry** when the write changes nothing, and **no entry** when the write is refused (stale revision, invalid document) — a refusal never pollutes the user's history. |
+
+A write that changes nothing is a no-op on both paths: the same file object comes
+back, so nothing downstream sees a spurious change.
+
+### What is *not* guaranteed
+
+The settle and validation passes are the ones named above
+(`settleDocument` → `syncTextSizes`, `syncInstances`, `reflowTree`,
+`refreshBooleans`; `documentProblems`). That is a survey of the write path's call
+sites, **not a proof that the whole path is O(n) in the document**: the passes are
+pure and idempotent, an unchanged document short-circuits to the same object, and
+measured cost tracks *what changed* rather than the document size — but a tool that
+rewrites a large part of the document still pays for that part, and nothing here
+claims otherwise.
+
 ## Supported tools
 
 Read: `get_design_context` (React + Tailwind code by default; `framework:

@@ -13,7 +13,7 @@
 import { describe, expect, it } from 'vitest';
 import { useEditor } from '../../src/store/editorStore';
 import { createEditorSession } from '../../src/mcp/bridge';
-import { createSession, type DocumentSession } from '../../src/mcp/session';
+import { createSession, liveSelection, type DocumentSession } from '../../src/mcp/session';
 import { emptyFile } from '../../src/model/validate';
 import { createRectNode } from '../../src/model/factory';
 import { findNode } from '../../src/model/tree';
@@ -144,6 +144,31 @@ describe('the revision guard', () => {
       });
     });
   }
+
+  it('prunes only dead ids, at any size', () => {
+    // Small selection: the common case, unchanged behaviour.
+    const file = emptyFile('Select');
+    const page = file.document.children[0]!;
+    const first = createRectNode(file.document, 0, 0, 10, 10);
+    const second = createRectNode(file.document, 20, 0, 10, 10);
+    page.children = [first, second];
+    expect(liveSelection(file, [first.id, 'gone:1'])).toEqual([first.id]);
+    expect(liveSelection(file, [])).toEqual([]);
+    expect(liveSelection(null, [first.id])).toEqual([]);
+
+    // Select-all over a large document: every live id is kept, and a dead one is
+    // still dropped. The lookup is one walk, so this is linear in the nodes.
+    const large = emptyFile('Large');
+    const largePage = large.document.children[0]!;
+    const nodes = [];
+    for (let i = 0; i < 2000; i += 1) nodes.push(createRectNode(large.document, (i % 50) * 20, Math.floor(i / 50) * 20, 10, 10));
+    largePage.children = nodes;
+    const all = nodes.map((node) => node.id);
+    expect(liveSelection(large, all)).toHaveLength(all.length);
+    expect(liveSelection(large, [...all, 'gone:1'])).toEqual(all);
+    // A selection of dead ids only, against the same large document.
+    expect(liveSelection(large, ['gone:1', 'gone:2'])).toEqual([]);
+  });
 
   it('throws the same message the relay path throws', () => {
     const session = createSession(emptyFile('Base'));

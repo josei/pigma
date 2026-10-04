@@ -299,7 +299,10 @@ export const writeTools: RegisteredTool[] = [
       const document: DocumentNode = createDocument(name);
       const file: PigmaFile = { schema: 'pigma/1', name, lastModified: Date.now(), document };
       await ctx.session.setFile(file, { expectedRevision: revision });
-      await ctx.session.setSelection([]);
+      // The write moved the revision, so re-read it: clearing the selection is a
+      // write too, and the registry-level coverage test asserts every write
+      // carries the revision the session was at.
+      await ctx.session.setSelection([], { expectedRevision: await currentRevision(ctx.session) });
       return jsonResult({ name, editorType: 'design', documentId: document.id, pageId: document.children[0]?.id ?? null });
     },
   },
