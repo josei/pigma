@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1016 unit tests / 109 files**, **254 browser tests passing / 0 failing**,
+Last verified: **1026 unit tests / 110 files**, **255 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -130,9 +130,9 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 ## Open QA items
 
-**No failing specs.** The suite is green: `CI=true npm run test:browser` = **249
+**No failing specs.** The suite is green: `CI=true npm run test:browser` = **255
 passed / 0 failed**, measured twice back-to-back, with **0 orphan processes**;
-`npx vitest run` = **1016 passing / 109 files**, deterministic whether or not
+`npx vitest run` = **1026 passing / 110 files**, deterministic whether or not
 `dist/` has been built. Every item previously listed here
 (B29c, B29d, B31b, B31c, B33a, B33b, B28b) now passes and has been removed.
 
@@ -211,9 +211,10 @@ row is a statement about our own consistency, not about Figma.
 | 3 | `liveSelection`'s cost | a correct-looking de-duplication | a full tree walk per selected id - O(selection x nodes) (see item (e) above) |
 | 4 | `resolvePropertyReferences` | an `INSTANCE_SWAP` property offered in the panel and stored on the instance | it resolved **nothing**: only `'visible'` and `'characters'` were handled |
 | 5 | the validator | instance property values and layer bindings | **dropped on load** - `componentPropertyReferences` and `componentProperties` did not survive a save |
-| 6 | the instance property panel | a documented "switch per variant property plus BOOLEAN/TEXT/INSTANCE_SWAP controls" on an instance | it can **never render**: `componentPropertiesOf` returns `{}` for anything that is not a `COMPONENT`/`COMPONENT_SET`, and the panel builds its definitions from the *selected* node. Pinned by `b58-component-slots` |
+| 6 | the instance property panel | a documented "switch per variant property plus BOOLEAN/TEXT/INSTANCE_SWAP controls" on an instance | **the precise scope: an instance of a STANDALONE component lost every property control (BOOLEAN, TEXT, INSTANCE_SWAP), while an instance inside a component set worked.** The panel resolved the definitions from `componentSetOf(instance.componentId)` and fell back to the instance's own node, which owns none. **FIXED** - `propertyOwnerOf(file, node)` (`src/model/variants.ts:263`) resolves the node that OWNS the definitions, and the panel is now one call. Pinned by `b58-component-slots`, now asserting the control is present |
+| 7 | `nodesEquivalent` | instance override propagation | it did **not** compare `componentPropertyReferences`, so a **binding** change never reached an instance's materialised children. Found the same way - by making the propagation test pass. |
 
-The lesson is in the method, not the list: **schema presence and panel presence are not evidence.** Items 1, 2, 4, 5 and 6 all had a plausible-looking implementation; items 3 and 6 had no user-visible symptom at all, which is why only probing or measuring finds them. A reader should treat "the field exists" and "the control is rendered" as **unproven** until something drives the path end to end.
+Items 6 and 7 are both **resolved** - they stay in the table because the LESSON is the point, not the bug. The lesson is in the method, not the list: **schema presence and panel presence are not evidence.** Items 1, 2, 4, 5 and 6 all had a plausible-looking implementation; items 3 and 6 had no user-visible symptom at all, which is why only probing or measuring finds them. A reader should treat "the field exists" and "the control is rendered" as **unproven** until something drives the path end to end.
 
 ### External audit - what it found
 
