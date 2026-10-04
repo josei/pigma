@@ -233,3 +233,36 @@ describe('batch 1: the fields the schema defines now round-trip', () => {
     expect(dropped).toEqual([]);
   });
 });
+
+describe('batch 2: layout grids round-trip', () => {
+  it('keeps the guides, their pattern, axis, count, gutter and offset', async () => {
+    const file = emptyFile('Grids');
+    const page = file.document.children[0]!;
+    const frame = createFrameNode(file.document, 0, 0, 400, 300);
+    frame.name = 'Subject';
+    frame.layoutGrids = [
+      { pattern: 'COLUMNS', sectionSize: 8, count: 4, gutterSize: 16, offset: 24, alignment: 'STRETCH', visible: true },
+      { pattern: 'ROWS', sectionSize: 12, count: 3, gutterSize: 4, offset: 0, alignment: 'MIN', visible: false },
+    ];
+    page.children = [frame];
+
+    const reimported = await roundTrip(file, 'circle.fig');
+    const grids = (byName(reimported, 'Subject') as { layoutGrids?: Array<Record<string, unknown>> }).layoutGrids;
+    expect(grids, 'the guides did not survive').toBeTruthy();
+    expect(grids!).toHaveLength(2);
+    // COLUMNS is STRIPES with axis X; ROWS is STRIPES with axis Y.
+    expect(grids![0]).toMatchObject({ pattern: 'COLUMNS', sectionSize: 8, count: 4, gutterSize: 16, offset: 24, alignment: 'STRETCH' });
+    expect(grids![1]).toMatchObject({ pattern: 'ROWS', sectionSize: 12, count: 3, visible: false });
+  });
+
+  it('does not warn for layoutGrids: the schema defines it', () => {
+    const file = emptyFile('Grid warnings');
+    const page = file.document.children[0]!;
+    const frame = createFrameNode(file.document, 0, 0, 100, 100);
+    frame.name = 'Subject';
+    frame.layoutGrids = [{ pattern: 'GRID', sectionSize: 10, count: 2, alignment: 'MIN', visible: true }];
+    page.children = [frame];
+    const { warnings } = pigmaToFigMessage(file, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors });
+    expect(warnings.filter((line) => line.includes('is not defined by this .fig schema'))).toEqual([]);
+  });
+});

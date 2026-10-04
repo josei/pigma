@@ -12,6 +12,7 @@
  */
 import { invert } from '../../model/matrix';
 import type {
+  LayoutGrid,
   AnyNode,
   AutoLayout,
   CanvasNode,
@@ -530,6 +531,9 @@ function nodeChange(
     }
   }
   if ('autoLayout' in node && node.autoLayout) Object.assign(change, toNativeAutoLayout(node.autoLayout));
+  if ('layoutGrids' in node && node.layoutGrids && node.layoutGrids.length > 0) {
+    change.layoutGrids = node.layoutGrids.map(toNativeLayoutGrid);
+  }
   if ('clipsContent' in node && node.clipsContent !== undefined) change.frameMaskDisabled = !node.clipsContent;
   if ('overflowDirection' in node && node.overflowDirection && node.overflowDirection !== 'NONE') {
     change.overflowDirection = node.overflowDirection;
@@ -547,6 +551,29 @@ function nodeChange(
     if (instance.componentId) change.symbolData = { symbolID: guidFor(instance.componentId, ctx.sessionID) };
   }
   return change;
+}
+
+/**
+ * A model layout grid as the schema's `LayoutGrid`.
+ *
+ * The shapes are a near match, not identical: the schema splits what the model
+ * folds — `axis` distinguishes COLUMNS from ROWS and `pattern` is only
+ * GRID/STRIPES, and `type` carries the ALIGNMENT (LayoutGridType is MIN/CENTER/
+ * MAX/STRETCH). `numSections` is the model's `count`.
+ */
+function toNativeLayoutGrid(grid: LayoutGrid): Record<string, unknown> {
+  const columns = grid.pattern === 'COLUMNS';
+  return {
+    type: grid.alignment ?? 'MIN',
+    axis: columns ? 'X' : 'Y',
+    visible: grid.visible !== false,
+    numSections: grid.count ?? 1,
+    offset: grid.offset ?? 0,
+    sectionSize: grid.sectionSize,
+    gutterSize: grid.gutterSize ?? 0,
+    pattern: grid.pattern === 'GRID' ? 'GRID' : 'STRIPES',
+    ...(grid.color ? { color: { ...grid.color, a: grid.color.a ?? 1 } } : {}),
+  };
 }
 
 /** Model binding keys → Figma's `boundVariables` property names (alias objects). */

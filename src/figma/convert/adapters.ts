@@ -7,6 +7,7 @@
  * the original source object so nothing is lost.
  */
 import type {
+  LayoutGrid,
   AutoLayout,
   BaseNode,
   BlendMode,
@@ -72,6 +73,7 @@ export interface NormalizedNode {
   strokeCap?: StrokeCap;
   strokeJoin?: StrokeJoin;
   dashPattern?: number[];
+  layoutGrids?: LayoutGrid[];
   /** The native `mask` flag, carried into the model's `isMask`. */
   isMask?: boolean;
   /** The auto-layout child fields, under their native names. */
@@ -534,6 +536,20 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
   if (stackAlign === 'STRETCH') normalized.layoutAlign = 'STRETCH';
   else if (typeof stackAlign === 'string') normalized.layoutAlign = 'INHERIT';
   if (typeof node.stackChildPrimaryGrow === 'number') normalized.layoutGrow = node.stackChildPrimaryGrow;
+  if (Array.isArray(node.layoutGrids)) {
+    const grids = node.layoutGrids.filter(isRecord).map((grid) => ({
+      // The schema splits what the model folds: axis separates COLUMNS from ROWS.
+      pattern: grid.pattern === 'GRID' ? ('GRID' as const) : grid.axis === 'X' ? ('COLUMNS' as const) : ('ROWS' as const),
+      sectionSize: typeof grid.sectionSize === 'number' ? grid.sectionSize : 0,
+      ...(typeof grid.numSections === 'number' ? { count: grid.numSections } : {}),
+      ...(typeof grid.gutterSize === 'number' ? { gutterSize: grid.gutterSize } : {}),
+      ...(typeof grid.offset === 'number' ? { offset: grid.offset } : {}),
+      ...(typeof grid.type === 'string' ? { alignment: grid.type as 'MIN' } : {}),
+      ...(isRecord(grid.color) ? { color: grid.color as never } : {}),
+      visible: grid.visible !== false,
+    }));
+    if (grids.length > 0) normalized.layoutGrids = grids;
+  }
   const autoLayout = mapNativeAutoLayout(node, ctx);
   if (autoLayout) normalized.autoLayout = autoLayout;
   if (typeof node.clipsContent === 'boolean') normalized.clipsContent = node.clipsContent;
