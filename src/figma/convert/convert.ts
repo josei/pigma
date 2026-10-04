@@ -190,6 +190,7 @@ function convertScene(node: NormalizedNode, parentAbs: Box | null, state: Conver
   if (isContainer(type) || children.length > 0) {
     const container: ContainerNode = { ...base, type: type as ContainerKind, children };
     if (node.autoLayout) container.autoLayout = node.autoLayout;
+    if (node.layoutGrids && node.layoutGrids.length > 0) container.layoutGrids = node.layoutGrids;
     if (node.clipsContent !== undefined) container.clipsContent = node.clipsContent;
     if (node.overflowDirection !== undefined) container.overflowDirection = node.overflowDirection as 'NONE';
     if (node.booleanOperation !== undefined) container.booleanOperation = node.booleanOperation as 'UNION';
