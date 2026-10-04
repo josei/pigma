@@ -546,7 +546,11 @@ function nodeChange(
     // round-tripped grid keeps the guids it was imported with.
     const mapOf = (guids: string[] | undefined, count: number, key: string) => ({
       entries: Array.from({ length: count }, (_, index) => ({
-        guid: guidFor(guids?.[index] ?? `${node.id}:${key}:${index}`, ctx.sessionID),
+        // The schema's GUIDPositionMapEntry is `{ id: GUID, position: string }` —
+        // `id`, not `guid`. Writing `guid` made the encoder drop it (the same
+        // vocabulary class as dashPattern and windingRule), so the map came back
+        // empty and the tracks were lost.
+        id: guidFor(guids?.[index] ?? `${node.id}:${key}:${index}`, ctx.sessionID),
         position: positionFor(index, Math.max(1, count)),
       })),
     });

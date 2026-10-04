@@ -652,7 +652,7 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
     if (!isRecord(value) || !Array.isArray(value.entries)) return undefined;
     const guids = value.entries
       .filter(isRecord)
-      .map((entry) => idOfGuid(entry.guid))
+      .map((entry) => idOfGuid(entry.id))
       .filter((id): id is string => id !== null);
     return guids.length > 0 ? guids : undefined;
   };

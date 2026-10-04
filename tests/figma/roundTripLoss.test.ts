@@ -385,15 +385,18 @@ describe('the native grid mapper: placement and track guids survive', () => {
       gridRows: [{ type: 'FLEX', value: 1 }],
       gridColumnGap: 12,
       gridRowGap: 8,
-      gridColumnGuids: ['col:a', 'col:b'],
-      gridRowGuids: ['row:a'],
+      // Realistic wire guids: the model ids are `session:local`, and the wire's
+      // GUID is that pair, so a guid that is not in that shape falls back to a
+      // counter and would not round-trip.
+      gridColumnGuids: ['1:5', '1:6'],
+      gridRowGuids: ['1:7'],
     };
     const child = createRectNode(file.document, 0, 0, 50, 50);
     child.name = 'Cell';
     child.gridColumnSpan = 2;
     child.gridRowSpan = 1;
     child.gridColumnAnchorIndex = 1;
-    child.gridColumnAnchorGuid = 'col:b';
+    child.gridColumnAnchorGuid = '1:6';
     frame.children = [child];
     page.children = [frame];
 
@@ -415,7 +418,16 @@ describe('the native grid mapper: placement and track guids survive', () => {
     expect(layout.layoutMode).toBe('GRID');
     expect(layout.gridColumnGap).toBe(12);
     expect(layout.gridRowGap).toBe(8);
-    expect(layout.gridColumnGuids, 'the column guids do not survive yet').toBeUndefined();
-    expect(layout.gridColumns, 'the tracks do not survive yet').toBeUndefined();
+    // FIXED: the entry field is `id`, not `guid` — writing `guid` made the encoder
+    // drop it, so the map came back empty.
+    expect(layout.gridColumnGuids, 'the column guids did not survive').toEqual(['1:5', '1:6']);
+    expect(layout.gridRowGuids).toEqual(['1:7']);
+    // The track SIZES are still not on the wire: the map carries guids and
+    // positions only, so the tracks return as the implicit flex track.
+    expect(layout.gridColumns).toEqual([{ type: 'FLEX', value: 1 }, { type: 'FLEX', value: 1 }]);
+    // The child's span and anchor guid, now measured.
+    const back = byName(reimported, 'Cell')!;
+    expect(back.gridColumnSpan, 'the span did not survive').toBe(2);
+    expect(back.gridColumnAnchorGuid, 'the anchor guid did not survive').toBe('1:6');
   });
 });

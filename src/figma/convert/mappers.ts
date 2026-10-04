@@ -484,7 +484,7 @@ function guidMapOf(value: unknown): string[] {
   return value.entries
     .filter(isRecord)
     .map((entry) => {
-      const guid = entry.guid;
+      const guid = entry.id;
       if (!isRecord(guid)) return null;
       const session = guid.sessionID;
       const local = guid.localID;
