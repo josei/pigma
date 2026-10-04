@@ -17,6 +17,7 @@ import type {
   Constraints,
   Effect,
   Paint,
+  PrototypeAction,
   PrototypeInteraction,
   RGBA,
   StrokeAlign,
@@ -469,6 +470,93 @@ function nativePathData(
   return result;
 }
 
+/**
+ * The schema's `InteractionType` members as the model's trigger names.
+ *
+ * The native vocabulary has synonyms the model does not: the drag trigger is
+ * `DRAG` (the model says `ON_DRAG`) and the hover pair is `MOUSE_IN`/`MOUSE_OUT`
+ * as well as `MOUSE_ENTER`/`MOUSE_LEAVE`. A map that lists only OUR names is how
+ * this class of gap keeps appearing.
+ */
+const NATIVE_TRIGGERS: Record<string, PrototypeInteraction['trigger']['type']> = {
+  ON_CLICK: 'ON_CLICK',
+  ON_HOVER: 'ON_HOVER',
+  ON_PRESS: 'ON_PRESS',
+  DRAG: 'ON_DRAG',
+  ON_DRAG: 'ON_DRAG',
+  AFTER_TIMEOUT: 'AFTER_TIMEOUT',
+  MOUSE_IN: 'MOUSE_ENTER',
+  MOUSE_ENTER: 'MOUSE_ENTER',
+  MOUSE_OUT: 'MOUSE_LEAVE',
+  MOUSE_LEAVE: 'MOUSE_LEAVE',
+  MOUSE_UP: 'MOUSE_UP',
+  MOUSE_DOWN: 'MOUSE_DOWN',
+};
+
+/** The schema's `ConnectionType` members as the model's action kinds. */
+const NATIVE_CONNECTIONS: Record<string, PrototypeAction['type']> = {
+  INTERNAL_NODE: 'NODE',
+  BACK: 'BACK',
+  CLOSE: 'CLOSE',
+  URL: 'URL',
+};
+
+/** A native GUID as the model's node id (the inverse of the exporter's mapping). */
+const idOfGuid = (guid: unknown): string | null => {
+  if (!isRecord(guid)) return null;
+  const session = guid.sessionID;
+  const local = guid.localID;
+  return typeof session === 'number' && typeof local === 'number' ? `${session}:${local}` : null;
+};
+
+/** One native `PrototypeAction` as the model's action. */
+function fromNativeAction(raw: Record<string, unknown>): PrototypeAction | null {
+  const type = NATIVE_CONNECTIONS[String(raw.connectionType)];
+  if (!type) return null;
+  const action: PrototypeAction = { type };
+  const destination = idOfGuid(raw.transitionNodeID);
+  if (destination) action.destinationId = destination;
+  if (typeof raw.connectionURL === 'string') action.url = raw.connectionURL;
+  if (typeof raw.navigationType === 'string') action.navigation = raw.navigationType as PrototypeAction['navigation'];
+  if (raw.navigationType === 'OVERLAY') action.overlay = true;
+  if (isRecord(raw.overlayRelativePosition)) {
+    action.overlayPosition = 'CUSTOM';
+    if (typeof raw.overlayRelativePosition.x === 'number') action.overlayX = raw.overlayRelativePosition.x;
+    if (typeof raw.overlayRelativePosition.y === 'number') action.overlayY = raw.overlayRelativePosition.y;
+  }
+  if (raw.transitionPreserveScroll === true) action.preserveScrollPosition = true;
+  if (typeof raw.transitionType === 'string') {
+    action.transition = {
+      type: raw.transitionType,
+      ...(typeof raw.transitionDuration === 'number' ? { duration: raw.transitionDuration } : {}),
+      ...(typeof raw.easingType === 'string' ? { easing: raw.easingType } : {}),
+    };
+  }
+  return action;
+}
+
+/** A node's native `prototypeInteractions` as the model's interactions. */
+function fromNativeInteractions(node: FigNode): PrototypeInteraction[] | undefined {
+  const raw = node.prototypeInteractions;
+  if (!Array.isArray(raw)) return undefined;
+  const out: PrototypeInteraction[] = [];
+  for (const entry of raw.filter(isRecord)) {
+    // A deleted interaction is a tombstone, not a live link.
+    if (entry.isDeleted === true) continue;
+    const event = isRecord(entry.event) ? entry.event : {};
+    const trigger: PrototypeInteraction['trigger'] = {
+      type: NATIVE_TRIGGERS[String(event.interactionType)] ?? 'ON_CLICK',
+    };
+    if (typeof event.interactionDuration === 'number') trigger.delay = event.interactionDuration;
+    const actions = (Array.isArray(entry.actions) ? entry.actions : [])
+      .filter(isRecord)
+      .map(fromNativeAction)
+      .filter((action): action is PrototypeAction => action !== null);
+    if (actions.length > 0) out.push({ trigger, actions });
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: ReportBuilder): NormalizedNode {
   const id = figNodeId(node) ?? '';
   const ctx = { report, nodeId: id, path, images: doc.images };
@@ -550,6 +638,8 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
     }));
     if (grids.length > 0) normalized.layoutGrids = grids;
   }
+  const interactions = fromNativeInteractions(node);
+  if (interactions) normalized.interactions = interactions;
   const autoLayout = mapNativeAutoLayout(node, ctx);
   if (autoLayout) normalized.autoLayout = autoLayout;
   if (typeof node.clipsContent === 'boolean') normalized.clipsContent = node.clipsContent;

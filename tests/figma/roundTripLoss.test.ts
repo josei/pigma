@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { figDocumentToPigmaFile } from '../../src/figma/convert/convert';
+import { useEditor } from '../../src/store/editorStore';
 import { nodeDecompressors } from '../../src/figma/native/node';
 import { exportPigmaFile, pigmaToFigMessage } from '../../src/figma/native/modelExport';
 import { nodeExportCompressors } from '../../src/figma/native/export.node';
@@ -316,5 +317,56 @@ describe('prototype interactions: the export side writes them', () => {
     expect(swap.navigationType, 'SWAP_STATE must be written').toBe('SWAP_STATE');
     // And the schema defines every field, so nothing is reported.
     expect(warnings.filter((line) => line.includes('is not defined by this .fig schema'))).toEqual([]);
+  });
+});
+
+describe('prototype interactions survive the binary round trip', () => {
+  it('keeps the trigger, destination and transition — and the swap still swaps', async () => {
+    const file = emptyFile('Prototype round trip');
+    const page = file.document.children[0]!;
+    const from = createFrameNode(file.document, 0, 0, 200, 100);
+    from.name = 'From';
+    const to = createFrameNode(file.document, 300, 0, 200, 100);
+    to.name = 'To';
+    const state = createRectNode(file.document, 0, 0, 50, 50);
+    state.name = 'State';
+    from.interactions = [
+      {
+        trigger: { type: 'ON_CLICK' },
+        actions: [
+          { type: 'NODE', destinationId: to.id, navigation: 'NAVIGATE', transition: { type: 'SMART_ANIMATE', duration: 250, easing: 'IN_CUBIC' } },
+        ],
+      },
+      {
+        trigger: { type: 'ON_DRAG' },
+        actions: [{ type: 'NODE', destinationId: state.id, navigation: 'SWAP_STATE' }],
+      },
+    ];
+    page.children = [from, to, state];
+
+    const reimported = await roundTrip(file, 'circle.fig');
+    const back = byName(reimported, 'From') as unknown as { interactions?: Array<{ trigger: { type: string; delay?: number }; actions: Array<Record<string, unknown>> }> };
+    expect(back.interactions, 'the interactions did not survive').toHaveLength(2);
+    // Trigger, destination and transition.
+    expect(back.interactions![0]!.trigger.type).toBe('ON_CLICK');
+    expect(back.interactions![0]!.actions[0]!.navigation).toBe('NAVIGATE');
+    const destination = back.interactions![0]!.actions[0]!.destinationId as string;
+    expect(byName(reimported, 'To')!.id, 'the destination must resolve to the reimported node').toBe(destination);
+    expect(back.interactions![0]!.actions[0]!.transition).toEqual({ type: 'SMART_ANIMATE', duration: 250, easing: 'IN_CUBIC' });
+    // The DRAG trigger: the native name is DRAG, the model's is ON_DRAG.
+    expect(back.interactions![1]!.trigger.type, 'DRAG must map back to ON_DRAG').toBe('ON_DRAG');
+    expect(back.interactions![1]!.actions[0]!.navigation, 'the recovered member must survive').toBe('SWAP_STATE');
+    expect(back.interactions![1]!.actions[0]!.destinationId).toBe(byName(reimported, 'State')!.id);
+
+    // THE POINT: the recovered swap still PLAYS BACK as a swap, not a navigation.
+    useEditor.getState().loadFile(reimported, 'Round tripped');
+    const store = useEditor.getState();
+    store.setPresentation(true, reimported.document.children[0]!.children[0]!.id);
+    const stackBefore = useEditor.getState().presentationStack.length;
+    const frameBefore = useEditor.getState().presentationFrameId;
+    const instanceId = byName(reimported, 'State')!.id;
+    useEditor.getState().swapInstanceState(instanceId, byName(reimported, 'To')!.id);
+    expect(useEditor.getState().presentationFrameId, 'a swap must not navigate').toBe(frameBefore);
+    expect(useEditor.getState().presentationStack.length, 'a swap must not push the stack').toBe(stackBefore);
   });
 });
