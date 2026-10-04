@@ -12,8 +12,8 @@
  *  - the OUTPUT is polygonal — `polygonsToPathData` emits only M/L/Z — so a
  *    boolean bakes the approximation into the result;
  *  - the measured cost: an ellipse is sampled at 64 points (sagitta 0.12 px at
- *    r=100, area error 0.16%) and a cubic at 16 points (worst deviation 1.25 px
- *    on a 100 px chord, 1.25%).
+ *    r=100, area error 0.16%) and a cubic at 64 (worst deviation 0.090 px on a
+ *    100 px chord, 0.09%) — 16 samples gave 1.25 px, which is why it was raised.
  *
  * The vertex counts and sample counts are asserted so raising them is a
  * deliberate edit.
@@ -28,7 +28,9 @@ import { renderSvgDocument } from '../render/svgExport';
 import type { PigmaFile } from './types';
 
 const ELLIPSE_SAMPLES = 64;
-const CURVE_SAMPLES = 16;
+// Raised from 16: a cubic's error falls as 1/n^2, and 64 lands it at or below an
+// ellipse's own error (0.120 px at r=100).
+const CURVE_SAMPLES = 64;
 
 function scene(): { file: PigmaFile; firstId: string; secondId: string } {
   const file = emptyFile('Boolean geometry');
@@ -59,7 +61,7 @@ describe('boolean geometry', () => {
     expect(anchorsFromPathData('m 0 0 l 10 10 z')).toBeNull();
   });
 
-  it('samples an ellipse at 64 points and a cubic at 16', () => {
+  it('samples an ellipse at 64 points and a cubic at 64', () => {
     const { file, firstId } = scene();
     const outline = nodePolygons(file.document, firstId)!;
     expect(outline).toHaveLength(1);
@@ -70,7 +72,7 @@ describe('boolean geometry', () => {
     page.children = [...page.children, vector];
     const curved = nodePolygons(file.document, vector.id)!;
     // The start anchor, CURVE_SAMPLES points for the cubic, then one point for
-    // the closing segment `Z` adds: 1 + 16 + 1.
+    // the closing segment `Z` adds: 1 + 64 + 1.
     expect(curved[0]).toHaveLength(2 + CURVE_SAMPLES);
   });
 
@@ -80,9 +82,11 @@ describe('boolean geometry', () => {
     expect(geometry.pathData).not.toBe('');
     expect([...new Set(geometry.pathData.match(/[A-Za-z]/g) ?? [])].sort()).toEqual(['L', 'M', 'Z']);
     expect(geometry.pathData, 'the result should carry no curves').not.toMatch(/[CcQqAaSsTt]/);
-    // Two 64-gons overlapping: the difference keeps their vertices.
+    // Two 64-gons overlapping: the difference keeps their vertices — 67, and 938
+    // characters of path data. Pinned so a sampling change is deliberate.
     const vertices = (geometry.pathData.match(/L/g) ?? []).length + 1;
-    expect(vertices).toBeGreaterThan(ELLIPSE_SAMPLES);
+    expect(vertices).toBe(67);
+    expect(geometry.pathData.length).toBe(938);
   });
 
   it('records what the approximation costs', () => {
@@ -125,10 +129,13 @@ describe('boolean geometry', () => {
         worst = Math.max(worst, nearest);
       }
     }
-    // Measured 1.25 px on a 100 px chord: visible when zoomed, and the reason a
-    // curve-preserving boolean is the one thing worth adding.
-    expect(worst).toBeGreaterThan(1);
-    expect(worst).toBeLessThan(2);
+    // Measured 0.090 px at 64 samples, against 1.250 px at 16: at or below the
+    // ellipse's 0.120 px, so the two operand kinds are equally accurate. The cost
+    // is pinned too — a curved operand flattens to 66 points instead of 18.
+    expect(worst, `cubic deviation ${worst.toFixed(3)} px`).toBeLessThan(0.12);
+    expect(worst).toBeGreaterThan(0.05);
+    const ellipseSagittaAtR100 = 100 * (1 - Math.cos(Math.PI / ELLIPSE_SAMPLES));
+    expect(worst).toBeLessThanOrEqual(ellipseSagittaAtR100 + 0.03);
   });
 
   it('renders the polygonal result without special cases', () => {

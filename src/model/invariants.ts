@@ -1,10 +1,13 @@
 /**
- * Document invariants the MCP write path enforces before committing.
+ * Document invariants every WRITE PATH enforces before committing.
  *
- * The session is the one place every MCP write lands, so the checks live here:
- * a plugin script cannot commit a document the rest of the system assumes is
- * impossible. The editor's own actions cannot produce these states (its ops clamp
- * and validate), which is exactly why the MCP path needed a guard of its own.
+ * They live in the model, not under `mcp/`, because they are not an MCP concern:
+ * the MCP session, the live-editor session and the in-app plugin runner all
+ * refuse the same states, through this one implementation. A plugin script — run
+ * through the MCP or from the editor's own panel — cannot commit a document the
+ * rest of the system assumes is impossible. The editor's own actions cannot
+ * produce these states (its ops clamp and validate), which is why a script needs
+ * a guard of its own.
  *
  * Scope is deliberate — **only states a script can actually reach**:
  *

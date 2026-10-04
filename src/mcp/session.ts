@@ -14,7 +14,7 @@ import { hasChildren, isSceneNode } from '../model/types';
 import { findNode, descendants } from '../model/tree';
 import { settleDocument } from '../model/settle';
 import { McpToolError } from './errors';
-import { documentProblems } from './invariants';
+import { documentProblems } from '../model/invariants';
 
 export interface DocumentWriteOptions {
   /** Revision the caller read; the editor rejects a stale write. */

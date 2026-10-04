@@ -37,7 +37,20 @@ export function booleanLabel(mode: BooleanMode): string {
   }
 }
 
-const CURVE_SAMPLES = 16;
+/**
+ * Sampling counts for the flattening pass.
+ *
+ * A cubic's polyline error falls as 1/n^2, measured over handle lengths 0.25..5
+ * on a 100 px chord: 16 -> 1.250 px, 32 -> 0.350, 48 -> 0.159, 64 -> 0.090. 64 is
+ * the count that lands the cubic at or below an ellipse's own error (64 samples:
+ * sagitta 0.120 px at r=100), so the two operand kinds are equally accurate.
+ *
+ * A flat count, not an adaptive one: the adaptive formula needs a per-segment
+ * second-derivative bound for a variable vertex count, and the measured flat cost
+ * is already bounded and predictable (a curved operand goes 18 -> 66 points, 4x,
+ * while ellipses and rectangles are unchanged).
+ */
+const CURVE_SAMPLES = 64;
 const ELLIPSE_SAMPLES = 64;
 
 type Ring = Array<[number, number]>;

@@ -127,7 +127,12 @@ export async function drawShape(
     [offsetX - width / 2, offsetY - height / 2],
     [offsetX + width / 2, offsetY + height / 2],
   );
-  await page.waitForTimeout(120);
+  // Wait on the CONDITION, not a fixed pause: drawing selects the shape and the
+  // properties panel then renders its geometry. A caller that reads a field or
+  // the node geometry straight afterwards otherwise waits out the whole test
+  // timeout under load (how B22a flaked once in a full serial run).
+  await field(page, 'X').waitFor({ state: 'visible', timeout: 10000 });
+  await page.waitForTimeout(60);
 }
 
 export async function clickCanvas(page: Page, dx = 0, dy = 0, modifiers: 'Shift'[] = []) {
