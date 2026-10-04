@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1049 unit tests / 111 files**, **261 browser tests passing / 0 failing**,
+Last verified: **1053 unit tests / 112 files**, **261 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -144,7 +144,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 **No failing specs.** The suite is green: `CI=true npm run test:browser` = **255
 passed / 0 failed**, measured twice back-to-back, with **0 orphan processes**;
-`npx vitest run` = **1049 passing / 111 files**, deterministic whether or not
+`npx vitest run` = **1053 passing / 112 files**, deterministic whether or not
 `dist/` has been built. Every item previously listed here
 (B29c, B29d, B31b, B31c, B33a, B33b, B28b) now passes and has been removed.
 
@@ -171,7 +171,11 @@ What follows is *coverage* still missing, not failures:
   hosted collaboration path is unverified.
 - **The MCP `desktop` state cannot be reached.** It depends on the Tauri shell's
   `desktop_info`, which no browser spec can drive, so the published tool count
-  for that state is not verified here.
+  for that state is not verified here. **State, precisely: the blocker is HALF cleared.** The **Rust toolchain is now
+  installed** (`rustc 1.99.0`, `cargo 1.99.0`), but the Tauri **system
+  libraries** are still missing (`webkit2gtk-4.1`, `gtk3`, `libsoup3`) - so the
+  shell still cannot be built here, and it is neither "blocked" nor
+  "unblocked".
 - **File System Access** — the menu entries are asserted (`b25-round11` `B25c`);
   the OS file-picker round trip cannot be driven headlessly.
 - **Figma pixel parity** is not an image diff against Figma's screenshots (which
@@ -230,7 +234,13 @@ row is a statement about our own consistency, not about Figma.
 | 6 | the instance property panel | a documented "switch per variant property plus BOOLEAN/TEXT/INSTANCE_SWAP controls" on an instance | **the precise scope: an instance of a STANDALONE component lost every property control (BOOLEAN, TEXT, INSTANCE_SWAP), while an instance inside a component set worked.** The panel resolved the definitions from `componentSetOf(instance.componentId)` and fell back to the instance's own node, which owns none. **FIXED** - `propertyOwnerOf(file, node)` (`src/model/variants.ts:263`) resolves the node that OWNS the definitions, and the panel is now one call. Pinned by `b58-component-slots`, now asserting the control is present |
 | 7 | `nodesEquivalent` | instance override propagation | it did **not** compare `componentPropertyReferences`, so a **binding** change never reached an instance's materialised children. Found the same way - by making the propagation test pass. |
 
-Items 6 and 7 are both **resolved** - they stay in the table because the LESSON is the point, not the bug. **A named sub-class, and it is now FIVE instances: decisions reasoned against the
+Items 6 and 7 are both **resolved** - they stay in the table because the LESSON is the point, not the bug. **The governing principle now covers this whole class:** *prefer Figma's shape, and
+if we diverge, record the reason* - because **every divergence we chose became a
+bug**, at a measurable rate. See
+[FIGMA_COMPAT.md](FIGMA_COMPAT.md), "The governing principle", for the divergence
+table with a verdict on every row and for what the rule does **not** fix.
+
+**A named sub-class, and it is now FIVE instances: decisions reasoned against the
 WRONG vocabulary.** Time after time a capability was judged from the **REST** API's
 vocabulary when the **NATIVE** wire disagrees:
 
