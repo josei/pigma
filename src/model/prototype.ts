@@ -86,8 +86,14 @@ export function removeInteraction(file: PigmaFile, nodeId: string, index: number
   return withInteractions(file, nodeId, (list) => list.filter((_, position) => position !== index));
 }
 
-/** The action kinds the Prototype panel offers, in panel order. */
-export type PrototypeActionKind = 'NAVIGATE' | 'OVERLAY' | 'BACK' | 'CLOSE' | 'URL';
+/**
+ * The action kinds the Prototype panel offers, in panel order.
+ *
+ * `SWAP_STATE` is the variant swap: the destination is a variant COMPONENT, and
+ * playback changes the instance in place. Without it here a swap could only be
+ * imported, never authored.
+ */
+export type PrototypeActionKind = 'NAVIGATE' | 'OVERLAY' | 'SWAP_STATE' | 'BACK' | 'CLOSE' | 'URL';
 
 /** Build the action for a kind, so the quick-link row and the editor agree. */
 export function actionOfKind(
@@ -98,6 +104,8 @@ export function actionOfKind(
   switch (kind) {
     case 'OVERLAY':
       return { type: 'NODE', destinationId: destinationId ?? null, overlay: true, navigation: 'OVERLAY' };
+    case 'SWAP_STATE':
+      return { type: 'NODE', destinationId: destinationId ?? null, navigation: 'SWAP_STATE' };
     case 'BACK':
       return { type: 'BACK' };
     case 'CLOSE':
@@ -156,12 +164,30 @@ export function defaultInteraction(
 }
 
 /** Frames (and components) that can be a destination. */
-export function prototypeDestinations(file: PigmaFile, pageId: string): Array<{ id: string; name: string }> {
+/**
+ * Where a prototype action can point.
+ *
+ * Frames and standalone components, PLUS the variants of the page's component
+ * sets — a swap target IS a variant, and a variant lives inside a set, so
+ * offering only the page's direct children left it unchoosable. Each variant
+ * carries its set's name as `group`, so the picker can keep the list readable
+ * instead of dumping every component into one flat list.
+ */
+export function prototypeDestinations(file: PigmaFile, pageId: string): Array<{ id: string; name: string; group?: string }> {
   const page = file.document.children.find((child) => child.id === pageId);
   if (!page) return [];
-  return (page.children as SceneNode[])
-    .filter((child) => child.type === 'FRAME' || child.type === 'COMPONENT')
-    .map((child) => ({ id: child.id, name: child.name }));
+  const out: Array<{ id: string; name: string; group?: string }> = [];
+  for (const child of page.children as SceneNode[]) {
+    if (child.type === 'FRAME' || child.type === 'COMPONENT') {
+      out.push({ id: child.id, name: child.name });
+      continue;
+    }
+    if (child.type !== 'COMPONENT_SET') continue;
+    for (const variant of child.children as SceneNode[]) {
+      if (variant.type === 'COMPONENT') out.push({ id: variant.id, name: variant.name, group: child.name });
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
