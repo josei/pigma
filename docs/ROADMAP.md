@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1038 unit tests / 111 files**, **255 browser tests passing / 0 failing**,
+Last verified: **1041 unit tests / 111 files**, **255 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -144,7 +144,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 **No failing specs.** The suite is green: `CI=true npm run test:browser` = **255
 passed / 0 failed**, measured twice back-to-back, with **0 orphan processes**;
-`npx vitest run` = **1038 passing / 111 files**, deterministic whether or not
+`npx vitest run` = **1041 passing / 111 files**, deterministic whether or not
 `dist/` has been built. Every item previously listed here
 (B29c, B29d, B31b, B31c, B33a, B33b, B28b) now passes and has been removed.
 
@@ -235,6 +235,13 @@ against the REST vocabulary, while the native wire has **`SWAP_STATE`** with a
 destination GUID. The first two were bugs that a name mismatch disguised; the third
 is a **decision** that may have to be reversed. Anyone reading this project should
 check which vocabulary a claim was reasoned against before trusting it.
+
+**And the remedy has now been APPLIED, not merely described.** The withdrawn
+variant swap was restored (`SWAP_STATE`), and the fix for the naming problem is a
+**rule**: the model uses Figma's **NATIVE** name and handles the **REST** spelling
+as an importer **alias** (`CHANGE_TO` -> `SWAP_STATE`) - one vocabulary in the
+model, and a REST-sourced document still lands. That is the sub-class closed by
+policy rather than by a third patch.
 
 The lesson is in the method, not the list: **schema presence and panel presence are not evidence.** Items 1, 2, 4, 5 and 6 all had a plausible-looking implementation; items 3 and 6 had no user-visible symptom at all, which is why only probing or measuring finds them. A reader should treat "the field exists" and "the control is rendered" as **unproven** until something drives the path end to end.
 
