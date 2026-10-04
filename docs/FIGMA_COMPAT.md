@@ -68,7 +68,7 @@ Legend: **✅** survives · **≈** survives with a stated approximation ·
 | Auto layout (direction, spacing, padding, alignment, sizing) | ✅ | ✅ | | test-backed: `src/figma` unit suite |
 | Auto layout: wrap | ✅ | ✅ | | test-backed: `src/figma` unit suite |
 | Auto layout: **grid** | ❌ | ❌ | No model equivalent — reported as `autoLayout:GRID` | documented-from-code: no model equivalent, reported as `autoLayout:GRID` |
-| Prototype interactions (triggers, actions, overlay) | ✅ | **❌** | `interactions` goes **1 -> 0** across the binary round trip (probe). The editor and the REST import are unaffected - this is the `.fig` EGRESS losing them. | test-backed: `b14-presentation`, `b21-prototype-inspect`; loss measured by `tests/figma/roundTripLoss.test.ts` |
+| Prototype interactions (triggers, actions, overlay) | ✅ | **❌** | `interactions` goes **1 -> 0** across the binary round trip (probe), so **prototype links vanish through `.fig`**. The editor and the REST import are unaffected - this is EGRESS losing them. `PrototypeInteraction` is a real mapper both ways; **the importer just reads none of it today** (see the shapes section above). | test-backed: `b14-presentation`, `b21-prototype-inspect`; loss measured by `tests/figma/roundTripLoss.test.ts` |
 | Prototype transitions incl. smart animate | ✅ | ✅ | Duration and type carried | test-backed: `b33-animate-scroll` |
 | Unknown / future node types | ❌ | ❌ | Reported as `nodeType:<TYPE>`; the source object is still preserved in `raw` | documented-from-code: reported as `nodeType:<TYPE>` |
 
@@ -86,12 +86,14 @@ fields the schema defines and **drops the rest with no warning**. So a field
 Pigma models, and even writes into the message, can still be discarded on its way
 to bytes.
 
-**15 fields were CONFIRMED LOST** by that probe. **Two are fixed** and **13 are
-being addressed** - none of the 13 is claimed fixed here, because a round trip has
+**15 fields were CONFIRMED LOST** by that probe. **Three are fixed** and **12 are
+being addressed** - none of the 12 is claimed fixed here, because a round trip has
 not proved it yet.
 
-**Fixed (2):** `dashPattern` and `windingRule` - both **wire-name** bugs, not
-schema limits (see below).
+**Fixed (3):** `dashPattern` and `windingRule` - both **wire-name** bugs, not
+schema limits (see below) - and **`layoutGrids`**, which is now written
+(`modelExport.ts`, `toNativeLayoutGrid`) and **proven both ways** through the real
+binary round trip.
 
 **Being addressed (13), with the AUTHORITATIVE wire names** the editor read out of
 the decoded schema. These names are the **plan**, not a result:
@@ -108,7 +110,6 @@ the decoded schema. These names are the **plan**, not a result:
 | grid columns/rows/gaps | `gridColumns` / `gridRows` / the gaps |
 | grid anchors | `gridColumnAnchor` / `gridRowAnchor` - **`Anchor`, not `AnchorIndex`** |
 | `textAutoResize` | `textAutoResize` |
-| `layoutGrids` | `layoutGrids` |
 
 **No wire name exists for two of the fifteen** - so no rename can fix them:
 `overflowDirection` is **not in the schema at all**, and no wire name has been
@@ -133,11 +134,78 @@ Both of these are the same lesson, and it is why they are called out together: a
 `windingRule` were filed as losses caused by the third-party encoder; both were
 really Pigma writing a name the schema does not use.
 
-### Still unknown
+### What the round-84 probe measured
 
-**Image, grid and `componentProperties` fields remain UNPROBED.** They are
-recorded here as **unknown**, not as safe - which is the whole point of the
-correction above.
+The three fields that were previously **unknown** are now two measured results and
+one that is still genuinely unknown:
+
+- **Image fills - NOT a defect: an API CONTRACT.** The ref **is** written
+  (`fillPaints` with an `imageRef`) and the paint is resolved through the export
+  **images map**, so it depends on the **caller supplying the bytes**. That is a
+  contract rather than a loss, because a `.fig` carries images as **separate
+  archive entries** - the paint cannot carry them inline. Related: Pigma's
+  `naturalWidth` / `naturalHeight` / `dataUrl` / `scalingFactor` are **conveniences
+  with no wire counterpart**.
+- **Grid fields - LOST.** Nothing writes them. That was expected, and it is now
+  **measured rather than assumed**.
+- **`componentProperties` - STILL UNKNOWN.** The probe was **inconclusive**: the
+  test component carried no properties, so an `undefined` result proves nothing.
+  **An inconclusive probe is not a cleared candidate**, and this one has not been
+  cleared.
+
+### The grid anchors cannot be converted - and it is not a naming bug
+
+`gridColumnAnchor` / `gridRowAnchor` are **GUIDS** in the native schema: Figma
+anchors a grid child to a track **NODE**. Our model stores an **index**
+(`gridColumnAnchorIndex`) and its tracks are `GridTrackSize` **numbers**, not
+nodes - so there is **no guid to convert from**. Unlike `dashPattern` and
+`windingRule`, no rename can fix this. The fields stay unwritten and the field
+check reports them. The fix would be a **MODEL change** - carry the track nodes,
+or carry the guids alongside the indices - and **it is not done**.
+
+What such a change would **touch**: the `GridTrackSize` shape, the layout engine
+(`layoutGridContainer`), the panel's track editor, and validation. **None of it is
+done**, and this is a model gap rather than a mapping one - no wire-name fix
+reaches it.
+
+### Style ids are not expressible today
+
+A `StyleId` is **`{ guid: GUID, assetRef: AssetRef }`**, while our model stores
+styles as **strings** and carries **neither** - so there is nothing to write into
+the guid field. The minimal fix is a **model change** (carry a guid per style);
+its cost is being reported by the editor. **It is not done.**
+
+### `CHANGE_TO` and `SCROLL_TO`: UNDER RE-EXAMINATION
+
+The model declares only `NAVIGATE` / `SWAP` / `OVERLAY` and documents a
+withdrawal of `SCROLL_TO` and `CHANGE_TO` on the grounds that **"the model cannot
+express either target"** (`src/model/types.ts`). **That reasoning was made against
+the REST vocabulary, and the round-74 withdrawal may therefore be wrong.**
+
+The **NATIVE** wire has **`SWAP_STATE`** - Figma's own name for that variant swap -
+carrying a **destination GUID** in the action. If the destination is expressible
+after all, the premise is false and the withdrawal **reverses**.
+
+**State: UNDER RE-EXAMINATION, not settled.** The editor is re-examining it now.
+If it reverses, this is a **feature recovered**, not a bug fixed.
+
+**The class is worth naming** (see the pattern section of the ROADMAP): this is the
+**third** decision made against the **REST** vocabulary that the **NATIVE** one
+contradicts - after `dashPattern` (`strokeDashes` vs `dashPattern`) and
+`windingRule` (`EVENODD` vs `ODD`).
+
+### The two shapes the editor established - the plan for the writes in progress
+
+- **`LayoutGrid`** is a **near match** to our model: `count` <-> `numSections`, and
+  `type` / `axis` derive from our `pattern`.
+- **`PrototypeInteraction` is a REAL MAPPER both ways**: `PrototypeEvent.interactionType`
+  carries the trigger, `PrototypeAction.transitionNodeID` the destination **GUID**,
+  alongside `navigationType` / `connectionType` / `connectionURL` and the transition
+  fields.
+
+**The importer reads NONE of that today, so prototype links vanish through
+`.fig`.** That is why the "Prototype interactions" row above is a **LOSS, not an
+OK** - and it stays a loss until the write lands.
 
 ### In progress
 
