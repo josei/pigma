@@ -30,7 +30,7 @@ import type { PrototypeActionKind } from '../model/prototype';
 import {
   componentLibrary,
   componentPropertiesOf,
-  componentSetOf,
+  propertyOwnerOf,
   describeVariant,
   findVariant,
   parseVariantName,
@@ -1407,13 +1407,14 @@ function VariantsSection({ node }: { node: SceneNode }) {
     );
   }
 
-  const set: ComponentNode | null = isSet
-    ? (node as ComponentNode)
-    : isInstance
-      ? componentSetOf(file, (node as InstanceNode).componentId)
-      : componentSetOf(file, node.id);
+  // Definitions come from the node that OWNS them — the component set for a
+  // variant, or the main component itself when it is standalone. See
+  // `propertyOwnerOf`: resolving an instance to its own node returned no
+  // definitions and hid every property control.
+  const owner = propertyOwnerOf(file, node);
+  const set: ComponentNode | null = owner?.type === 'COMPONENT_SET' ? owner : isSet ? (node as ComponentNode) : null;
   const options = set ? variantOptions(set) : {};
-  const definitions = set ? componentPropertiesOf(set) : componentPropertiesOf(node as ComponentNode);
+  const definitions = owner ? componentPropertiesOf(owner) : {};
   const values: Record<string, ComponentPropertyValue> = isInstance
     ? resolvedProperties(file, node as InstanceNode)
     : Object.fromEntries(

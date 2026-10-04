@@ -16,8 +16,18 @@ import { emptyFile } from './validate';
 import { parseFile, serializeFile } from './serialize';
 import { createComponentNode, createFrameNode, createTextNode } from './factory';
 import { syncInstances, instanceChildId } from './instances';
-import { addComponentProperty, instancePropertiesOf, setInstanceProperty, setPropertyReference } from './variants';
+import {
+  addComponentProperty,
+  componentPropertiesOf,
+  instancePropertiesOf,
+  propertyOwnerOf,
+  resolvePropertyReferences,
+  resolvedProperties,
+  setInstanceProperty,
+  setPropertyReference,
+} from './variants';
 import { findNode, updateNode } from './tree';
+import { createComponentSet } from './variants';
 import { createRectNode } from './factory';
 import type { ComponentNode, ContainerNode, InstanceNode, PigmaFile, SceneNode } from './types';
 
@@ -189,6 +199,79 @@ describe('component slots, step 1', () => {
     });
     const synced = syncInstances(cleared);
     expect(slotChildren({ ...withContent, document: synced }, instanceId).map((child) => child.name), 'reset must restore the default').toEqual(['Alpha label']);
+  });
+
+  it('offers every property control for an instance of a STANDALONE component', () => {
+    // The defect QA pinned: the panel resolved definitions from the instance
+    // node, which owns none, so BOOLEAN, TEXT and INSTANCE_SWAP controls all
+    // disappeared for instances of standalone components.
+    const { file, first, instanceId } = scene();
+    let withProperties = addComponentProperty(file, first, 'BOOLEAN', 'Show label', true);
+    withProperties = addComponentProperty(withProperties, first, 'TEXT', 'Label text', 'Default label');
+    withProperties = addComponentProperty(withProperties, first, 'INSTANCE_SWAP', 'Content', '');
+    const instance = findNode(withProperties.document, instanceId) as InstanceNode;
+    const owner = propertyOwnerOf(withProperties, instance);
+    expect(owner?.id, 'the owner must be the main component, not the instance').toBe(first);
+    const definitions = componentPropertiesOf(owner!);
+    expect(Object.keys(definitions).sort()).toEqual(['Content', 'Label text', 'Show label']);
+    expect(definitions['Show label']!.type).toBe('BOOLEAN');
+    expect(definitions['Label text']!.type).toBe('TEXT');
+    expect(definitions.Content!.type).toBe('INSTANCE_SWAP');
+    // The values the controls read already resolve, defaults included.
+    const values = resolvedProperties(withProperties, instance);
+    expect(values['Show label']).toBe(true);
+    expect(values['Label text']).toBe('Default label');
+  });
+
+  it('propagates a BOOLEAN and a TEXT value to the instance children', () => {
+    const { file, first, instanceId } = scene();
+    let withProperties = addComponentProperty(file, first, 'BOOLEAN', 'Show label', true);
+    withProperties = addComponentProperty(withProperties, first, 'TEXT', 'Label text', 'Default label');
+    // Bind the component's label to both properties, then drive them.
+    const labelId = childrenOf(withProperties, slotOf(withProperties, first).id)[0]!.id;
+    const bound = setPropertyReference(setPropertyReference(withProperties, labelId, 'visible', 'Show label'), labelId, 'characters', 'Label text');
+    const instanceLabelId = instanceChildId(instanceId, labelId);
+
+    const shown = resolvedProperties(bound, findNode(bound.document, instanceId) as InstanceNode);
+    const child = findNode(bound.document, instanceLabelId) as SceneNode;
+    expect(resolvePropertyReferences(child, shown)).toEqual({ visible: true, characters: 'Default label' });
+
+    const hidden = setInstanceProperty(bound, instanceId, 'Show label', false);
+    const changed = setInstanceProperty(hidden, instanceId, 'Label text', 'Edited text');
+    const values = resolvedProperties(changed, findNode(changed.document, instanceId) as InstanceNode);
+    expect(resolvePropertyReferences(findNode(changed.document, instanceLabelId) as SceneNode, values)).toEqual({
+      visible: false,
+      characters: 'Edited text',
+    });
+  });
+
+  it('keeps the values through a JSON round trip, for a standalone component', () => {
+    const { file, first, instanceId } = scene();
+    let withProperties = addComponentProperty(file, first, 'BOOLEAN', 'Show label', true);
+    withProperties = addComponentProperty(withProperties, first, 'TEXT', 'Label text', 'Default label');
+    const changed = setInstanceProperty(setInstanceProperty(withProperties, instanceId, 'Show label', false), instanceId, 'Label text', 'Round tripped');
+    const reloaded = parseFile(serializeFile(changed)).file!;
+    const instance = findNode(reloaded.document, instanceId) as InstanceNode;
+    expect(propertyOwnerOf(reloaded, instance)?.id).toBe(first);
+    expect(Object.keys(componentPropertiesOf(propertyOwnerOf(reloaded, instance)!)).sort()).toEqual(['Label text', 'Show label']);
+    const values = resolvedProperties(reloaded, instance);
+    expect(values['Show label']).toBe(false);
+    expect(values['Label text']).toBe('Round tripped');
+  });
+
+  it('leaves an instance inside a component set unchanged', () => {
+    // Inside a set the definitions still come from the SET, which every variant
+    // shares — the standalone case must not have changed that.
+    const { file, first, second, instanceId } = scene();
+    // A real set first, then the property: `addComponentProperty` routes it to
+    // the set, which every variant shares.
+    const { file: grouped, setId } = createComponentSet(file, [first, second], 'Set');
+    const withSet = addComponentProperty(grouped, first, 'BOOLEAN', 'Show label', true);
+    const instance = findNode(withSet.document, instanceId) as InstanceNode;
+    const owner = propertyOwnerOf(withSet, instance);
+    expect(owner?.type, 'a set instance still resolves to the set').toBe('COMPONENT_SET');
+    expect(owner?.id).toBe(setId);
+    expect(Object.keys(componentPropertiesOf(owner!)), 'the shared property survives on the set').toContain('Show label');
   });
 
   it('needs no model change for the defaults half', () => {
