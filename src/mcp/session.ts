@@ -42,6 +42,36 @@ export interface DocumentSnapshot {
 }
 
 /**
+ * The selected ids that still exist in the document.
+ *
+ * A write can delete a node the caller had selected — the document is replaced
+ * wholesale — and nothing else prunes the selection, so a harness would be told
+ * about an id that no longer resolves. Every session reports only live ids.
+ */
+export function liveSelection(file: PigmaFile | null, ids: string[]): string[] {
+  if (!file) return [];
+  // `findNode` answers null for a missing id, so test for presence, not undefined.
+  return ids.filter((id) => findNode(file.document, id) !== null);
+}
+
+/**
+ * Refuse a write prepared against an older revision of the document.
+ *
+ * One implementation for every path: the relay client calls it before applying a
+ * remote write, and both in-process sessions call it from `setFile` and
+ * `setSelection`. The message is the relay's, so a caller sees one behaviour
+ * whichever session it is talking to.
+ */
+export function checkRevision(current: number, expected: number | undefined): void {
+  if (expected === undefined) return;
+  if (expected !== current) {
+    throw new McpToolError(
+      `stale revision: editor is at ${current}, caller read ${expected} (local changes happened in between)`,
+    );
+  }
+}
+
+/**
  * Settle a document and refuse it when it breaks the invariants.
  *
  * Every MCP write goes through this, whichever session it lands on, so the
@@ -69,14 +99,24 @@ export function prepareWrite(next: PigmaFile): PigmaFile {
 export function createSession(initial: PigmaFile | null = null): DocumentSession {
   let file = initial;
   let selection: string[] = [];
+  // Every change to this session goes through the two setters below, so a counter
+  // here is the same "revision" the relay path exposes: a caller that read an
+  // older revision is refused instead of silently overwriting.
+  let revision = 0;
   return {
     getFile: () => file,
-    setFile: (next) => {
+    getSnapshot: () => ({ file, revision }),
+    setFile: (next, options) => {
+      checkRevision(revision, options?.expectedRevision);
       file = prepareWrite(next);
+      selection = liveSelection(file, selection);
+      revision += 1;
     },
-    getSelection: () => [...selection],
-    setSelection: (ids) => {
+    getSelection: () => liveSelection(file, selection),
+    setSelection: (ids, options) => {
+      checkRevision(revision, options?.expectedRevision);
       selection = [...ids];
+      revision += 1;
     },
   };
 }

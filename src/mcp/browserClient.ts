@@ -13,7 +13,7 @@
  * moved on, instead of silently clobbering local work.
  */
 import type { PigmaFile } from '../model/types';
-import type { DocumentSession } from './session';
+import { checkRevision, type DocumentSession } from './session';
 
 export type BridgeStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -120,13 +120,10 @@ export function connectBridge(options: BridgeClientOptions): BridgeClient {
     const command = JSON.parse((event as MessageEvent<string>).data) as RelayCommand;
     void (async () => {
       try {
-        const expected = command.params?.expectedRevision;
-        if (expected !== undefined && expected !== revision) {
-          await post({
-            id: command.id,
-            ok: false,
-            error: `stale revision: editor is at ${revision}, caller read ${expected} (local changes happened in between)`,
-          });
+        try {
+          checkRevision(revision, command.params?.expectedRevision);
+        } catch (error) {
+          await post({ id: command.id, ok: false, error: (error as Error).message });
           return;
         }
         switch (command.method) {
