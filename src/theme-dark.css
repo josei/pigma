@@ -1,0 +1,33 @@
+/**
+ * Pigma dark theme.
+ *
+ * Figma's dark UI tokens, applied by overriding the same CSS variables the light
+ * theme defines (see docs/UI_CONTRACT.md). Only the tokens change: every
+ * component keeps its geometry, so the light theme is untouched.
+ *
+ * Owned by the editor agent; the light tokens live in src/styles.css.
+ */
+:root[data-theme='dark'] {
+  --figma-bg: #2c2c2c;
+  --figma-bg-secondary: #383838;
+  --figma-bg-tertiary: #444444;
+  --figma-border: #444444;
+  --figma-border-strong: #555555;
+  --figma-text: #ffffff;
+  --figma-text-secondary: rgba(255, 255, 255, 0.7);
+  --figma-text-tertiary: rgba(255, 255, 255, 0.4);
+  --figma-brand: #0d99ff;
+  --figma-brand-hover: #4ab4ff;
+  --figma-selected-bg: #394360;
+  --figma-selected-border: #0d99ff;
+  --figma-onselected-border: #bde3ff;
+  --canvas-bg: #1e1e1e;
+  --figma-danger: #f24822;
+  --figma-success: #14ae5c;
+
+  --shadow-menu: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-toolbar: 0 2px 14px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
+}

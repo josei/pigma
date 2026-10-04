@@ -1,0 +1,9 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+data/
+
+# Desktop shell build output: binaries are never committed.
+src-tauri/target/
+src-tauri/gen/

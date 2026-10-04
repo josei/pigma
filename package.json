@@ -1,0 +1,46 @@
+{
+  "name": "pigma",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Pigma - an open-source, Figma-inspired browser design editor",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build && node scripts/desktop-assets.mjs",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --pretty",
+    "test:browser": "playwright test",
+    "test:browser:install": "playwright install chromium",
+    "mcp": "vite-node src/mcp/bin.ts",
+    "relay": "vite-node server/index.ts"
+  },
+  "dependencies": {
+    "@jitl/quickjs-wasmfile-release-sync": "0.29.2",
+    "@resvg/resvg-js": "^2.6.2",
+    "fflate": "^0.8.2",
+    "fzstd": "^0.1.1",
+    "kiwi-schema": "^0.5.0",
+    "polygon-clipping": "^0.15.7",
+    "quickjs-emscripten": "^0.29.2",
+    "quickjs-emscripten-core": "0.29.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "ajv": "^8.17.1",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vite-node": "^2.1.8",
+    "vitest": "^2.1.8"
+  }
+}

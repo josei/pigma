@@ -1,0 +1,10 @@
+# Build context for server/Dockerfile: keep it to sources + manifests.
+node_modules
+dist
+data
+.git
+.omp
+**/*.test.ts
+**/*.test.tsx
+tests
+docs
