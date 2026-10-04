@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1009 unit tests / 108 files**, **253 browser tests passing / 0 failing**,
+Last verified: **1016 unit tests / 109 files**, **254 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -33,7 +33,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 | M8 | Pages & input — pages, shortcuts, nudging | **Shipped** | `b6-pages`, `b3-manipulation` (arrow nudge 1px / Shift 10px) |
 | M9 | UI fidelity vs Figma's documented UI | **Shipped** | `b9-layout`, `b10-fidelity`; parity diff 11/11, every delta 0 — reproducible: `node scripts/parity-spec.mjs` against a running dev server (exits non-zero on any row over tolerance) |
 | M10 | Layout systems — auto layout, wrap, sizing, constraints | **Shipped** | Row/Column: `b13-autolayout`, `b23-round9` (wrap packs lines, line gap, counter align), `b22-round8` (min/max + persistence), `b25-round11` (constraint icons, no overflow). **Grid auto layout — shipped for a SUBSET**: `LayoutMode` gains `GRID`, with Figma's own field names (`gridColumns`/`gridRows`/`GridTrackSize`, per-child `gridColumnAnchorIndex`/`gridColumnSpan`/...), FIXED tracks taking their pixels and the remainder shared by FLEX weights, row-major placement that skips manually anchored cells, honoured spans and a bounded scan; it is reached through `reflowTree`, the same choke point as the row/column flows, so every write path reflows a grid. Evidence: unit `src/model/gridLayout.test.ts`, browser `b57-grid-autolayout` (a 300-wide frame places three children at x 16 / 156 / 16 with the third wrapping to row 2; a column switched to FIXED 1px reflows to widths 1 / 255 / 1; resizing the frame resizes the fractional track). **Gaps, named: NOT full grid parity.** `gridRowSizing` is not implemented (the row count is derived); implicit tracks repeat the **last** declared track; **negative anchors** (Figma's -1) are unsupported; there is **no dense packing**; the track list **cannot be reordered** in the UI. Source: https://help.figma.com/hc/en-us/articles/31289469907863-Use-the-grid-auto-layout-flow |
-| M11 | Components & design systems | **Shipped** | Components, instances and override isolation: `b12-components`. Variant sets: `b12` (two components combine into a set). Styles, variable collections and binding: `b20-vector-styles-variables`. Library publish and instance insertion: `b31-libraries` (`B31a` publish status, `B31b` an `INSTANCE` node appears, `B31c` master edit + republish). Unit: `library.test.ts`, `instances.test.ts` |
+| M11 | Components & design systems | **Shipped** | Components, instances and override isolation: `b12-components`. **Component slots / instance swap - shipped for a SUBSET**: `NodeOverride.children` is the slot content and `materializeInstance` **merges**, so a component edit re-materialises the subtree **without wiping what the instance put in the slot**; `ComponentPropertyType` gains `'SLOT'`; the importer accepts Figma's `SLOT` property instead of reporting it unsupported; `resolvePropertyReferences` now honours `INSTANCE_SWAP`, and the validator keeps `componentPropertyReferences` / `componentProperties` across a load. **Gaps, named - NOT full slot parity:** `preferredValues` exists but the INSTANCE_SWAP picker still offers **every** component rather than the property's preferred set; there is **no drag-to-rearrange** and **no panel slot row**; per-slot defaults beyond the component's own children, and **nested slots**, are not modelled. Sources, by name: the Figma Help Center guide on **component slots**, and the Plugin API's **`ComponentPropertyType` / `addComponentProperty` with `'SLOT'`** | Variant sets: `b12` (two components combine into a set). Styles, variable collections and binding: `b20-vector-styles-variables`. Library publish and instance insertion: `b31-libraries` (`B31a` publish status, `B31b` an `INSTANCE` node appears, `B31c` master edit + republish). Unit: `library.test.ts`, `instances.test.ts` |
 | M12 | Prototyping — interactions, flows, overlays, presentation | **Shipped** | Start frame + hotspot: `b14-presentation`. Triggers incl. ON_HOVER, flows, overlay stacking: `b21-prototype-inspect`. Frame **scrolling** in presentation and **smart-animate interpolation** (35 intermediate samples between the two endpoints, read from the animated layer's computed CSS transform): `b33-animate-scroll`. Unit: `animate.test.ts`, `overlay.test.ts`, `prototype.test.ts` |
 | M13 | Collaboration — presence, follow, conflict, E2E rooms | **Shipped** (local relay) | Presence, cursors, follow: `b28-rooms` 4/4 — two contexts join the same room with different nicknames, the remote cursor is a `<g>` carrying an arrow path and a `<text>` label with the peer nickname, remote edits reach the peer view, follow changes the viewBox and Esc stops it. Conflict resolution: `b32-conflict` — edits to different nodes both survive, edits to the same node converge to one value on both sides. Share links: `b35-share-link` 4/4. Unit: `merge.test.ts`, `presence.test.ts`, `e2e.test.ts`, `share.test.ts`. **Caveat: every spec here runs against a LOCAL relay started by the fixture; the hosted relay at getpigma.com is not exercised by QA.** |
 | M14 | Developer handoff — inspect, redlines, codegen | **Shipped** | `b21-prototype-inspect` (Inspect tab renders measurements + CSS and React code; the Show CSS/React controls are clicked, not just present) |
@@ -132,7 +132,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 **No failing specs.** The suite is green: `CI=true npm run test:browser` = **249
 passed / 0 failed**, measured twice back-to-back, with **0 orphan processes**;
-`npx vitest run` = **1009 passing / 108 files**, deterministic whether or not
+`npx vitest run` = **1016 passing / 109 files**, deterministic whether or not
 `dist/` has been built. Every item previously listed here
 (B29c, B29d, B31b, B31c, B33a, B33b, B28b) now passes and has been removed.
 
@@ -199,6 +199,21 @@ and **not one says "verified against Figma"**, because none is.
 brought into the repo as **committed fixtures** and diffed against the `DOCUMENTED`
 values - which turns those literals from memory into evidence. Until then, this
 row is a statement about our own consistency, not about Figma.
+
+### The pattern this project keeps finding: a feature that is present and does nothing
+
+**Six times now**, a capability has looked implemented - present in the schema, offered in the UI, or simply absent from anyone's suspicion - while the path that should exercise it did nothing. Every one was found by **PROBING a path** (driving it and measuring the result), never by reading the schema. That is the same method the external audit used, and it is the most valuable thing this project has learned about itself.
+
+| # | Instance | What it looked like | What it was |
+| --- | --- | --- | --- |
+| 1 | `actions[0]` | a prototype with several actions | only the first one ran |
+| 2 | the imported `OVERLAY` | a prototype overlay that was imported | it never overlaid |
+| 3 | `liveSelection`'s cost | a correct-looking de-duplication | a full tree walk per selected id - O(selection x nodes) (see item (e) above) |
+| 4 | `resolvePropertyReferences` | an `INSTANCE_SWAP` property offered in the panel and stored on the instance | it resolved **nothing**: only `'visible'` and `'characters'` were handled |
+| 5 | the validator | instance property values and layer bindings | **dropped on load** - `componentPropertyReferences` and `componentProperties` did not survive a save |
+| 6 | the instance property panel | a documented "switch per variant property plus BOOLEAN/TEXT/INSTANCE_SWAP controls" on an instance | it can **never render**: `componentPropertiesOf` returns `{}` for anything that is not a `COMPONENT`/`COMPONENT_SET`, and the panel builds its definitions from the *selected* node. Pinned by `b58-component-slots` |
+
+The lesson is in the method, not the list: **schema presence and panel presence are not evidence.** Items 1, 2, 4, 5 and 6 all had a plausible-looking implementation; items 3 and 6 had no user-visible symptom at all, which is why only probing or measuring finds them. A reader should treat "the field exists" and "the control is rendered" as **unproven** until something drives the path end to end.
 
 ### External audit - what it found
 

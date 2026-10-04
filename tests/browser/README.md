@@ -94,9 +94,9 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **253 browser tests passing / 0 failing**, measured twice
+Current state: **254 browser tests passing / 0 failing**, measured twice
 back-to-back (exit 0 both runs) with **0 orphan processes**. `npx vitest run` =
-1009 passing across 108 files.
+1016 passing across 109 files.
 
 ### Round 12 - what is and is not covered
 
@@ -494,6 +494,13 @@ the frame resizes the fractional track, and the grid TRACK editor is asserted to
 be a separate control from the layout GUIDES (adding a guide moves neither the
 children nor the layout mode, and leaving the grid direction removes the track
 editor while the guides stay).
+
+`b58-component-slots` found the SIXTH instance of this project's recurring
+pattern - a feature present in the schema and in the UI that does nothing. The
+panel documents an instance showing its component's variant/BOOLEAN/TEXT/
+INSTANCE_SWAP controls, but `componentPropertiesOf` returns `{}` for anything
+that is not a COMPONENT/COMPONENT_SET and the panel builds its definitions from
+the SELECTED node, so on an instance they can never render. The spec pins that.
 
 New specs: `b36-shapes` (line tool geometry and rendering), `b37-pwa-offline`
 (service-worker registration and an offline reload against the built app served
