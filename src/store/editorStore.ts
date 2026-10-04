@@ -172,7 +172,7 @@ import {
   withImageFill,
   type ImageCrop,
 } from '../model/image';
-import { instanceAncestryOf, withOverride } from '../model/instances';
+import { instanceAncestryOf, syncInstances, withOverride } from '../model/instances';
 import { documentProblems } from '../model/invariants';
 import type { NodeOverride } from '../model/types';
 
@@ -404,6 +404,14 @@ export interface EditorState {
   createComponentSet: () => void;
   setInstanceVariant: (instanceId: string, property: string, value: string) => void;
   setInstanceProperty: (instanceId: string, name: string, value: ComponentPropertyValue) => void;
+  /**
+   * Put content into a slot, or clear it back to the component's default.
+   *
+   * The content is CLONED from the given nodes, so using a selection as slot
+   * content leaves the originals where they are (Figma moves them instead).
+   * `slotNodeId` is the component node the slot property is bound to.
+   */
+  setSlotContent: (instanceId: string, slotNodeId: string, contentIds: string[] | null) => void;
   addComponentProperty: (componentId: string, type: 'BOOLEAN' | 'TEXT' | 'INSTANCE_SWAP', name: string, defaultValue: ComponentPropertyValue) => void;
   addVariableCollection: () => void;
   addVariable: (collectionId: string, type: VariableType) => void;
@@ -1478,6 +1486,35 @@ export const useEditor = create<EditorState>((set, get) => ({
     const next = setInstanceVariantOp(get().file, instanceId, property, value);
     if (next === get().file) return;
     get().apply(`Set ${property}`, () => next);
+  },
+
+  setSlotContent: (instanceId, slotNodeId, contentIds) => {
+    const state = get();
+    const instance = findNode(state.file.document, instanceId);
+    if (!instance || instance.type !== 'INSTANCE') return;
+    const content = (contentIds ?? [])
+      .map((id) => findNode(state.file.document, id))
+      .filter((node): node is SceneNode => !!node && node.type !== 'DOCUMENT' && node.type !== 'CANVAS')
+      // The instance itself, or anything inside it, cannot become its own slot
+      // content: cloning it there would nest the instance inside itself.
+      .filter((node) => node.id !== instanceId && instanceAncestryOf(state.file.document, node.id)?.instance.id !== instanceId)
+      .map((node) => cloneSubtree(node).node);
+    get().apply(content.length > 0 ? 'Set slot content' : 'Reset slot content', (file) => {
+      const document = updateNode(file.document, instanceId, (node) => {
+        if (node.type !== 'INSTANCE') return node;
+        const overrides = { ...(node.overrides ?? {}) };
+        const existing = overrides[slotNodeId] ?? {};
+        if (content.length > 0) {
+          overrides[slotNodeId] = { ...existing, children: content };
+        } else {
+          const { children: _dropped, ...rest } = existing as { children?: SceneNode[] };
+          if (Object.keys(rest).length > 0) overrides[slotNodeId] = rest;
+          else delete overrides[slotNodeId];
+        }
+        return { ...node, overrides } as SceneNode;
+      });
+      return { ...file, document: syncInstances(document) };
+    });
   },
 
   setInstanceProperty: (instanceId, name, value) => {

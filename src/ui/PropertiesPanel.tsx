@@ -31,6 +31,7 @@ import {
   componentLibrary,
   componentPropertiesOf,
   propertyOwnerOf,
+  slotTargetsOf,
   describeVariant,
   findVariant,
   parseVariantName,
@@ -40,7 +41,7 @@ import {
 } from '../model/variants';
 import type { ComponentNode, ComponentPropertyValue, InstanceNode } from '../model/types';
 import { staleLibraryInstances } from '../model/library';
-import type { AutoLayout, Constraints, GridTrackSize, LayoutGrid } from '../model/types';
+import type { AutoLayout, ComponentPropertyDefinition, Constraints, GridTrackSize, LayoutGrid } from '../model/types';
 import type { Effect } from '../model/types';
 import { absoluteBounds, findNode } from '../model/tree';
 import { roundTo as round } from '../model/matrix';
@@ -1377,6 +1378,7 @@ function VariantsSection({ node }: { node: SceneNode }) {
   const createComponentSet = useEditor((state) => state.createComponentSet);
   const setInstanceVariant = useEditor((state) => state.setInstanceVariant);
   const setInstanceProperty = useEditor((state) => state.setInstanceProperty);
+  const setSlotContent = useEditor((state) => state.setSlotContent);
   const addComponentProperty = useEditor((state) => state.addComponentProperty);
   const [newName, setNewName] = useState('');
   const [newValue, setNewValue] = useState('');
@@ -1425,6 +1427,51 @@ function VariantsSection({ node }: { node: SceneNode }) {
     : parseVariantName(node.name);
 
   const nonVariant = Object.entries(definitions).filter(([, definition]) => definition.type !== 'VARIANT');
+  // Slots: the component node each SLOT property is bound to, and what the
+  // instance currently supplies for it (an override of that node's children).
+  const slotNodes = new Map(slotTargetsOf(owner).map((entry) => [entry.property, entry.nodeId]));
+  const suppliedOf = (property: string): SceneNode[] | null => {
+    if (!isInstance) return null;
+    const slotNodeId = slotNodes.get(property);
+    if (!slotNodeId) return null;
+    const overrides = (node as InstanceNode).overrides ?? {};
+    return overrides[slotNodeId]?.children ?? null;
+  };
+  const slotRow = (property: string, definition: ComponentPropertyDefinition) => {
+    const slotNodeId = slotNodes.get(property);
+    const supplied = suppliedOf(property);
+    if (!slotNodeId) {
+      return <span style={{ color: 'var(--figma-text-secondary)' }}>No slot is bound to this property</span>;
+    }
+    return (
+      <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <span style={{ color: 'var(--figma-text-secondary)' }}>
+          {supplied ? `${supplied.length} layer${supplied.length === 1 ? '' : 's'} supplied` : 'Component default'}
+        </span>
+        <button
+          type="button"
+          className="segmented__option"
+          aria-label={`Use selection as ${property}`}
+          data-tooltip="Clone the selected layers into this slot"
+          disabled={!isInstance || selection.length === 0}
+          onClick={() => setSlotContent(node.id, slotNodeId, selection)}
+        >
+          Use selection
+        </button>
+        <button
+          type="button"
+          className="segmented__option"
+          aria-label={`Clear ${property}`}
+          data-tooltip="Restore the component's own content"
+          disabled={!supplied}
+          onClick={() => setSlotContent(node.id, slotNodeId, null)}
+        >
+          Clear
+        </button>
+        <span style={{ display: 'none' }}>{definition.type}</span>
+      </span>
+    );
+  };
 
   return (
     <div className="section">
@@ -1492,6 +1539,13 @@ function VariantsSection({ node }: { node: SceneNode }) {
                   <option key={entry.id} value={entry.id}>{entry.name}</option>
                 ))}
               </select>
+            ) : null}
+            {definition.type === 'SLOT' ? (
+              // The slot row: the content an instance supplies for the slot the
+              // property is bound to, taken from the current selection.
+              <span className="prop-row__value" data-testid={`slot-row-${name}`}>
+                {slotRow(name, definition)}
+              </span>
             ) : null}
           </div>
         ))}
