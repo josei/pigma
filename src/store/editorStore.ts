@@ -126,6 +126,7 @@ import {
   createComponentSet as createComponentSetOp,
   setInstanceProperty as setInstancePropertyOp,
   setInstanceVariant as setInstanceVariantOp,
+  swapInstanceComponent,
 } from '../model/variants';
 import type { ComponentPropertyValue, DevStatus, OverlayPosition, PrototypeAction } from '../model/types';
 import {
@@ -403,6 +404,8 @@ export interface EditorState {
   setBooleanMode: (mode: BooleanMode) => void;
   createComponentSet: () => void;
   setInstanceVariant: (instanceId: string, property: string, value: string) => void;
+  /** Apply a SWAP_STATE action: point the instance at another variant component. */
+  swapInstanceState: (instanceId: string, componentId: string) => void;
   setInstanceProperty: (instanceId: string, name: string, value: ComponentPropertyValue) => void;
   /**
    * Put content into a slot, or clear it back to the component's default.
@@ -1480,6 +1483,10 @@ export const useEditor = create<EditorState>((set, get) => ({
     }
     get().apply('Create component set', () => result.file);
     set({ selection: [result.setId] });
+  },
+
+  swapInstanceState: (instanceId, componentId) => {
+    get().apply('Swap variant state', (file) => swapInstanceComponent(file, instanceId, componentId));
   },
 
   setInstanceVariant: (instanceId, property, value) => {

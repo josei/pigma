@@ -278,14 +278,14 @@ export interface PrototypeAction {
   /**
    * How a NODE action reaches its destination, in Figma's terms.
    *
-   * Only the three playback honours: NAVIGATE pushes the frame, SWAP replaces it
-   * in place, OVERLAY opens it over the current one. Figma also has SCROLL_TO
-   * (scroll a frame to an offset) and CHANGE_TO (swap an interactive component's
-   * variant); the model cannot express either target, so they are NOT members —
-   * the importer reports them and drops the action rather than mapping them onto
-   * a frame navigation, which would silently play the wrong thing.
+   * The four playback honours: NAVIGATE pushes the frame, SWAP replaces it in
+   * place, OVERLAY opens it over the current one, and SWAP_STATE changes the
+   * instance's variant component in place (Figma's native name for what the REST
+   * API calls CHANGE_TO — the destination IS expressible, as `destinationId`).
+   * Figma also has SCROLL_TO; the model has no scroll offset, so it is NOT a
+   * member and the importer reports it rather than mapping it onto a navigation.
    */
-  navigation?: 'NAVIGATE' | 'SWAP' | 'OVERLAY';
+  navigation?: 'NAVIGATE' | 'SWAP' | 'OVERLAY' | 'SWAP_STATE';
   transition?: {
     type: string;
     duration?: number;

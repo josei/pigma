@@ -667,7 +667,15 @@ const ACTIONS: Record<string, PrototypeAction['type']> = { NODE: 'NODE', BACK: '
  * property set), so they are reported and the action dropped — never mapped onto
  * a frame navigation, which would play the wrong thing without saying so.
  */
-const NAVIGATIONS = new Set<NonNullable<PrototypeAction['navigation']>>(['NAVIGATE', 'SWAP', 'OVERLAY']);
+const NAVIGATIONS = new Set<NonNullable<PrototypeAction['navigation']>>(['NAVIGATE', 'SWAP', 'OVERLAY', 'SWAP_STATE']);
+
+/**
+ * The REST API calls the variant swap `CHANGE_TO`; the native wire calls it
+ * `SWAP_STATE`. Both mean the same action, and the model uses the NATIVE name
+ * (its other members are native too). This is the same vocabulary split that hid
+ * `dashPattern` and `windingRule`.
+ */
+const NAVIGATION_ALIASES: Record<string, NonNullable<PrototypeAction['navigation']>> = { CHANGE_TO: 'SWAP_STATE' };
 
 export function mapRestInteractions(
   interactions: FigmaRestNode['interactions'],
@@ -693,14 +701,15 @@ export function mapRestInteractions(
       if (action.destinationId !== undefined) mappedAction.destinationId = action.destinationId;
       if (action.url !== undefined) mappedAction.url = action.url;
       if (typeof action.navigation === 'string') {
-        if (!NAVIGATIONS.has(action.navigation as NonNullable<PrototypeAction['navigation']>)) {
+        const navigation = NAVIGATION_ALIASES[action.navigation] ?? action.navigation;
+        if (!NAVIGATIONS.has(navigation as NonNullable<PrototypeAction['navigation']>)) {
           ctx.report.addUnsupported({ nodeId: ctx.nodeId, path: ctx.path, feature: `navigation:${action.navigation}` });
           continue;
         }
-        mappedAction.navigation = action.navigation as PrototypeAction['navigation'];
+        mappedAction.navigation = navigation as PrototypeAction['navigation'];
         // Playback branches on `overlay`, so an imported OVERLAY must set it too,
         // or the action would navigate instead of overlaying.
-        if (action.navigation === 'OVERLAY') mappedAction.overlay = true;
+        if (navigation === 'OVERLAY') mappedAction.overlay = true;
       }
       if (action.transition) {
         mappedAction.transition = {

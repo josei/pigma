@@ -162,6 +162,24 @@ export function componentSetOf(file: PigmaFile, componentId: string): ComponentN
   return null;
 }
 
+/**
+ * Point an instance at another component — Figma's `SWAP_STATE` destination.
+ *
+ * The action's `transitionNodeID` is a component GUID, which is exactly what the
+ * model's `destinationId` holds, so a variant swap needs no new destination
+ * vocabulary: only this way to apply it.
+ */
+export function swapInstanceComponent(file: PigmaFile, instanceId: string, componentId: string): PigmaFile {
+  const component = findNode(file.document, componentId);
+  if (!component || (component.type !== 'COMPONENT' && component.type !== 'COMPONENT_SET')) return file;
+  const instance = findNode(file.document, instanceId);
+  if (!instance || instance.type !== 'INSTANCE') return file;
+  const document = updateNode(file.document, instanceId, (node) =>
+    node.type === 'INSTANCE' ? ({ ...node, componentId } as SceneNode) : node,
+  );
+  return { ...file, document: syncInstances(document) };
+}
+
 /** Switch an instance to another variant of its set. */
 export function setInstanceVariant(
   file: PigmaFile,
