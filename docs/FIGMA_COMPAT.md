@@ -202,16 +202,50 @@ field short in **form** - `extraScrollOffset` is a `Vector` and the model has no
 offset - but the missing part is the **semantics**: which coordinate space it
 targets, whether it clamps to the scroll range, and how playback applies it.
 
-### The remaining gap: the swap cannot be AUTHORED in the UI
+### The swap is AUTHORABLE and PROVEN
 
-`prototypeDestinations` lists the page's own `FRAME` / `COMPONENT` children, so a
-variant **component nested inside a component set cannot be chosen** - which means
-a swap action **cannot be created in the UI**, even though an imported document
-plays it correctly. **It is being done now**, and **nothing here claims the picker
-is fixed** until creation is proven end to end.
+`PrototypeActionKind` gains **`SWAP_STATE`**, `actionOfKind` builds it,
+`prototypeDestinations` returns a component set's variants **grouped by set name**
+with a "Set / Variant" label, and the panel offers **"Swap variant"** as a kind.
+Driving the panel end to end now works: the **destination select appears** and
+lists `Button / State=Default`-style entries, the **create button stays DISABLED
+until a destination is chosen**, and applying the link creates a `SWAP_STATE`
+action carrying the chosen `destinationId`. **Playback swaps the instance variant
+IN PLACE** - the presented frame and the navigation stack are untouched, the same
+assertion that proved the import path.
 
-The `.fig` mapper itself is **no longer a gap** - it is written and proven both
-ways (see the table row above).
+This section used to read "the MODEL is authorable, the PANEL is not yet". That was
+correct when written, and it was **driving the panel that corrected the editor's
+premise**: its smoke had reported that the kind control is not a `<select>` - it
+**is** one - and the real failures were two panel **conditions**: the Target row
+omitted `SWAP_STATE` (so the destination vanished), and the create button's
+disabled test evaluated to `false` for a swap (so an action could be created
+**pointing at nothing**). Both are fixed. Pinned by
+`b59-prototype-swap-authoring`, whose negative control (the `Back` kind offers no
+destination) keeps it from passing vacuously.
+
+**A deliberate decision worth recording: Smart animate stays NAVIGATE-only.** A
+swap *does* carry a transition in the model and the exporter writes it, but
+**playback does not apply one** (`swapInstanceState` changes the component in
+place, with no animation). Offering the row for a swap would therefore **promise an
+animation that does not play** - so it is withheld, on purpose.
+
+### The three map fixes
+
+- **(a) `DRAG` and (b) `MOUSE_IN` / `MOUSE_OUT` - FIXED**, by the
+  **native-vocabulary remedy**: the maps now list the native spellings
+  (`ON_DRAG` -> `DRAG`, `MOUSE_ENTER`/`MOUSE_LEAVE` -> `MOUSE_IN`/`MOUSE_OUT`)
+  instead of the REST ones. Each was a document being **silently dropped** on
+  import.
+- **(c) `FIXED_MIN` / `FIXED_MAX` - a MODEL gap, deliberately unmapped.** They are
+  **not** coerced into `MIN`/`MAX`: coercing would be **silently wrong**, while
+  leaving them unmapped makes the constraint **ABSENT rather than invented**. That
+  is the correct trade - an absent constraint is honest, a wrong one is not.
+
+**The vocabulary count STAYS AT FIVE.** (a) and (b) are fixes to the *same two
+maps* already counted as instances 4 and 5 - they are the remedy working, not new
+instances. **And the audit found no further gaps** in transitions, easings,
+navigation types or overlay positions.
 
 ### The two shapes the editor established - the plan for the writes in progress
 
