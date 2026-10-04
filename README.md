@@ -27,7 +27,7 @@ past drawing:
 - MCP bridge (connect, resilience, remote edit + undo round trip) and
   collaboration presence (cursors, follow)
 
-Evidence: **1046 unit tests across 111 files**, **261 browser tests passing / 0 failing**
+Evidence: **1047 unit tests across 111 files**, **261 browser tests passing / 0 failing**
 (`CI=true npm run test:browser`), and a parity diff that passes 11/11 with zero deltas
 against a **hardcoded, memory-sourced list of values** - an internal contract
 check, **not** a measurement of Figma. See
@@ -112,7 +112,7 @@ the selection in the right-hand panel.
 | `npm run mcp` | the MCP server over stdio |
 | `npm run relay` | the collaboration / MCP relay server |
 
-Current evidence: **1046 unit tests across 111 files** and **261 browser tests
+Current evidence: **1047 unit tests across 111 files** and **261 browser tests
 passing** - see [`docs/ROADMAP.md`](docs/ROADMAP.md) for what each milestone
 proves and for the known limitations.
 
