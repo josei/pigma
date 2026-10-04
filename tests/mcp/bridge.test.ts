@@ -74,6 +74,56 @@ describe('live editor bridge', () => {
     expect(node.style.textAlignHorizontal).toBe('CENTER');
   });
 
+  it('refuses an invalid write on the editor session, as the in-memory session does', async () => {
+    // The live editor path used to skip the invariant entirely: a hostile script
+    // committed opacity 42, a negative width, a malformed colour. Both sessions
+    // now share one settle + validate, and the refusal happens before the store
+    // sees anything, so the document and the undo history are untouched.
+    loadImported();
+    const server = createMcpServer({ session: createEditorSession(useEditor), rasterizer: nodeRasterizer });
+    const create = await call(server, 'tools/call', {
+      name: 'use_pigma',
+      arguments: { code: "figma.createRectangle({ x: 0, y: 0, width: 20, height: 20, name: 'Hostile target' }).id;" },
+    });
+    const nodeId = String(
+      (create as { result?: { structuredContent?: { output?: string } } }).result?.structuredContent?.output ?? '',
+    );
+    expect(nodeId).not.toBe('');
+
+    const hostile: Array<[string, string, RegExp]> = [
+      ['opacity', `figma.getNodeById(${JSON.stringify(nodeId)}).opacity = 42;`, /opacity must be between 0 and 1/],
+      ['negative width', `figma.getNodeById(${JSON.stringify(nodeId)}).resize(-10, 10);`, /width must not be negative/],
+      [
+        'malformed colour',
+        `figma.getNodeById(${JSON.stringify(nodeId)}).fills = [{ type: 'SOLID', color: { r: 2, g: 0, b: 0 } }];`,
+        /colour\.r must be between 0 and 1/,
+      ],
+    ];
+    for (const [label, code, expected] of hostile) {
+      const before = useEditor.getState();
+      const nodesBefore = (before.file.document.children[0] as { children: unknown[] }).children.length;
+      const historyBefore = before.past.length;
+      const response = await call(server, 'tools/call', { name: 'use_pigma', arguments: { code } });
+      const text = JSON.stringify(response);
+      expect(text, `${label}: the write was not refused`).toMatch(/invalid/);
+      expect(text, `${label}: the message should name the field`).toMatch(expected);
+      expect(text, `${label}: the message should name the node`).toContain(nodeId);
+      const after = useEditor.getState();
+      expect(after.file, `${label}: the document changed`).toBe(before.file);
+      expect((after.file.document.children[0] as { children: unknown[] }).children.length).toBe(nodesBefore);
+      expect(after.past.length, `${label}: the undo history changed`).toBe(historyBefore);
+    }
+
+    // A legitimate write still lands, on the same session.
+    const good = await call(server, 'tools/call', {
+      name: 'use_pigma',
+      arguments: { code: `figma.getNodeById(${JSON.stringify(nodeId)}).opacity = 0.5;` },
+    });
+    expect(JSON.stringify(good)).not.toMatch(/invalid/);
+    const node = findNode(useEditor.getState().file.document, nodeId);
+    expect(node && 'opacity' in node ? node.opacity : null).toBe(0.5);
+  });
+
   it('does not run a failing script twice, through the MCP tool', async () => {
     loadImported();
     const server = createMcpServer({ session: createEditorSession(useEditor), rasterizer: nodeRasterizer });

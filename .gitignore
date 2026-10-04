@@ -7,3 +7,6 @@ data/
 # Desktop shell build output: binaries are never committed.
 src-tauri/target/
 src-tauri/gen/
+
+# TypeScript incremental build artifacts
+*.tsbuildinfo
