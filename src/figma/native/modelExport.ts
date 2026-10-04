@@ -325,7 +325,11 @@ function toNativeEffects(effects: SceneNode['effects']): Array<Record<string, un
 
 function toNativeAutoLayout(layout: AutoLayout): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  if (layout.layoutMode === 'HORIZONTAL' || layout.layoutMode === 'VERTICAL') out.stackMode = layout.layoutMode;
+  // GRID is a stackMode too: without it a grid exported to .fig came back with no
+  // auto layout at all.
+  if (layout.layoutMode === 'HORIZONTAL' || layout.layoutMode === 'VERTICAL' || layout.layoutMode === 'GRID') {
+    out.stackMode = layout.layoutMode;
+  }
   if (layout.itemSpacing !== undefined) out.stackSpacing = layout.itemSpacing;
   // Native has a single `stackPadding` plus per-side overrides.
   if (layout.paddingTop !== undefined) out.stackPadding = layout.paddingTop;
@@ -535,6 +539,26 @@ function nodeChange(
   if (node.interactions && node.interactions.length > 0) {
     change.prototypeInteractions = toNativeInteractions(node, ctx);
   }
+  if ('autoLayout' in node && node.autoLayout?.layoutMode === 'GRID') {
+    const layout = node.autoLayout;
+    // The wire wants a GUIDPositionMap; our tracks are numeric, so a guid is
+    // derived from the node id and the track index — deterministic, so a
+    // round-tripped grid keeps the guids it was imported with.
+    const mapOf = (guids: string[] | undefined, count: number, key: string) => ({
+      entries: Array.from({ length: count }, (_, index) => ({
+        guid: guidFor(guids?.[index] ?? `${node.id}:${key}:${index}`, ctx.sessionID),
+        position: positionFor(index, Math.max(1, count)),
+      })),
+    });
+    if (layout.gridColumns?.length) change.gridColumns = mapOf(layout.gridColumnGuids, layout.gridColumns.length, 'col');
+    if (layout.gridRows?.length) change.gridRows = mapOf(layout.gridRowGuids, layout.gridRows.length, 'row');
+    if (typeof layout.gridColumnGap === 'number') change.gridColumnGap = layout.gridColumnGap;
+    if (typeof layout.gridRowGap === 'number') change.gridRowGap = layout.gridRowGap;
+  }
+  if (typeof node.gridColumnSpan === 'number') change.gridColumnSpan = node.gridColumnSpan;
+  if (typeof node.gridRowSpan === 'number') change.gridRowSpan = node.gridRowSpan;
+  if (node.gridColumnAnchorGuid) change.gridColumnAnchor = guidFor(node.gridColumnAnchorGuid, ctx.sessionID);
+  if (node.gridRowAnchorGuid) change.gridRowAnchor = guidFor(node.gridRowAnchorGuid, ctx.sessionID);
   if ('layoutGrids' in node && node.layoutGrids && node.layoutGrids.length > 0) {
     change.layoutGrids = node.layoutGrids.map(toNativeLayoutGrid);
   }

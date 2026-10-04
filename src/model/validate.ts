@@ -57,6 +57,8 @@ const BASE_KEYS = [
   'layoutGrow',
   'gridColumnAnchorIndex',
   'gridRowAnchorIndex',
+  'gridColumnAnchorGuid',
+  'gridRowAnchorGuid',
   'gridColumnSpan',
   'gridRowSpan',
   'interactions',
