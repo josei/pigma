@@ -16,6 +16,7 @@ import { mapRestInteractions } from './mappers';
 import { ReportBuilder } from './report';
 import { useEditor } from '../../store/editorStore';
 import { emptyFile } from '../../model/validate';
+import { createRectNode } from '../../model/factory';
 
 /** One Figma interaction with a single NODE action carrying `navigation`. */
 function interaction(navigation: string | undefined, destinationId = 'dest:1') {
@@ -35,7 +36,7 @@ function mapped(navigation: string | undefined) {
 
 describe('prototype navigation on import', () => {
   it('keeps the three members playback honours, and sets overlay for OVERLAY', () => {
-    for (const navigation of ['NAVIGATE', 'SWAP', 'OVERLAY'] as const) {
+    for (const navigation of ['NAVIGATE', 'SWAP', 'OVERLAY', 'SWAP_STATE'] as const) {
       const { interactions, report } = mapped(navigation);
       expect(interactions, `${navigation} must be kept`).toHaveLength(1);
       const action = interactions[0]!.actions[0]!;
@@ -55,16 +56,25 @@ describe('prototype navigation on import', () => {
     expect(interactions, 'a withdrawn member must not become a navigation').toEqual([]);
   });
 
-  it('reports CHANGE_TO and drops the action', () => {
+  it('maps the REST name CHANGE_TO onto the native SWAP_STATE', () => {
+    // The round-74 withdrawal was made against the REST vocabulary; the native
+    // wire calls this SWAP_STATE and carries the destination as a GUID, which is
+    // what the model's destinationId holds. Recovered, not reported.
     const { interactions, report } = mapped('CHANGE_TO');
-    expect(report.unsupported.map((item) => item.feature)).toEqual(['navigation:CHANGE_TO']);
-    expect(interactions).toEqual([]);
+    expect(report.unsupported).toEqual([]);
+    expect(interactions[0]!.actions[0]!.navigation).toBe('SWAP_STATE');
   });
 
-  it('keeps the other actions of a sequence whose middle member was withdrawn', () => {
-    // A trigger with three actions, the middle one unsupported: the two that ARE
-    // supported survive, in order, and the unsupported one is reported — it does
-    // not silently become a frame navigation in the middle of the sequence.
+  it('keeps the native SWAP_STATE name as-is', () => {
+    const { interactions, report } = mapped('SWAP_STATE');
+    expect(report.unsupported).toEqual([]);
+    expect(interactions[0]!.actions[0]!.navigation).toBe('SWAP_STATE');
+  });
+
+  it('keeps a sequence whose middle action is a variant swap', () => {
+    // A trigger with three actions, the middle one a variant swap: ALL THREE
+    // survive, in order. Before the reversal the middle one was dropped, which
+    // made a navigate-swap-open sequence play the first and last only.
     const report = new ReportBuilder();
     const interactions = mapRestInteractions(
       [
@@ -79,9 +89,11 @@ describe('prototype navigation on import', () => {
       ] as never,
       { report, nodeId: 'n:1', path: 'page/0' },
     )!;
-    expect(interactions[0]!.actions.map((action) => action.type)).toEqual(['NODE', 'URL']);
+    expect(interactions[0]!.actions.map((action) => action.type)).toEqual(['NODE', 'NODE', 'URL']);
     expect(interactions[0]!.actions[0]!.destinationId).toBe('dest:1');
-    expect(report.unsupported.map((item) => item.feature)).toEqual(['navigation:CHANGE_TO']);
+    expect(interactions[0]!.actions[1]!.navigation).toBe('SWAP_STATE');
+    expect(interactions[0]!.actions[1]!.destinationId).toBe('dest:2');
+    expect(report.unsupported).toEqual([]);
   });
 
   it('keeps an action whose navigation is absent', () => {
@@ -89,6 +101,34 @@ describe('prototype navigation on import', () => {
     expect(interactions).toHaveLength(1);
     expect(interactions[0]!.actions[0]!.navigation).toBeUndefined();
     expect(report.unsupported).toEqual([]);
+  });
+});
+
+describe('SWAP_STATE playback swaps in place', () => {
+  it('changes the instance variant without navigating', () => {
+    const store = useEditor.getState();
+    const file = emptyFile('Swap state');
+    const page = file.document.children[0]!;
+    // Two variant components and an instance of the first.
+    const first = { ...createRectNode(file.document, 0, 0, 100, 50), type: 'COMPONENT' as const, name: 'State=Default' };
+    const second = { ...createRectNode(file.document, 0, 0, 100, 50), type: 'COMPONENT' as const, name: 'State=Hover' };
+    const instance = {
+      id: 'inst:swap', name: 'Instance', type: 'INSTANCE' as const, visible: true, locked: false, opacity: 1,
+      transform: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 }, width: 100, height: 50, fills: [], strokes: [], children: [], componentId: first.id,
+    };
+    page.children = [first, second, instance] as never;
+    store.loadFile({ ...file, document: { ...file.document, children: [page] } } as never);
+    store.setPresentation(true, page.id);
+    const stackBefore = useEditor.getState().presentationStack.length;
+    const frameBefore = useEditor.getState().presentationFrameId;
+
+    useEditor.getState().swapInstanceState('inst:swap', second.id);
+    const instanceAfter = useEditor.getState().file.document.children[0]!.children.find((c) => c.id === 'inst:swap') as { componentId: string };
+    expect(instanceAfter.componentId, 'the instance did not swap to the target variant').toBe(second.id);
+    // In place: the presented frame and the stack are untouched, so Back still
+    // returns to whatever preceded the frame holding the instance.
+    expect(useEditor.getState().presentationFrameId).toBe(frameBefore);
+    expect(useEditor.getState().presentationStack.length).toBe(stackBefore);
   });
 });
 

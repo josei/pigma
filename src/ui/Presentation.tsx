@@ -58,6 +58,7 @@ export function Presentation() {
   const overlays = useEditor((state) => state.presentationOverlays);
   const navigate = useEditor((state) => state.navigatePrototype);
   const swapPrototype = useEditor((state) => state.swapPrototype);
+  const swapInstanceState = useEditor((state) => state.swapInstanceState);
   const back = useEditor((state) => state.prototypeBack);
   const openOverlay = useEditor((state) => state.openOverlay);
   const closeOverlay = useEditor((state) => state.closeOverlay);
@@ -106,14 +107,19 @@ export function Presentation() {
    * the store commits each navigate synchronously, so a following overlay really
    * does resolve against the destination rather than the frame it came from.
    */
-  const run = (actions: PrototypeAction[]) => {
+  const run = (actions: PrototypeAction[], ownerId: string) => {
     for (const step of planActions(actions, frameId)) {
       const { action } = step;
       switch (action.type) {
         case 'NODE':
           if (!action.destinationId) continue;
           if (action.overlay) openOverlay(action.destinationId, action);
-          else if (action.navigation === 'SWAP') swapWithTransition(action.destinationId, action);
+          else if (action.navigation === 'SWAP_STATE') {
+            // A variant swap changes the instance IN PLACE: the presented frame
+            // and the stack are untouched, so Back still returns to whatever
+            // preceded the frame that holds the instance.
+            swapInstanceState(ownerId, action.destinationId);
+          } else if (action.navigation === 'SWAP') swapWithTransition(action.destinationId, action);
           else navigateWithTransition(action.destinationId, action);
           continue;
         case 'BACK':
@@ -228,10 +234,10 @@ export function Presentation() {
             height: box.height,
           }}
           onClick={() => {
-            if (trigger === 'ON_CLICK') run(hotspot.actions);
+            if (trigger === 'ON_CLICK') run(hotspot.actions, hotspot.node.id);
           }}
           onMouseEnter={() => {
-            if (trigger === 'ON_HOVER') run(hotspot.actions);
+            if (trigger === 'ON_HOVER') run(hotspot.actions, hotspot.node.id);
           }}
           onPointerDown={(event) => {
             if (trigger !== 'ON_DRAG') return;
@@ -240,7 +246,7 @@ export function Presentation() {
           onPointerUp={(event) => {
             if (trigger !== 'ON_DRAG') return;
             void event;
-            run(hotspot.actions);
+            run(hotspot.actions, hotspot.node.id);
           }}
         />
       );
