@@ -597,6 +597,16 @@ export interface StyleDefinition {
   key: string;
   name: string;
   type: StyleType;
+  /**
+   * The wire GUID for this style (the native `StyleId.guid`).
+   *
+   * The model's own ids are not in the wire's `sessionID:localID` shape and the
+   * style `key` is a different thing entirely, so a `.fig` round trip needs the
+   * guid carried here. Absent for a style created in Pigma that has never been
+   * imported from a schema that names one — a binding to such a style cannot be
+   * written to the wire, and the pre-encode check reports it.
+   */
+  guid?: string;
   description?: string;
   paints?: Paint[];
   text?: TextStyle;

@@ -80,6 +80,8 @@ export interface NormalizedNode {
   gridColumnAnchorGuid?: string;
   gridRowAnchorGuid?: string;
   gridColumnGuids?: string[];
+  /** The wire style guids per property; not yet resolved to table ids. */
+  styleGuids?: Record<string, string>;
   gridRowGuids?: string[];
   /** The native `mask` flag, carried into the model's `isMask`. */
   isMask?: boolean;
@@ -666,6 +668,16 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
   const rowGuids = gridGuids(node.gridRows);
   if (columnGuids) normalized.gridColumnGuids = columnGuids;
   if (rowGuids) normalized.gridRowGuids = rowGuids;
+  // Style bindings: the wire carries `StyleId { guid }` per property. The model
+  // binds by style id, so the guid is matched against the file's style table.
+  // `styleID` (legacy single style) and the `inherit*StyleID` family are NOT
+  // read: they are different concepts, not the node's per-property bindings.
+  const styleBindings: Record<string, string> = {};
+  for (const [field, property] of [['styleIdForFill', 'fill'], ['styleIdForText', 'text'], ['styleIdForEffect', 'effect']] as const) {
+    const id = idOfGuid(isRecord(node[field]) ? (node[field] as Record<string, unknown>).guid : null);
+    if (id) styleBindings[property] = id;
+  }
+  if (Object.keys(styleBindings).length > 0) normalized.styleGuids = styleBindings;
   const autoLayout = mapNativeAutoLayout(node, ctx);
   if (autoLayout) normalized.autoLayout = autoLayout;
   if (typeof node.clipsContent === 'boolean') normalized.clipsContent = node.clipsContent;
