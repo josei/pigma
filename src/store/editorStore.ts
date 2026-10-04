@@ -173,6 +173,7 @@ import {
   type ImageCrop,
 } from '../model/image';
 import { instanceAncestryOf, withOverride } from '../model/instances';
+import { documentProblems } from '../model/invariants';
 import type { NodeOverride } from '../model/types';
 
 export type Tool =
@@ -2049,6 +2050,18 @@ export const useEditor = create<EditorState>((set, get) => ({
         timeoutMs: 4000,
         memoryLimitMb: 48,
       });
+      // The SAME invariant check the MCP write path runs, before the store sees
+      // anything: a script cannot commit opacity 42 or a negative size in-app
+      // either. Validating first means a refusal leaves the document AND the
+      // undo history untouched, and it surfaces the way every other plugin
+      // failure does — a console line and a toast — rather than throwing at a
+      // user who is looking at a panel.
+      const problems = documentProblems(result.file);
+      if (problems.length > 0) {
+        const shown = problems.slice(0, 3).join('; ');
+        const more = problems.length > 3 ? ` (+${problems.length - 3} more)` : '';
+        throw new Error(`the document it produced is invalid: ${shown}${more}`);
+      }
       // Everything the script changed lands as ONE undo entry.
       get().apply(`Run plugin: ${plugin.name}`, () => result.file);
       for (const line of result.logs) get().appendPluginConsole({ kind: 'log', text: line });

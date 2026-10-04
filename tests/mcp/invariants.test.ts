@@ -10,7 +10,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createMcpServer, type McpServer } from '../../src/mcp/protocol';
 import { createSession, type DocumentSession } from '../../src/mcp/session';
-import { documentProblems, isCommittable } from '../../src/mcp/invariants';
+import { documentProblems, isCommittable } from '../../src/model/invariants';
 import { emptyFile } from '../../src/model/validate';
 import { createRectNode, createTextNode } from '../../src/model/factory';
 import { findNode, descendants } from '../../src/model/tree';

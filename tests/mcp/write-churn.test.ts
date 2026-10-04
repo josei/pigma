@@ -40,7 +40,7 @@ import { emptyFile } from '../../src/model/validate';
 import { createFrameNode, createRectNode, createTextNode } from '../../src/model/factory';
 import { settleDocument } from '../../src/model/settle';
 import { createSession } from '../../src/mcp/session';
-import { documentProblems } from '../../src/mcp/invariants';
+import { documentProblems } from '../../src/model/invariants';
 import type { AnyNode, PigmaFile } from '../../src/model/types';
 
 /** A frame holding 1000 rectangles and 1000 text nodes: ~2000 nodes. */
