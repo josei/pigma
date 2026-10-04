@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **983 unit tests / 104 files**, **247 browser tests passing / 0 failing**,
+Last verified: **994 unit tests / 106 files**, **249 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -130,9 +130,9 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 ## Open QA items
 
-**No failing specs.** The suite is green: `CI=true npm run test:browser` = **247
+**No failing specs.** The suite is green: `CI=true npm run test:browser` = **249
 passed / 0 failed**, measured twice back-to-back, with **0 orphan processes**;
-`npx vitest run` = **983 passing / 104 files**, deterministic whether or not
+`npx vitest run` = **994 passing / 106 files**, deterministic whether or not
 `dist/` has been built. Every item previously listed here
 (B29c, B29d, B31b, B31c, B33a, B33b, B28b) now passes and has been removed.
 
@@ -162,6 +162,96 @@ What follows is *coverage* still missing, not failures:
   cannot be committed). `scripts/parity-spec.mjs` compares measured values
   against Figma's *documented* numbers (11/11, zero deltas) and `b39-pixel-diff`
   catches regressions against the app's own committed baseline.
+
+### How the Figma matching was actually done
+
+**Nothing visits figma.com.** The only `figma.com` strings in `src/` are three
+documentation URLs in comments and one Plugin API identifier
+(`figma.combineAsVariants`); there is no web tool in the MCP surface. The REST
+import only **parses** responses - the fetch is user-initiated in the UI with the
+user's own token - and `src/mcp/bin.ts` instructs the model to *never* fetch a
+design from figma.com.
+
+**The parity numbers are MEMORY-SOURCED and UNVERIFIED, and the parity script is
+self-referential by construction.** `scripts/parity-spec.mjs` compares the app's
+measured values against a `DOCUMENTED` object of **hardcoded literals**
+(`railWidth: 56`, `panelWidth: 240`, `controlHeight: 24`, `toolbarRadius: 14`,
+`canvasBg`, `toolbarBg`) typed into the repo from the model's memory of Figma. The
+loop is therefore: **memory -> literals in the repo -> the app diffed against
+them.** If a remembered number is wrong the test still passes, because both sides
+of the comparison share the same source. **"11/11, every delta 0" means the app
+agrees with these literals - it does NOT mean the app matches Figma.**
+
+The repo's own evidence vocabulary already says this. Every
+[FIGMA_COMPAT.md](FIGMA_COMPAT.md) row is `documented-from-code` ("we read our own
+implementation") or `test-backed` ("our own test passes") - 17 and 22 of them -
+and **not one says "verified against Figma"**, because none is.
+
+**Confidence differs by layer and is not uniform:**
+
+| Layer | Confidence | Why |
+| --- | --- | --- |
+| **What** a feature is - Dev Mode is a toggle plus an Inspect panel with measurements, code targets, Code Connect and a ready-for-development status | **High** | Famous public knowledge about Figma |
+| **Specific values** - a 56px rail, 240px panels, `#e5e5e5`, the tab order | **Low, UNVERIFIED** | Memory of specifics; nothing checks them against Figma |
+| **Implementation choices** - the badge reading "Ready"/"Done", no right-click menus anywhere, geometry-based masks | **Ours by design** | Deliberate; some already listed as divergences above |
+
+**What would close it:** Figma itself, or Figma's published specs/screenshots
+brought into the repo as **committed fixtures** and diffed against the `DOCUMENTED`
+values - which turns those literals from memory into evidence. Until then, this
+row is a statement about our own consistency, not about Figma.
+
+### External audit - what it found
+
+An external audit visited **Figma's official Help Center** and compared it against
+the running editor. This is the **first external verification this project has
+had**, and it confirms the provenance problem above.
+
+**It confirms the parity script is a Pigma contract check, not external
+verification.** `scripts/parity-spec.mjs` compares the app against an **uncited**
+`DOCUMENTED` object (rail 56, panels 240, control height 24, toolbar radius 14,
+the colours), and **four of its checks compare Pigma at DPR 2 against Pigma at
+DPR 1** - self-consistency, not a comparison against anything external. **No
+Figma rendering is measured.** The requirement the audit proposes, and the rule
+this repo should adopt: **separate internal geometry checks from external
+reference comparisons**, and for every external reference record the **source
+URL, capture date, access role, selected node type, theme, viewport, browser zoom
+and DPR**.
+
+**Observed structural differences.** These are **observations from Figma's
+official illustrations, NOT measured pixel errors** - and official help images can
+themselves represent **different UI revisions**:
+
+- Pigma permanently shows a **third Inspect tab**;
+- **Present sits in the bottom toolbar**;
+- the **no-selection Design panel** shows a prompt and **disabled alignment
+  controls**;
+- Pigma's toolbar exposes **individual shape tools**, where the official toolbar
+  reference **groups tools with dropdowns**.
+
+A **dated target must be chosen** before the shell is changed to match any of
+these.
+
+**Dev Mode and Code Connect EXIST here** - statuses plus CSS / React / SwiftUI /
+Compose codegen, and the Code Connect mapping tools. Nothing in these documents
+should imply they are absent. The gap is **scope**, and the editor is fixing the
+status gate.
+
+**Confirmed missing features, recorded as milestone gaps** (rather than left
+implied):
+
+| Gap | Figma has | Pigma has | Milestone |
+| --- | --- | --- | --- |
+| **Grid auto layout** | a third auto-layout flow: row/column tracks, fractional fill sizing, automatic/manual placement, spanning children | `LayoutMode` is only `NONE / HORIZONTAL / VERTICAL`, and the Cols/Rows/Grid controls are layout **GUIDES** (`LayoutGrid`) rather than grid auto layout | unmet part of **M10** |
+| **Component slots** | native slot properties | `ComponentPropertyType` is `VARIANT / BOOLEAN / TEXT / INSTANCE_SWAP` - **there is no `SLOT`** | gap in **M11** |
+| **Prototype variables and conditionals** | `Set variable` actions and expressions | not implemented; plus a **multi-action execution defect** the editor is fixing | **M12** |
+
+The sources are Figma's official Help Center guides (grid auto layout, component
+slots, and setting variables in prototypes). **Their exact URLs are deliberately
+not recorded here:** by the rule stated just above, an external reference must
+carry its URL and capture date *when it is committed*, and this section was
+written from the audit's report rather than from a visit to Figma. Writing down a
+URL that was never fetched would be the same unverified-memory problem this
+section exists to expose.
 
 
 

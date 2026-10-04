@@ -27,9 +27,12 @@ past drawing:
 - MCP bridge (connect, resilience, remote edit + undo round trip) and
   collaboration presence (cursors, follow)
 
-Evidence: **983 unit tests across 104 files**, **247 browser tests passing / 0 failing**
-(`CI=true npm run test:browser`), and a parity diff against Figma's documented UI
-that passes 11/11 with zero deltas. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for
+Evidence: **994 unit tests across 106 files**, **249 browser tests passing / 0 failing**
+(`CI=true npm run test:browser`), and a parity diff that passes 11/11 with zero deltas
+against a **hardcoded, memory-sourced list of values** - an internal contract
+check, **not** a measurement of Figma. See
+[`docs/ROADMAP.md`](docs/ROADMAP.md), "How the Figma matching was actually
+done". See [`docs/ROADMAP.md`](docs/ROADMAP.md) for
 the milestone-by-milestone status, the specs that prove each claim, and the known
 limitations.
 
@@ -84,11 +87,34 @@ what is verified today.
 
 ## Getting started
 
-Not yet usable. `package.json` defines `npm run dev`, `build`, `preview`,
-`test`, and `typecheck`, but the application entry point has not landed, so the
-dev server will not render a working editor yet. Instructions will be completed
-once `src/` exists and the first milestone in `docs/ROADMAP.md` is marked
-shipped.
+Pigma runs. Everything below is a real script in `package.json`:
+
+```bash
+npm install
+npm run dev          # Vite dev server; open the URL it prints
+```
+
+The editor opens on a starter document. Draw from the toolbar or with a
+shortcut - `r` rectangle, `o` ellipse, `f` frame, `t` text, `l` line,
+`g` polygon, `s` star, `p` pen, `v` move, `h` hand - then move, resize and edit
+the selection in the right-hand panel.
+
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Vite dev server |
+| `npm run build` | `tsc -b`, `vite build`, then the desktop asset manifest |
+| `npm run preview` | serve the built output |
+| `npm run typecheck` | `tsc -b` |
+| `npm test` | the unit suite (vitest) |
+| `npm run test:watch` | the unit suite in watch mode |
+| `npm run test:browser` | the browser suite (Playwright, Chromium) |
+| `npm run test:browser:install` | install Chromium once, before the first browser run |
+| `npm run mcp` | the MCP server over stdio |
+| `npm run relay` | the collaboration / MCP relay server |
+
+Current evidence: **994 unit tests across 106 files** and **249 browser tests
+passing** - see [`docs/ROADMAP.md`](docs/ROADMAP.md) for what each milestone
+proves and for the known limitations.
 
 ## License
 
