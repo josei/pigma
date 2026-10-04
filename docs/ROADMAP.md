@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1046 unit tests / 111 files**, **261 browser tests passing / 0 failing**,
+Last verified: **1047 unit tests / 111 files**, **261 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -144,7 +144,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 **No failing specs.** The suite is green: `CI=true npm run test:browser` = **255
 passed / 0 failed**, measured twice back-to-back, with **0 orphan processes**;
-`npx vitest run` = **1046 passing / 111 files**, deterministic whether or not
+`npx vitest run` = **1047 passing / 111 files**, deterministic whether or not
 `dist/` has been built. Every item previously listed here
 (B29c, B29d, B31b, B31c, B33a, B33b, B28b) now passes and has been removed.
 

@@ -153,6 +153,30 @@ one that is still genuinely unknown:
   **An inconclusive probe is not a cleared candidate**, and this one has not been
   cleared.
 
+### Grid: PARTLY landed, and the gap is pinned (do not read this as "grid survives")
+
+The blocker was that `mapNativeAutoLayout` **explicitly refused `GRID`**, so a grid
+auto layout was dropped on import *no matter what the export wrote* - and the
+exporter wrote `stackMode` for `HORIZONTAL`/`VERTICAL` only, so a `GRID` never even
+reached that check. **Both are fixed** and the grid mapper is partly landed.
+
+**MEASURED - what survives the round trip:**
+
+- the **mode** survives;
+- **both gaps** survive.
+
+**MEASURED - what does NOT:**
+
+- the **track sizes and their guids** do not. The export writes `gridColumns` as a
+  **`GUIDPositionMap`** and it does not come back through the parse.
+
+**NOT MEASURED - do not read these as working:**
+
+- the **child spans and anchors** are written and read, but they were **not
+  measured**. They are **unmeasured**, which is not the same as verified.
+
+**So: a grid does NOT survive a round trip.** State the parts, not the whole.
+
 ### The grid anchors cannot be converted - and it is not a naming bug
 
 `gridColumnAnchor` / `gridRowAnchor` are **GUIDS** in the native schema: Figma
@@ -168,12 +192,19 @@ What such a change would **touch**: the `GridTrackSize` shape, the layout engine
 done**, and this is a model gap rather than a mapping one - no wire-name fix
 reaches it.
 
-### Style ids are not expressible today
+### Styles: the native path is ABSENT, not guid-less - a corrected costing
 
-A `StyleId` is **`{ guid: GUID, assetRef: AssetRef }`**, while our model stores
-styles as **strings** and carries **neither** - so there is nothing to write into
-the guid field. The minimal fix is a **model change** (carry a guid per style);
-its cost is being reported by the editor. **It is not done.**
+The first costing was that this was **"one optional field"**: a `StyleId` is
+`{ guid: GUID, assetRef: AssetRef }`, so it looked like one guid away from working.
+**One grep showed that was wrong.** The **only** `styleID` in the entire native
+path is a hardcoded **`styleID: 0`** (`src/figma/native/modelExport.ts`); the one
+other occurrence is a type declaration. So **nothing about styles crosses the wire
+at all** - a style binding does not fail for want of a guid, there is **no style
+mapper**.
+
+The editor added the field and then **REVERTED it**, because alone it is **dead
+code**. **Nothing was half-landed** - which is the lesson: *"one optional field"*
+was a guess, and a single grep replaced it with the truth before any code shipped.
 
 ### The variant swap was RESTORED - a feature recovered, not a bug fixed
 
@@ -229,6 +260,50 @@ swap *does* carry a transition in the model and the exporter writes it, but
 **playback does not apply one** (`swapInstanceState` changes the component in
 place, with no animation). Offering the row for a swap would therefore **promise an
 animation that does not play** - so it is withheld, on purpose.
+
+### The schema diff - a STANDING TOOL, not a one-off
+
+The most reusable thing this project has produced is a **method**. The editor
+**diffed the field names `modelExport.ts` WRITES against the field names the
+decoded schema DEFINES** - and found the **seventh and eighth** instances of the
+vocabulary class **by looking**, rather than by losing another round to them:
+
+- **`variableBindings`** and **`componentPropertyDefinitions`** are both written
+  under names **the schema does not define**, so `kiwi` drops them **silently**.
+  The pre-encode warning fires for them - which is the **only** reason they are not
+  invisible.
+
+**Record it as a standing tool: for any area we touch, enumerate the schema's field
+names and diff them against the names our mapper writes.** The next instance
+should be found by looking, not by losing a document.
+
+**And the sweep stopped a WRONG BUILD.** The style mapper was about to be built
+against **`styleIdForFill`** - an assumption made in round 95. The diff showed the
+wire's **node-level binding is `styleID`**, alongside `isFillStyle`, `isStrokeStyle`,
+`styleType`, `sharedStyleMasterData`, `sharedStyleReference` and the
+`inherit*StyleID` family. So the sweep prevented what would have been the eighth
+instance. **The style mapper now starts by establishing what `styleID` POINTS AT**,
+rather than assuming the name.
+
+**The same sweep exposed a second gap in that area:** the wire `StyleType` has
+**SEVEN** members - `NONE`, `FILL`, `STROKE`, `TEXT`, `EFFECT`, `EXPORT`, `GRID` -
+against our **three** (`FILL`, `TEXT`, `EFFECT`).
+
+### Open model gaps - the remaining list
+
+Everything the earlier rounds landed still survives; these are what is still open:
+
+**None of these is fixed** until a round trip proves it.
+
+| Gap | Nature |
+| --- | --- |
+| **Style bindings** | **corrected shape, being built** - the wire binding is `styleID`, not the assumed `styleIdForFill`, and it starts by establishing what `styleID` **points at**. The wire `StyleType` also has **7** members against our **3** |
+| **Variable bindings** | a **NAME MISMATCH** - written as `variableBindings`, which the schema does not define, so `kiwi` drops it silently (being fixed) |
+| **Component property definitions** | a **NAME MISMATCH** - written as `componentPropertyDefinitions`, likewise (being fixed) |
+| **Grid track sizes** | still lost (the **track guids** half is closed) |
+| **`assetRef`** | not carried |
+| **`FIXED_MIN` / `FIXED_MAX`** | a **MODEL gap** - deliberately unmapped rather than coerced into `MIN`/`MAX` |
+| **`SCROLL_TO`** | withdrawn; the **semantics** are unknown (coordinate space, clamping, playback) |
 
 ### The three map fixes
 
