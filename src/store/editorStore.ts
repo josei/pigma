@@ -557,6 +557,8 @@ export interface EditorState {
   toggleSnapToGrid: () => void;
   setPresentation: (on: boolean, frameId?: string | null) => void;
   navigatePrototype: (nodeId: string) => void;
+  /** Replace the presented frame in place (Figma's SWAP navigation). */
+  swapPrototype: (nodeId: string) => void;
   prototypeBack: () => void;
   pushToast: (message: string, kind?: Toast['kind']) => void;
   dismissToast: (id: string) => void;
@@ -2542,6 +2544,13 @@ export const useEditor = create<EditorState>((set, get) => ({
       presentationStack: [],
       presentationOverlays: [],
     });
+  },
+
+  swapPrototype: (nodeId) => {
+    // Figma's SWAP replaces the presented frame IN PLACE: the stack does not
+    // grow, so Back returns to whatever preceded the frame that was swapped out
+    // rather than to the frame itself.
+    set({ presentationFrameId: nodeId, presentationOverlays: [] });
   },
 
   navigatePrototype: (nodeId) => {

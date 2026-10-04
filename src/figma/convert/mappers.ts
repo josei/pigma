@@ -661,6 +661,14 @@ const TRIGGERS: Record<string, PrototypeInteraction['trigger']['type']> = {
 
 const ACTIONS: Record<string, PrototypeAction['type']> = { NODE: 'NODE', BACK: 'BACK', CLOSE: 'CLOSE', URL: 'URL' };
 
+/**
+ * The navigation members playback honours. Figma also sends SCROLL_TO and
+ * CHANGE_TO; neither target is expressible here (a scroll offset, a variant
+ * property set), so they are reported and the action dropped — never mapped onto
+ * a frame navigation, which would play the wrong thing without saying so.
+ */
+const NAVIGATIONS = new Set<NonNullable<PrototypeAction['navigation']>>(['NAVIGATE', 'SWAP', 'OVERLAY']);
+
 export function mapRestInteractions(
   interactions: FigmaRestNode['interactions'],
   ctx: MapperContext,
@@ -684,7 +692,16 @@ export function mapRestInteractions(
       const mappedAction: PrototypeAction = { type };
       if (action.destinationId !== undefined) mappedAction.destinationId = action.destinationId;
       if (action.url !== undefined) mappedAction.url = action.url;
-      if (typeof action.navigation === 'string') mappedAction.navigation = action.navigation as PrototypeAction['navigation'];
+      if (typeof action.navigation === 'string') {
+        if (!NAVIGATIONS.has(action.navigation as NonNullable<PrototypeAction['navigation']>)) {
+          ctx.report.addUnsupported({ nodeId: ctx.nodeId, path: ctx.path, feature: `navigation:${action.navigation}` });
+          continue;
+        }
+        mappedAction.navigation = action.navigation as PrototypeAction['navigation'];
+        // Playback branches on `overlay`, so an imported OVERLAY must set it too,
+        // or the action would navigate instead of overlaying.
+        if (action.navigation === 'OVERLAY') mappedAction.overlay = true;
+      }
       if (action.transition) {
         mappedAction.transition = {
           type: action.transition.type,
