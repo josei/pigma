@@ -59,6 +59,46 @@ function marker(savedAt: number, name: string) {
   return { schema: 'pigma/persist/1', savedAt, file: scene(name), pageId: '', viewport: { x: 0, y: 0, zoom: 1 } };
 }
 
+describe('a recovered document that does not validate is reported', () => {
+  let store: MemoryDocumentStore;
+
+  beforeEach(() => {
+    installStorage();
+    store = new MemoryDocumentStore();
+    setDocumentStore(store);
+    useEditor.setState({ file: scene('Editor'), documents: [], activeDocumentId: null, toasts: [], past: [], future: [], selection: [] });
+  });
+
+  it('loads the record anyway and says what is wrong with it', async () => {
+    // A record whose file does not validate: the loader falls back to the RAW
+    // file rather than the normalised one. Refusing would lock a user out of
+    // their own document, so it loads — and now it says so.
+    // The only shape `validatePigmaFile` refuses is a file with no document.
+    const broken = { schema: 'pigma/1', name: 'Broken' } as unknown as PigmaFile;
+    await store.put(stored({ file: broken }));
+    expect(await restorePersistedDocument()).toBe(true);
+
+    const state = useEditor.getState();
+    const warnings = state.toasts.filter((toast) => toast.kind === 'error');
+    expect(warnings.length, 'a recovered document with problems must be reported').toBeGreaterThan(0);
+    expect(warnings[0]!.message).toMatch(/Recovered a document with problems/);
+    expect(warnings[0]!.message).toMatch(/document/);
+    // Nothing loadable in the record, so the open document survives instead of
+    // being replaced by a state the rest of the app would fail on.
+    expect(state.file.name, 'the open document must not be replaced').toBe('Editor');
+    expect(state.activeDocumentId).not.toBe('doc-1');
+  });
+
+  it('is silent for a record that validates', async () => {
+    await store.put(stored());
+    expect(await restorePersistedDocument()).toBe(true);
+    const state = useEditor.getState();
+    expect(state.activeDocumentId).toBe('doc-1');
+    expect(state.file.document.children[0]!.children).toHaveLength(1);
+    expect(state.toasts.filter((toast) => toast.kind === 'error'), 'a valid record must not warn').toEqual([]);
+  });
+});
+
 describe('crash-marker recovery', () => {
   let storage: Map<string, string>;
   let store: MemoryDocumentStore;

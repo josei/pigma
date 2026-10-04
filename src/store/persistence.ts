@@ -3,6 +3,7 @@ import { BUILTIN_PLUGINS } from '../plugins/builtins';
 import { mergePlugins, persistablePlugins, type PluginRecord } from '../plugins/registry';
 import type { PigmaFile } from '../model/types';
 import { validatePigmaFile } from '../model/validate';
+import { documentProblems } from '../model/invariants';
 import { PIGMA_FORMAT, pigmaFileName } from '../model/format';
 import { nextNodeId } from '../model/ids';
 import { writeToHandle } from './fileSystem';
@@ -236,10 +237,32 @@ function switchDocument(): void {
   closeBurst();
 }
 
+/** Whether a file carries a document this app can actually open. */
+function isLoadable(file: PigmaFile | null | undefined): file is PigmaFile {
+  return !!file && typeof file === 'object' && Array.isArray((file as PigmaFile).document?.children);
+}
+
 export function applyDocument(record: StoredDocument): void {
   switchDocument();
   const result = validatePigmaFile(record.file);
   const file = result.ok && result.file ? result.file : record.file;
+  if (!result.ok) {
+    // The record did not validate, so the RAW file is used rather than the
+    // normalised one. Load it anyway — refusing would lock a user out of their
+    // own document — but say so: a silent fallback hands the rest of the app a
+    // state it considers impossible, and the user never learns why it looks
+    // wrong. Same surface as an import failure (a toast), and the problems name
+    // the node and the field, exactly as the MCP refusal's do.
+    const usable = isLoadable(file);
+    const problems = [...result.errors, ...(usable ? documentProblems(file) : [])];
+    const shown = problems.slice(0, 3).join('; ');
+    const more = problems.length > 3 ? ` (+${problems.length - 3} more)` : '';
+    useEditor.getState().pushToast(`Recovered a document with problems: ${shown}${more}`, 'error');
+    // Nothing to load: the file has no document to open. Keep the document that
+    // is already open rather than assigning a state the rest of the app would
+    // fail on, and let the toast carry the reason.
+    if (!usable) return;
+  }
   useEditor.setState({
     file,
     libraries: record.libraries ?? [],
