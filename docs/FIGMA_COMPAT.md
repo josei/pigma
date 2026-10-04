@@ -68,7 +68,7 @@ Legend: **✅** survives · **≈** survives with a stated approximation ·
 | Auto layout (direction, spacing, padding, alignment, sizing) | ✅ | ✅ | | test-backed: `src/figma` unit suite |
 | Auto layout: wrap | ✅ | ✅ | | test-backed: `src/figma` unit suite |
 | Auto layout: **grid** | ❌ | ❌ | No model equivalent — reported as `autoLayout:GRID` | documented-from-code: no model equivalent, reported as `autoLayout:GRID` |
-| Prototype interactions (triggers, actions, overlay) | ✅ | **❌** | `interactions` goes **1 -> 0** across the binary round trip (probe), so **prototype links vanish through `.fig`**. The editor and the REST import are unaffected - this is EGRESS losing them. `PrototypeInteraction` is a real mapper both ways; **the importer just reads none of it today** (see the shapes section above). | test-backed: `b14-presentation`, `b21-prototype-inspect`; loss measured by `tests/figma/roundTripLoss.test.ts` |
+| Prototype interactions (triggers, actions, overlay) | ✅ | ✅ | **FIXED, and proven through the REAL BINARY path.** A document carrying a `NAVIGATE` (`SMART_ANIMATE`, 250ms, `IN_CUBIC`) **and** a `SWAP_STATE` interaction round-trips with **both** interactions, the **trigger** intact, the **transition** intact, and the destination resolving to the **reimported** node. **The assertion that matters: the recovered swap still plays back as a `SWAP` AFTER the round trip** (applying it leaves the presented frame and the stack untouched) - which proves the feature survives a **FILE**, not just memory. | test-backed: `tests/figma/roundTripLoss.test.ts`; unit `src/model/prototype.test.ts` | test-backed: `b14-presentation`, `b21-prototype-inspect`; loss measured by `tests/figma/roundTripLoss.test.ts` |
 | Prototype transitions incl. smart animate | ✅ | ✅ | Duration and type carried | test-backed: `b33-animate-scroll` |
 | Unknown / future node types | ❌ | ❌ | Reported as `nodeType:<TYPE>`; the source object is still preserved in `raw` | documented-from-code: reported as `nodeType:<TYPE>` |
 
@@ -202,17 +202,16 @@ field short in **form** - `extraScrollOffset` is a `Vector` and the model has no
 offset - but the missing part is the **semantics**: which coordinate space it
 targets, whether it clamps to the scroll range, and how playback applies it.
 
-### Two gaps remain, named
+### The remaining gap: the swap cannot be AUTHORED in the UI
 
-- **`prototypeInteractions` - the `.fig` mapper - is still NOT written**, so
-  prototype links **still do not survive a `.fig` round trip** even though the
-  model now supports the swap. **Nothing here claims the mapper is done** until a
-  round trip proves it.
-- **`prototypeDestinations` offers only the PAGE frames**, so a variant
-  **`COMPONENT` cannot be chosen** when *creating* a swap action in the UI - even
-  though an imported document will play it. 
+`prototypeDestinations` lists the page's own `FRAME` / `COMPONENT` children, so a
+variant **component nested inside a component set cannot be chosen** - which means
+a swap action **cannot be created in the UI**, even though an imported document
+plays it correctly. **It is being done now**, and **nothing here claims the picker
+is fixed** until creation is proven end to end.
 
-Both are **in progress this round**.
+The `.fig` mapper itself is **no longer a gap** - it is written and proven both
+ways (see the table row above).
 
 ### The two shapes the editor established - the plan for the writes in progress
 
