@@ -94,9 +94,9 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **249 browser tests passing / 0 failing**, measured twice
+Current state: **253 browser tests passing / 0 failing**, measured twice
 back-to-back (exit 0 both runs) with **0 orphan processes**. `npx vitest run` =
-994 passing across 106 files.
+1009 passing across 108 files.
 
 ### Round 12 - what is and is not covered
 
@@ -486,6 +486,14 @@ node created through the bridge reaches the editor with its SETTLED box (the
 properties panel reports 24px high for a 20px face, not the factory's 16.8), and
 a boolean created by a script re-evaluates when an operand moves - both driven
 over the protocol from a browser spec, no MCP client needed.
+
+`b57-grid-autolayout` covers grid auto layout on the live canvas: switching a
+frame to Grid places three children at x 16 / 156 / 16 with the third wrapping to
+row 2, a column switched to FIXED 1px reflows the widths to 1 / 255 / 1, resizing
+the frame resizes the fractional track, and the grid TRACK editor is asserted to
+be a separate control from the layout GUIDES (adding a guide moves neither the
+children nor the layout mode, and leaving the grid direction removes the track
+editor while the guides stay).
 
 New specs: `b36-shapes` (line tool geometry and rendering), `b37-pwa-offline`
 (service-worker registration and an offline reload against the built app served
