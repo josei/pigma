@@ -151,6 +151,8 @@ interface ExportContext {
   sessionID: number;
   blobs: Uint8Array[];
   warnings: string[];
+  /** The file being exported: a node's style binding resolves through its table. */
+  file: PigmaFile;
 }
 
 const ALPHABET_START = 0x21;
@@ -571,6 +573,32 @@ function nodeChange(
     change.overflowDirection = node.overflowDirection;
   }
   if ('booleanOperation' in node && node.booleanOperation) change.booleanOperation = node.booleanOperation;
+  // Style bindings, under the schema's PER-PROPERTY names.
+  //
+  // `styleIdForFill`/`styleIdForStrokeFill`/`styleIdForText`/`styleIdForEffect`/
+  // `styleIdForGrid` are the five binding fields. `styleID` is a SEPARATE legacy
+  // single-style field and the `inherit*StyleID` family is a third set
+  // (inheritance between variants) — neither is what a node binding uses.
+  //
+  // The value is a `StyleId { guid, assetRef }`, so it needs the style's GUID;
+  // a style created in Pigma has none, and the write is skipped so the pre-encode
+  // check reports it rather than writing something the schema cannot encode.
+  if (node.styles) {
+    const styleGuid = (id: string | undefined): Guid | null => {
+      if (!id) return null;
+      const definition = ctx.file.styles?.[id];
+      return definition?.guid ? guidFor(definition.guid, ctx.sessionID) : null;
+    };
+    const fill = styleGuid(node.styles.fill);
+    if (fill) change.styleIdForFill = { guid: fill };
+    // The wire also has `styleIdForStrokeFill` and `styleIdForGrid`; the model's
+    // NodeStyleBinding has only fill/text/effect, so those two have no source
+    // field — a MODEL GAP, reported rather than invented.
+    const text = styleGuid(node.styles.text);
+    if (text) change.styleIdForText = { guid: text };
+    const effect = styleGuid(node.styles.effect);
+    if (effect) change.styleIdForEffect = { guid: effect };
+  }
   if ('boundVariables' in node && node.boundVariables && Object.keys(node.boundVariables).length > 0) {
     change.variableBindings = toNativeBindings(node.boundVariables as Record<string, string>);
   }
@@ -761,7 +789,7 @@ export function pigmaToFigMessage(
   file: PigmaFile,
   options: ModelExportOptions,
 ): { message: Record<string, unknown>; warnings: string[] } {
-  const ctx: ExportContext = { sessionID: options.sessionID ?? 1, blobs: [], warnings: [] };
+  const ctx: ExportContext = { sessionID: options.sessionID ?? 1, blobs: [], warnings: [], file };
   const nodeChanges: Array<Record<string, unknown>> = [];
   const root = file.document;
   nodeChanges.push(nodeChange(root, null, null, ctx));
