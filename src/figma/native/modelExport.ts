@@ -446,6 +446,10 @@ function nodeChange(
     type: NATIVE_TYPE[node.type] ?? 'FRAME',
     name: node.name,
     visible: node.visible,
+    // `locked` was never written, so a locked layer came back unlocked with no
+    // warning: the importer reads `locked === true` and a missing field is false.
+    // Written only when true, like the other optional flags.
+    ...(node.locked ? { locked: true } : {}),
     opacity: node.opacity,
     transform: {
       m00: node.transform.a,
