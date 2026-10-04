@@ -503,6 +503,8 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
   if (cap) normalized.strokeCap = cap;
   const join = mapStrokeJoin(node.strokeJoin);
   if (join) normalized.strokeJoin = join;
+  if (Array.isArray(node.dashPattern)) normalized.dashPattern = node.dashPattern;
+  if (join) normalized.strokeJoin = join;
   const constraints = mapNativeConstraints(node);
   if (constraints) normalized.constraints = constraints;
   if (typeof node.cornerRadius === 'number') normalized.cornerRadius = node.cornerRadius;

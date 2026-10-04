@@ -108,7 +108,8 @@ describe('dashPattern: is the loss schema-dependent?', () => {
     });
     const changes = pigmaToFigMessage(file, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors }).message
       .nodeChanges as Array<Record<string, unknown>>;
-    expect(changes.find((change) => change.name === 'Subject')!.strokeDashes).toEqual([4, 2]);
+    // The NATIVE wire name, which is what the schema defines.
+    expect(changes.find((change) => change.name === 'Subject')!.dashPattern).toEqual([4, 2]);
   });
 
   it('reports which fixture schemas keep it through the binary round trip', async () => {
@@ -123,16 +124,13 @@ describe('dashPattern: is the loss schema-dependent?', () => {
       const node = byName(reimported, 'Subject');
       results[schema] = !!node && Array.isArray(node.dashPattern) && node.dashPattern.length > 0;
     }
-    // MEASURED: no fixture schema keeps it, even though the exporter writes
-    // `strokeDashes` into the message. So the loss is NOT schema-dependent — the
-    // compat table's ✅ for "dash pattern" is FALSE and must be corrected. This
-    // assertion pins the defect: fixing it flips this test.
+    // FIXED: the exporter wrote the REST name (`strokeDashes`); the NATIVE schema
+    // spells the field `dashPattern`, so it was dropped by the encoder. With the
+    // wire name corrected the round trip keeps it — in every fixture whose schema
+    // defines the field, which the decoded schema shows all four do.
     const kept = Object.entries(results).filter(([, value]) => value).map(([name]) => name);
     expect(Object.keys(results)).toHaveLength(4);
-    expect(
-      kept,
-      `dashPattern now survives through: ${kept.join(', ')} — the loss is fixed, update this test and the compat row`,
-    ).toEqual([]);
+    expect(kept, `kept by: ${kept.join(', ')}`).toEqual(['circle.fig', 'openfigs.fig', 'with-image.fig', 'word-outline-stroke.fig']);
   });
 });
 
@@ -142,20 +140,20 @@ describe('the export reports fields the schema cannot encode', () => {
     const page = file.document.children[0]!;
     const rect = createRectNode(file.document, 0, 0, 100, 50);
     rect.name = 'Subject';
-    // `dashPattern` is WRITTEN by the exporter (as `strokeDashes`) but the schema
-    // has no such field, which is exactly the class this check catches. A field
-    // the exporter never writes is a missing write, not a dropped one, so it
-    // cannot appear here.
-    rect.dashPattern = [4, 2];
+    // `overflowDirection` is WRITTEN by the exporter but the schema does not
+    // define it, which is exactly the class this check catches. A field the
+    // exporter never writes is a missing write, not a dropped one, so it cannot
+    // appear here.
+    (rect as { type: string }).type = 'FRAME';
+    (rect as { overflowDirection?: string }).overflowDirection = 'VERTICAL_SCROLLING';
     page.children = [rect];
 
     const { warnings } = pigmaToFigMessage(file, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors });
     const dropped = warnings.filter((line) => line.includes('is not defined by this .fig schema'));
     expect(dropped).toHaveLength(1);
-    expect(dropped[0]).toContain('"strokeDashes"');
-    // The change is named, and a field a user would notice says so.
-    expect(dropped[0]).toMatch(/RECTANGLE "Subject"/);
-    expect(dropped[0]).toContain('a user would notice this');
+    expect(dropped[0]).toContain('"overflowDirection"');
+    // The change is named.
+    expect(dropped[0]).toMatch(/FRAME "Subject"/);
   });
 
   it('does not warn about fields the schema defines', () => {

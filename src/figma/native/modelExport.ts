@@ -470,7 +470,9 @@ function nodeChange(
   if (node.strokeAlign) change.strokeAlign = node.strokeAlign;
   if (node.strokeCap) change.strokeCap = node.strokeCap;
   if (node.strokeJoin) change.strokeJoin = node.strokeJoin;
-  if (node.dashPattern) change.strokeDashes = node.dashPattern;
+  // The NATIVE schema spells this `dashPattern`; `strokeDashes` is the REST API's
+  // name, so writing it here made the encoder drop the field silently.
+  if (node.dashPattern) change.dashPattern = node.dashPattern;
   const effects = toNativeEffects(node.effects);
   if (effects.length > 0) change.effects = effects;
   if (node.type === 'CANVAS') {
