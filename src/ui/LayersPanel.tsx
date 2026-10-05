@@ -102,6 +102,21 @@ function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRe
             {node.name}
           </span>
         )}
+        {node.isMask ? (
+          // Figma's own indicator: "the mask is shown in the Layers panel with a
+          // mask icon" (help.figma.com/hc/en-us/articles/360040450253-Masks). It
+          // reuses the dev-status badge pattern rather than inventing a second
+          // affordance, and it is ALWAYS on — unlike the canvas mask outline,
+          // which Figma gates behind View > Mask outlines.
+          <span
+            className="layer-row__badge layer-row__badge--mask"
+            data-testid="layer-mask-badge"
+            data-tooltip="Mask"
+            aria-label="Mask"
+          >
+            <Icon name="mask" size={11} />
+          </span>
+        ) : null}
         {node.devStatus ? (
           <span
             className="dev-status dev-status--badge"

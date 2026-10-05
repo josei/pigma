@@ -440,6 +440,24 @@ select {
   font-size: 9px;
 }
 
+/* The mask indicator beside a layer's name. Figma shows it as an icon on the mask
+   layer; this reuses the badge pattern above so there is one affordance shape in
+   the row, not two. */
+.layer-row__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
+  border-radius: 3px;
+  border: 1px solid var(--figma-border);
+  color: var(--figma-text-secondary);
+  flex: none;
+}
+
+.layer-row__badge--mask {
+  color: var(--figma-brand);
+  border-color: var(--figma-brand);
+}
+
 .tab--dev {
   cursor: default;
   color: var(--figma-brand);
