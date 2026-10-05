@@ -10,3 +10,6 @@ src-tauri/gen/
 
 # TypeScript incremental build artifacts
 *.tsbuildinfo
+
+# external .fig references used to OBSERVE the wire shape (not redistributed)
+.fig-refs/
