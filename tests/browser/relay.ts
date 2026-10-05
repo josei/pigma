@@ -172,7 +172,12 @@ export const test = base.extend<{ relay: RelayInfo }, {}>({
         await stopProcessTree(child);
       }
     },
-    { scope: 'test' },
+    // The setup spawns a `vite-node` relay and waits for it to answer. That is a
+    // PROCESS START, not the test's assertion - and a test-scoped fixture's setup
+    // otherwise spends the TEST's 30s budget, so a slow start under load fails the
+    // test for a reason it does not own. Seen at round 115: `Test timeout of
+    // 30000ms exceeded while setting up "relay"` on B18a, while run 2 was clean.
+    { scope: 'test', timeout: 90_000 },
   ],
 });
 
