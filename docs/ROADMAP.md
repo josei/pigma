@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1069 unit tests / 117 files**, **280 browser tests passing / 0 failing**, **14 Rust tests passing**,
+Last verified: **1069 unit tests / 117 files**, **283 browser tests passing / 0 failing**, **15 Rust tests passing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -568,10 +568,23 @@ time**, falling back to the **previous version and then to the embedded bundle**
 **Proven by a test that WOULD HAVE PASSED BEFORE THE CHANGE:**
 `refuses_a_bundle_whose_tree_does_not_match_its_manifest` - alongside
 `falls_back_when_there_is_no_bundle` (**no cache cannot brick the window**). *Both in
-`src-tauri/src/assets.rs`; `cargo test` = **14 passing**, measured.*
+`src-tauri/src/assets.rs`; `cargo test` = **15 passing**, measured.*
 
 **The defect was invisible to the sweep because the path was UNREACHABLE. Wiring a thing
 is how you find out what it was hiding.**
+
+**AND THE ROLLBACK FINDING, A BETTER OUTCOME THAN THE BRIEF ASSUMED:** `assets::rollback`
+was **not merely dead** - the install path's rollback branch **did the same work
+INLINE**, so the operation **EXISTED TWICE AND ONLY ONE COPY RAN**. The branch now
+**calls it**; the **dead-code warning is GONE (0)**; and **`cargo test` = 14 passed**,
+including the rollback test, which **now exercises the real function**. **A DUPLICATE
+FOUND IS BETTER THAN A CORPSE REMOVED** - and it is worth saying which of the two it was.
+
+**AND THE OPEN QUESTION IS KEPT OPEN:** the serving-path fallback tries the previous
+version **WITHOUT SWAPPING THE POINTER**, so **a corrupt active version stays active and
+is re-tried on every resolve**. That is **SAFER than demoting on a transient read
+error**, but **THE POINTER THEN LIES ABOUT WHAT IS SERVED**. Being resolved this round;
+**not claimed done.**
 
 **AND THE HONEST LIMIT, stated rather than left implicit: THE WINDOW-LEVEL PROOF IS NOT
 DELIVERED.** The **layer-level** tests prove the serving path returns the cached version,
@@ -597,8 +610,26 @@ claim defects: a reader ACTS on it.
 THE INLINE EDITOR ENDS THE EDIT.** The mechanism: the canvas **takes focus on ANY
 pointerdown**, which **blurs the textarea**, and **its `onBlur` commits and closes** -
 so typing works and Escape closes, but **placing the caret by clicking does not**, while
-**Figma positions the caret when you click inside text**. The editor is fixing it this
-round with a **guard on the focus call rather than a special case**; **not claimed fixed.**
+**Figma positions the caret when you click inside text**.
+
+**CLOSED, and the fix is at the RIGHT LAYER: a GUARD ON THE FOCUS CALL, not on the
+blur.** The editor first asked **what that focus call is FOR** (keyboard shortcuts need
+the container focused) and **narrowed only the case that was wrong** - so **a click
+elsewhere still focuses and a click on another node still commits and selects**.
+
+**Four browser assertions** (`tests/browser/b20-text-caret.spec.ts`), and the first is
+the one the bug was about:
+
+| Assertion | Proves |
+| --- | --- |
+| **click inside** | the editor **STAYS OPEN** and **`selectionStart` MOVES into the text** |
+| **click outside** | commits and closes |
+| **click another node** | commits and selects |
+| **shortcuts still work** | `Ctrl+Alt+M` masks, `r` selects Rectangle |
+
+**AND A FINDING FROM THE PROOF ITSELF: an EMPTY text node's editor has a NEAR-ZERO BOX -
+MEASURED at 2.9 x 12.4 px** - so the test **types text first and clicks the centre**.
+**That is a fact about the APP, not about the test.**
 
 **And what the sweep found WIRED, because a sweep that only lists defects is not a
 sweep:** the text tool, the double-click into a **focused** editor, typing, Escape,
@@ -771,3 +802,20 @@ section exists to expose.
   serialising one needs a real `.fig` schema and compressors. Every row of
   [FIGMA_COMPAT.md](FIGMA_COMPAT.md) now carries an explicit
   `test-backed:`/`documented-from-code:` evidence entry.
+
+### The evidence convention: measure the count, carry the measurement
+
+**EVERY COUNT THAT MATTERS IS MEASURED, AND THE DOCS CARRY THE MEASUREMENT rather than
+the claim.** This is now the project's strongest evidence habit, and it has teeth:
+
+- The **browser figure was moved off the brief's number to the MEASURED one** (it had
+  risen because another track added specs) - a count that is *quoted* drifts; a count
+  that is *measured* cannot.
+- **`cargo test` is a FIRST-CLASS evidence count**, not an appendix: the Rust tests are
+  **the only proof of the desktop serving path**, so a project reporting unit and browser
+  but not cargo is **reporting two-thirds of its evidence.**
+
+**All three counts - unit, browser, cargo - live in the README and in this roadmap**, and
+they are kept honest in both directions: **if a run is DEGRADED, say so; if a count MOVED
+because another track added specs, say that too.**
+
