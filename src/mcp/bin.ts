@@ -29,7 +29,7 @@ import { nodeRasterizer } from './raster.node';
 import { settleDocument } from '../model/settle';
 import { createSession, type DocumentSession } from './session';
 import { createNodePluginInterpreter } from './plugin/interpreter.node';
-import { startRelayServer } from './relay';
+import { DEFAULT_COMMAND_TIMEOUT_MS, startRelayServer } from './relay';
 import { harnessConfigs } from './harnessConfig';
 import { TokenStore } from './tokens';
 import { startHttpServer } from './transports/node';
@@ -71,7 +71,7 @@ export function parseArgs(argv: string[]): CliOptions {
     bridge: false,
     port: 3001,
     relayPort: 3002,
-    relayTimeoutMs: 10_000,
+    relayTimeoutMs: DEFAULT_COMMAND_TIMEOUT_MS,
     host: '127.0.0.1',
     name: 'pigma',
     // Hosted mode is opt-in: loopback and self-host need no token at all.
