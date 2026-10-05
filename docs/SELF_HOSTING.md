@@ -150,13 +150,29 @@ loopback to the server**, so `POST /mcp/token` is open to anyone who knows the
 URL: the mint rule is "loopback peer, or `X-Pigma-Mint`", and a tunnel makes
 everyone the former. Treat a tunnel URL as public and short-lived.
 
-**Both allowlists follow the origin (measured 2026-10-05).** `--public-url` now
-extends the advertised URLs *and* both gates, each keeping its loopback entries:
-the MCP endpoint gets `allowedHosts: [<public host>, …]` **and**
-`allowedOrigins: [<public origin>, …]`, and the bridge gets
-`allowedHosts: [<public host>, …]` (`DEFAULT_BRIDGE_HOSTS` is still loopback-only
-without the option, so a loopback deployment is unchanged). What the gates still
-refuse, with the codes measured over the tunnel:
+**What `--public-url` extends, and what it does not (measured 2026-10-05).** It
+extends the advertised URLs and **three of the four** allowlists:
+
+| Gate | Extended by `--public-url`? |
+| --- | --- |
+| MCP endpoint host allowlist | yes — `allowedHosts: [<public host>, …]` |
+| MCP endpoint origin allowlist | yes — `allowedOrigins: [<public origin>, …]` |
+| Bridge host allowlist | yes — `allowedHosts: [<public host>, …]` |
+| **Bridge origin allowlist** | **no** — still `DEFAULT_ORIGINS`, loopback **http** only |
+
+The last row is why a browser **served from the public origin** still cannot drive
+the bridge, even when the tunnel streams: its `GET /bridge/events` carries no
+`Origin` and passes, but the state push it then makes is a **POST, which carries
+`Origin: https://<public origin>`** — refused **403 `host/origin not allowed`**.
+The client reports "connected" only after that push (`src/mcp/browserClient.ts`),
+so the panel stays at *MCP: connecting*, the MCP session never receives a
+document, and document tools answer *"No Pigma document is loaded. Open a document
+or call create_new_file first."* Measured in the browser: page `EventSource` →
+`{"hello":true}`, page `fetch` POST `/bridge/result` → **403**. The fix is the
+same shape the MCP handler already uses: pass
+`allowedOrigins: [<public origin>, …]` to `createBridge` as well.
+
+What the gates still refuse, with the codes measured over the tunnel:
 
 | Request | Answer |
 | --- | --- |
@@ -170,21 +186,19 @@ refuse, with the codes measured over the tunnel:
 So allowing the public origin did not turn either gate into a pass-through: it
 allows *that* origin and host, and nothing else.
 
-**A quick tunnel still cannot validate the bridge loop.** Cloudflare's quick
-tunnel does not deliver the bridge's Server-Sent Events stream: with the tunnel
-in front, `GET /bridge/events` returns 200 and the relay registers the editor
-(`/bridge/status` reports `connected: true`), but **no `hello` event reaches the
-page** — measured with a controlled probe: the same SSE server streams
-immediately on loopback and delivers nothing through a fresh quick tunnel, with
-or without `x-accel-buffering: no` / `no-transform` headers, so this is the tunnel
-layer rather than a header the relay is missing. The editor's bridge client
-reports "connected" only after that `hello` (and its first state push), so over a
-quick tunnel it stays at *connecting*, the MCP session has no document, and
-document tools answer *"No Pigma document is loaded. Open a document or call
-create_new_file first."* A quick tunnel therefore validates the **HTTP** surface —
-app, `/config.json`, `/mcp/status`, token minting, `initialize`, `tools/list` — but
-not the editor↔bridge loop. Use a proxy that streams (a named tunnel, or nginx
-with `proxy_buffering off`) when that loop is what you are testing.
+**A Cloudflare quick tunnel also cannot deliver the bridge SSE — and that part is
+Cloudflare-specific.** With the quick tunnel in front, `GET /bridge/events`
+returns 200 and the relay registers the editor (`/bridge/status` reports
+`connected: true`), but **no `hello` event reaches the page**. A controlled probe
+settles it: the same SSE server streams immediately on loopback, delivers nothing
+through a fresh Cloudflare quick tunnel (with or without `x-accel-buffering: no` /
+`no-transform`), and streams immediately again through a **localtunnel** — so the
+relay's headers are not the cause and tunnelling is not the cause; the Cloudflare
+quick-tunnel edge is. A quick tunnel therefore validates the **HTTP** surface —
+app, `/config.json`, `/mcp/status`, token minting, `initialize`, `tools/list` —
+but not the editor↔bridge loop; a streaming proxy (a named tunnel, nginx with
+`proxy_buffering off`, or localtunnel) removes that blocker, leaving only the
+bridge origin allowlist above.
 
 ### Running a local relay (editor, QA, browser tests)
 
