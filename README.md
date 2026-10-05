@@ -28,9 +28,10 @@ past drawing:
   collaboration presence (cursors, follow)
 
 Evidence: **1064 unit tests across 115 files**, **262 browser tests passing / 0 failing**
-(`CI=true npm run test:browser`), and a parity diff that passes 11/11 with zero deltas
-against a **hardcoded, memory-sourced list of values** - an internal contract
-check, **not** a measurement of Figma. See
+(`CI=true npm run test:browser`), and a parity script that separates its INTERNAL
+contract rows (**11/11** - Pigma's own values, not evidence about Figma) from its
+EXTERNAL references (one cited structural fact, **0 pixel references**), so it
+reports the 1:1 visual-parity claim as **UNSUPPORTED**. See
 [`docs/ROADMAP.md`](docs/ROADMAP.md), "How the Figma matching was actually
 done". See [`docs/ROADMAP.md`](docs/ROADMAP.md) for
 the milestone-by-milestone status, the specs that prove each claim, and the known
