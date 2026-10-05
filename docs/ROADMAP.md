@@ -47,7 +47,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 | Area | Verified behaviour | Evidence |
 | --- | --- | --- |
-| Shell & layout | rail 56px, panels 240px, white 14px floating toolbar, canvas `#e5e5e5`, 24px controls | `b9-layout`, `b10-fidelity`, parity diff 11/11 |
+| Shell & layout | rail 56px, panels 240px, white 14px floating toolbar, canvas `#e5e5e5`, 24px controls | `b9-layout`, `b10-fidelity`, parity diff 11/11 - **an INTERNAL contract check on our own constants, not external verification** (see M9) |
 | Drawing | rectangle at the dragged size, ellipse, frame, text, line, section, pen path (Enter commits) | `b1-drawing`, `b19-features`, `b20-vector-styles-variables` |
 | Selection | click, Escape, empty-click deselect, shift-click, marquee, layer row | `b2-selection` |
 | Manipulation | drag by exact delta, smart snapping + guides, Ctrl bypass, NW-handle resize pinning the opposite corner, no non-positive sizes, arrow nudge | `b3-manipulation` |
@@ -171,6 +171,24 @@ server), **the build output** (the read is conditional and returns early when `d
 is absent), and **first-run state** (it appeared on run **3** - a **RACE**, not a
 first-run effect).
 
+**4. A BRIDGE COMMAND TIMEOUT under load - observed once, not yet chased.** RUN 1 of
+round 116 reported **1 flaky**: `B11d` (a Figma REST import) failed with
+**`Bridge command "setFile" timed out after 10000 ms`** (`isError: true`), so the
+import never completed and the expected *"Imported"* toast never appeared; it passed
+on retry. **A distinct symptom** from the three above - it is the **MCP bridge's 10 s
+command timeout** being exceeded under load, not a fixture, a collection phase or an
+assertion. **Observed once; not yet pursued.** Recorded rather than dismissed.
+
+**3. A GENUINE FAILURE - REPRODUCIBLE, and now CLOSED.** Do **not** merge this into
+the two above, and do **not** call it flaky: it was **reproducible**.
+
+`B18a` failed **outright and failed on retry** - *"Test timeout of 30000ms exceeded
+while setting up `relay`"* - because the **relay fixture's setup was spending the
+test's own 30 s budget** spawning `vite-node` **per test** (`tests/browser/relay.ts`
+is test-scoped). **Fixed with a fixture-scoped timeout**, so the process start has
+its own budget instead of the assertion's, and **verified under deliberate load**
+(b18 run concurrently with a four-worker suite: 2/2 passing).
+
 **2. A COLLECTION failure - SEPARATE, still OPEN, and now ATTEMPTED UNDER LOAD.**
 On the pass's first run: `24 test files failed | 89 passed` with only **832 of 1057
 tests collected**. That is a different shape from an assertion failure: it fails to
@@ -217,10 +235,31 @@ What follows is *coverage* still missing, not failures:
   of `npm test`** - **a green manual check is not a green suite**.
 - **File System Access** — the menu entries are asserted (`b25-round11` `B25c`);
   the OS file-picker round trip cannot be driven headlessly.
-- **Figma pixel parity** is not an image diff against Figma's screenshots (which
-  cannot be committed). `scripts/parity-spec.mjs` compares measured values
-  against Figma's *documented* numbers (11/11, zero deltas) and `b39-pixel-diff`
-  catches regressions against the app's own committed baseline.
+- **Figma pixel parity** is the **weakest claim in the project**, and the M9 row now
+  says why: `scripts/parity-spec.mjs` compares the app against an **UNCITED
+  `DOCUMENTED` constant table**, and **four of its checks compare Pigma at DPR 2
+  against Pigma at DPR 1** - **self-consistency, not a comparison against anything
+  outside this repo**. **NO FIGMA RENDERING IS MEASURED**, so **11/11 is a CONTRACT
+  CHECK ON OUR OWN CONSTANTS, not evidence of 1:1 visual parity**. `b39-pixel-diff`
+  catches regressions against the app's own committed baseline - the same
+  limitation, and it is not an image diff against Figma's screenshots either.
+
+### Landed this round
+
+- **`download_assets` widened** to **SVG / PNG / PDF**. **JPG is NOT claimed** -
+  there is **no encoder** for it, so it is not produced and not promised.
+- **The description sweep covered all 35 tools.** It found **ONE contradiction at
+  three sites** (fixed) and **two further factual defects** (fixed). The class
+  remains the one above: *a description that contradicts the code is worse than a
+  wrong count.*
+- **A LIVE BUG the widening exposed, now fixed:** PDF export **crashed on `VIDEO` /
+  `PATTERN` paints**. Worth recording because the widening is what surfaced it - the
+  feature work is what found the defect.
+
+**In progress, room left for its findings: the parity script is being RESTRUCTURED to
+label every check `INTERNAL` or `EXTERNAL`, and to FAIL a reference that lacks
+provenance.** No numbers are pre-empted here; the restructuring's own results belong
+in this section when they land.
 
 ### How the Figma matching was actually done
 
@@ -329,19 +368,22 @@ reference comparisons**, and for every external reference record the **source
 URL, capture date, access role, selected node type, theme, viewport, browser zoom
 and DPR**.
 
-**Observed structural differences.** These are **observations from Figma's
-official illustrations, NOT measured pixel errors** - and official help images can
-themselves represent **different UI revisions**:
+**Observed structural differences - a DECISION LIST, not a fix list.** These are
+**observations from Figma's official illustrations, NOT measured pixel errors**.
+**Nothing here should be changed until a dated target is chosen** (below), and the
+choice is the **product owner's**.
 
-- Pigma permanently shows a **third Inspect tab**;
-- **Present sits in the bottom toolbar**;
-- the **no-selection Design panel** shows a prompt and **disabled alignment
-  controls**;
-- Pigma's toolbar exposes **individual shape tools**, where the official toolbar
-  reference **groups tools with dropdowns**.
+| Observed difference | Source | What changing it would cost | What it would break |
+| --- | --- | --- | --- |
+| A **permanent third Inspect tab** | the audit's read of Figma's official illustrations | a visibility rule (tab only with a selection) plus a new empty state | specs that select that tab directly (`b21`, `b34-mcp-gating`), and wherever the no-selection experience currently lives |
+| **Present in the bottom toolbar** | the official toolbar reference | moving it to Figma's position - a markup/CSS move | the layout contract in `b9-layout` / `b10-fidelity` and the parity constants; the specs drive it by **aria-label** (`b14`, `b59`) so they would survive a move |
+| The **no-selection Design panel** shows a prompt and **disabled alignment controls** | the official illustration | rendering the full panel in a disabled state instead of a prompt | `b5-properties` `B5e`, which asserts the panel shows geometry **for the selection only** |
+| **Individual shape tools** where Figma **groups them behind dropdowns** | the official toolbar reference | a dropdown component plus keyboard handling | the toolbar contract in `b9-layout`, and **every** spec that clicks a tool by aria-label - those labels would move inside a menu |
 
-A **dated target must be chosen** before the shell is changed to match any of
-these.
+**A DATED TARGET MUST BE CHOSEN before any of these is matched, and the choice is the
+product owner's.** The reason is in the warning above: **official help images can
+represent DIFFERENT UI REVISIONS**, so "match the illustrations" is not a
+specification until it says *which* revision and *when* it was captured.
 
 **Dev Mode and Code Connect EXIST here** - statuses plus CSS / React / SwiftUI /
 Compose codegen, and the Code Connect mapping tools. Nothing in these documents
