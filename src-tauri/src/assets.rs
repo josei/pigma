@@ -499,17 +499,13 @@ where
                 write_check_marker(root, outcome.error.as_deref());
                 return outcome;
             }
-            let entry = if entry.is_empty() { "index.html".to_string() } else { entry };
-            let result = write_pointer(root, &Pointer { version: version.clone(), entry: entry.clone(), previous: None });
-            let error = result.err();
-            write_check_marker(root, error.as_deref());
-            UpdateOutcome {
-                status: if error.is_some() { "failed".into() } else { "rollback".into() },
-                version,
-                entry,
-                downloaded: Vec::new(),
-                error,
-            }
+            // ONE implementation of the swap: `rollback` did exactly this and was
+            // never called, so the operation existed twice and only one copy ran.
+            let _ = version;
+            let _ = entry;
+            let outcome = rollback(root);
+            write_check_marker(root, outcome.error.as_deref());
+            outcome
         }
         Decision::Install { version, entry, files, fresh: _ } => {
             let manifest = manifest.expect("an install decision has a manifest");

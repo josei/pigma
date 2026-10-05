@@ -491,7 +491,16 @@ export function Canvas() {
 
     const state = useEditor.getState();
     const world = toWorld(event.clientX, event.clientY);
-    containerRef.current?.focus();
+    // KEEP THE CONTAINER FOCUSED FOR KEYBOARD SHORTCUTS — except when the
+    // pointerdown is INSIDE the inline text editor. Taking focus there blurs the
+    // textarea, and its onBlur commits and closes the edit, so CLICKING TO PLACE
+    // THE CARET ENDED THE EDIT. The guard is on the focus call, not on the blur:
+    // a click anywhere else still focuses the container, so shortcuts keep working,
+    // and a click on ANOTHER node still blurs the editor and commits the edit.
+    const target = event.target as HTMLElement | null;
+    if (!target?.closest('.text-editor')) {
+      containerRef.current?.focus();
+    }
 
     if (tool === 'comment') {
       const state2 = useEditor.getState();
