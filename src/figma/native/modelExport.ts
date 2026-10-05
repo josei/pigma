@@ -606,7 +606,17 @@ function nodeChange(
     if (effect) change.styleIdForEffect = { guid: effect };
   }
   if ('boundVariables' in node && node.boundVariables && Object.keys(node.boundVariables).length > 0) {
-    change.variableBindings = toNativeBindings(node.boundVariables as Record<string, string>);
+    // The wire's home for a node's variable bindings is `variableConsumptionMap`,
+    // a `VariableDataMap { entries: VariableDataMapEntry[] }` where each entry is
+    // `{ nodeField: uint, variableData: VariableData, variableField: VariableField }`.
+    // `variableField` is the FIELD ASSOCIATION — the thing that was missing — and
+    // the reference is `variableData.value.alias` (a `VariableID`).
+    //
+    // (My round-100 note named this field; round 104 retracted it on a grep that
+    // only matched definition names. The retraction was wrong and the field is
+    // right here on NodeChange. A retraction is a conclusion and needs evidence.)
+    const entries = toVariableConsumptionEntries(node.boundVariables as Record<string, string>, ctx);
+    if (entries.length > 0) change.variableConsumptionMap = { entries };
   }
   if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
     const component = node as unknown as { componentPropertyDefinitions?: Record<string, ComponentPropertyDefinition> };
@@ -712,13 +722,15 @@ function toNativeInteractions(node: AnyNode, ctx: ExportContext): Array<Record<s
 }
 
 /** Model binding keys → Figma's `boundVariables` property names (alias objects). */
-const BINDING_EXPORT_KEYS: Record<string, string> = {
-  fill: 'fills',
-  stroke: 'strokes',
-  opacity: 'opacity',
-  cornerRadius: 'cornerRadius',
-  visible: 'visible',
-  characters: 'characters',
+/**
+ * The model's binding property -> the wire's `VariableField` member. Only the
+ * three that EXIST in the enum are mapped; the enum has 55 members and none of
+ * them is fills/strokes/characters, so those are reported, not invented.
+ */
+const BINDING_VARIABLE_FIELDS: Record<string, string> = {
+  opacity: 'OPACITY',
+  cornerRadius: 'CORNER_RADIUS',
+  visible: 'VISIBLE',
 };
 
 /**
@@ -789,14 +801,45 @@ function componentPropDefs(
   return out;
 }
 
-function toNativeBindings(bindings: Record<string, string>): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
+function toVariableConsumptionEntries(
+  bindings: Record<string, string>,
+  ctx: ExportContext,
+): Array<Record<string, unknown>> {
+  const entries: Array<Record<string, unknown>> = [];
   for (const [property, variableId] of Object.entries(bindings)) {
-    const key = BINDING_EXPORT_KEYS[property];
-    if (!key) continue;
-    out[key] = { type: 'VARIABLE_ALIAS', id: variableId };
+    const variableField = BINDING_VARIABLE_FIELDS[property];
+    if (!variableField) {
+      // The wire's `VariableField` enum has 55 members and NOT ONE of them is
+      // fills, strokes or characters — so a binding on those properties cannot be
+      // expressed this way. Reported rather than guessed; how the wire binds a
+      // fill variable is NOT established.
+      ctx.warnings.push(
+        `variable binding on "${property}" was dropped: the wire's VariableField enum has no member for it`,
+      );
+      continue;
+    }
+    // `dataType` is ALIAS; `resolvedDataType` is the TARGET variable's own type,
+    // and the two enums differ — `VariableDataType` has ALIAS, `VariableResolvedDataType`
+    // does NOT (it is BOOLEAN/FLOAT/STRING/COLOR/…). The model's variables table
+    // knows the type; without it the binding is reported rather than guessed.
+    const resolved = ctx.file.variables?.[variableId]?.resolvedType;
+    if (!resolved) {
+      ctx.warnings.push(
+        `variable binding on "${property}" was dropped: variable ${variableId} is not in the file's variables table, so its resolved type is unknown`,
+      );
+      continue;
+    }
+    entries.push({
+      nodeField: 0,
+      variableField,
+      variableData: {
+        value: { alias: { guid: guidFor(variableId, ctx.sessionID) } },
+        dataType: 'ALIAS',
+        resolvedDataType: resolved,
+      },
+    });
   }
-  return out;
+  return entries;
 }
 
 /** The hidden canvas real files keep their styles on. */

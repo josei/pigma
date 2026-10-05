@@ -156,6 +156,20 @@ conclusions in a row were wrong, and observation settled it in one step.**
 
 **So the rule now reads: when the shape is UNOBSERVABLE, GET A FILE.**
 
+**And a SECOND rule, for the opposite move: A RETRACTION IS A CONCLUSION TOO, AND IT
+NEEDS THE SAME EVIDENCE STANDARD AS A CLAIM.** Round 100 reported
+**`variableConsumptionMap`** as a schema field. Round 104 **RETRACTED** it - saying it
+was "not a field anywhere" - because a grep of **DEFINITION names** matched a **field
+name in another definition**. **The retraction was WRONG: the field is real and
+used.** It is a field on `NodeChange`, and its entry type `VariableDataMapEntry`
+carries `variableField`.
+
+So this is the **FOURTH partial-read conclusion of the run, and THE FIRST ONE THAT
+DELETED A CORRECT FINDING**. **Before withdrawing a finding, find the field on the
+schema definition that USES it.** This rule is the more dangerous of the two, because
+the first lesson guards against adding a wrong claim while this one guards against
+**removing a right one** - and a retraction quietly takes knowledge away.
+
 ### The export half, and WHICH proof proves WHAT
 
 The export half landed. Style entries go into the **same `nodeChanges` message** -
@@ -192,6 +206,18 @@ wrong the **other** way: the real change is **smaller**, not larger.
 **And a parser finding from the same probe:** `parseFigBinary` reads **only
 `rawChunks[1]`**, so a file carrying a **second message** would be **silently
 truncated**. That is being guarded this round.
+
+### The three evidence labels for style node kinds - keep them distinct
+
+- **`FILL` -> `ROUNDED_RECTANGLE`: OBSERVED** (seen in the real payload).
+- **`TEXT` -> `TEXT`: CORROBORATED** (confirmed by the independent implementation).
+- **`EFFECT` -> its node kind: INFERRED** - a derivation, **not** observed.
+
+**A STROKE style is `styleType: FILL` on the wire** - strokes **reuse fill styles** -
+so there is **no `STROKE` styleType to invent**.
+
+**And the two style-binding fields our model lacks - `styleIdForStrokeFill` and
+`styleIdForGrid` - REMAIN A REPORTED GAP.**
 
 ### Corroborated by an independent implementation
 
@@ -467,6 +493,22 @@ swap *does* carry a transition in the model and the exporter writes it, but
 place, with no animation). Offering the row for a swap would therefore **promise an
 animation that does not play** - so it is withheld, on purpose.
 
+### The last KIND-1 divergence: `variableConsumptionMap`
+
+An independent working implementation (**open-pencil**) writes a design node's
+variable binding as **`variableConsumptionMap`**, shaped **`{ entries }`**, where
+each entry carries **`variableField`** - and that is the **field-to-variable
+association we could not find**.
+
+**Our model's `boundVariables` (a `Record` from field to `variableId`) maps onto
+`variableConsumptionMap`'s entries.** We write **`variableBindings`**, a name the
+schema does not define, so `kiwi` drops it **silently**. **That is the last silent
+drop in the inventory.**
+
+**Not done:** the `variableConsumptionMap` write is **being written this round** -
+nothing here claims it landed, and the inventory's **kind-1 count stays at 2** until
+the round reports the new number.
+
 ### The two name mismatches are MAPPERS, not renames - and the writes stay
 
 The same probe established the two real wire names behind the round-99 findings:
@@ -474,7 +516,15 @@ The same probe established the two real wire names behind the round-99 findings:
 | We write | The schema's name |
 | --- | --- |
 | `componentPropertyDefinitions` | **`componentPropDefs`** |
-| `variableBindings` | **`variableData`** |
+| `variableBindings` | **`variableConsumptionMap`** - shaped `{ entries }`, each entry carrying **`variableField`** (the field-to-variable association) |
+
+**`variableData` / `variableDataValues` is NOT that.** It is a **different thing**:
+it lives on the **VARIABLE node** (the definition) and carries **that variable's
+values per mode**. The docs previously called it the home of a node's binding
+values; **that was wrong** - a node's binding is `variableConsumptionMap`, not
+`variableData`. There is a parallel **`parameterConsumptionMap`** for component
+parameters. (All three confirmed as fields on `NodeChange`; the entry type is
+`VariableDataMapEntry`, carrying `nodeField`, `variableData` and `variableField`.)
 
 **Neither is a rename, because the SHAPES differ** - so each needs a **mapper**, not
 a string swap. Treating either as a rename would be the same mistake as the
@@ -602,7 +652,7 @@ Everything the earlier rounds landed still survives; these are what is still ope
 | Gap | Nature |
 | --- | --- |
 | **Style bindings** | **BLOCKED ON A MODEL DECISION** - a third cause is established (Figma styles are NODES, ours are a table) and three options are with the product owner, so this is **awaiting that decision, not in progress**. The EXPORT half landed; the IMPORT does not survive; plus a **model gap** (5 wire fields vs 3) and a `StyleType` that has **7** members against our **3** |
-| **Variable bindings** | a **NAME MISMATCH** - written as `variableBindings`, which the schema does not define, so `kiwi` drops it silently (being fixed) |
+| **Variable bindings** | the **LAST kind-1 divergence**: we write `variableBindings`, which the schema does not define, so `kiwi` drops it silently. The real field is **`variableConsumptionMap`** (`{ entries }`, each with **`variableField`**). **Being written this round - not done** |
 | **Component property definitions** | **landed BOTH ways** (`componentPropDefs`: VARIANT/BOOLEAN/TEXT with names and defaults; two negatives pinned). What it *found* is a **SHAPE** loss - a map written under the RIGHT name as an EMPTY LIST - which is **instance 9** and which the name check is blind to; a **shape check is being built** |
 | **Grid track sizes** | still lost (the **track guids** half is closed) |
 | **`assetRef`** | not carried |
