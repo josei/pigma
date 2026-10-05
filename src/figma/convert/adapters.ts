@@ -751,6 +751,7 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
     ['styleIdForStrokeFill', 'stroke'],
     ['styleIdForText', 'text'],
     ['styleIdForEffect', 'effect'],
+    ['styleIdForGrid', 'grid'],
   ] as const) {
     const id = idOfGuid(isRecord(node[field]) ? (node[field] as Record<string, unknown>).guid : null);
     if (id) styleBindings[property] = id;
@@ -915,7 +916,7 @@ function consumptionBindings(raw: unknown): Record<string, string> | null {
   return Object.keys(out).length > 0 ? out : null;
 }
 
-function nativeStyleDefinition(node: FigNode, path: string, report: ReportBuilder): StyleDefinition | null {
+function nativeStyleDefinition(node: FigNode): StyleDefinition | null {
   const raw = node as Record<string, unknown>;
   const type = typeof raw.styleType === 'string' ? (raw.styleType as StyleType) : null;
   if (!type) return null;
@@ -938,14 +939,10 @@ function nativeStyleDefinition(node: FigNode, path: string, report: ReportBuilde
     const text = nativeTextStyle(raw);
     if (text) definition.text = text;
   }
-  if (Array.isArray(raw.layoutGrids) && raw.layoutGrids.length > 0) {
-    report.addUnsupported({
-      nodeId: id ?? name,
-      path,
-      feature: 'style:layoutGrids',
-      detail: 'a GRID style carries layoutGrids, which the model style table has no field for',
-    });
-  }
+  // A GRID style's payload. OBSERVED on hellomate.fig, and the model now has the
+  // GRID type and a `layoutGrids` field to hold it.
+  const grids = raw.layoutGrids;
+  if (Array.isArray(grids) && grids.length > 0) definition.layoutGrids = grids as LayoutGrid[];
   return definition;
 }
 
@@ -983,7 +980,7 @@ export function adaptNativeTree(
       continue;
     }
     if (typeof node.styleType === 'string' && node.styleType !== 'NONE') {
-      const style = nativeStyleDefinition(node, path, report);
+      const style = nativeStyleDefinition(node);
       if (style) styles[id] = style;
       continue;
     }

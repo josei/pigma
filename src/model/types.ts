@@ -590,7 +590,21 @@ export interface ComponentPropertyDefinition {
 
 export type ComponentPropertyValue = string | boolean;
 
-export type StyleType = 'FILL' | 'TEXT' | 'EFFECT';
+/**
+ * The wire's `StyleType` has SEVEN members: NONE=0, FILL=1, STROKE=2, TEXT=3,
+ * EFFECT=4, EXPORT=5, GRID=6 (enumerated from the schema, not from memory).
+ *
+ * The model carries the four that have meaning here:
+ * - FILL, TEXT, EFFECT, GRID — each is a style the user can create and apply.
+ * - NONE is not a style kind at all (it is the enum's "no type" value).
+ * - STROKE is deliberately NOT modelled: a STROKE BINDING reuses a FILL style
+ *   (`styleIdForStrokeFill` resolves to a style whose `styleType` is FILL), so
+ *   there is no stroke STYLE to hold — CORROBORATED, and the model binds a stroke
+ *   through `NodeStyleBinding.stroke` instead.
+ * - EXPORT is deliberately NOT modelled: it is a set of export settings, which the
+ *   model does not have as a style concept; nothing in the model would hold it.
+ */
+export type StyleType = 'FILL' | 'TEXT' | 'EFFECT' | 'GRID';
 
 /** Figma's file-level styles table entry. */
 export interface StyleDefinition {
@@ -611,6 +625,8 @@ export interface StyleDefinition {
   paints?: Paint[];
   text?: TextStyle;
   effects?: Effect[];
+  /** A GRID style's payload (OBSERVED on a real file's GRID style). */
+  layoutGrids?: LayoutGrid[];
 }
 
 /**
@@ -627,6 +643,7 @@ export interface NodeStyleBinding {
   stroke?: string;
   text?: string;
   effect?: string;
+  grid?: string;
 }
 
 export interface VariableMode {
