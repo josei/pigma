@@ -111,3 +111,38 @@ export function Icon(props: { name: IconName; size?: number; className?: string 
 - 16x16 viewBox, `stroke="currentColor"`, `strokeWidth={1}`, `fill="none"`, `strokeLinecap="round"`, `strokeLinejoin="round"`.
 - Icons must be legible at 16px and inherit color (no hard-coded colors).
 - `pig` is the Pigma brand mark (may be filled, pink `#FF4D8D`), used at 20px in `.rail__logo`.
+
+## Figma's canvas context menu — what the primary sources document (captured 2026-10-05)
+
+There is **no primary enumeration** of the canvas right-click menu: no Figma help
+article lists its item sets per selection case. These are every fragment the help
+centre does document, so a menu can be built from them and the rest declared.
+
+| Selection case | Items the source documents | Source (help.figma.com) |
+| --- | --- | --- |
+| a selected layer | `Copy the layer`; `Copy/paste as code` (CSS / iOS / Android) · `SVG` · `PNG` · copy the link · copy its properties; select a different layer within the selected one | `articles/360039832014-Design-prototype-and-explore-layer-properties-in-the-right-sidebar` |
+| nested objects under the cursor | `Select layer` — a submenu listing the layers under the cursor, in Layers-panel order | `articles/360040449873-Select-layers-and-objects` |
+| a layer, for properties | `Copy/Paste as` → `Copy properties` / `Paste properties` | `articles/4412765442967-Copy-and-paste-properties-between-layers` |
+| an instance whose main component was deleted | `Go to main component` → `Restore` | `articles/360038663154-Create-components-to-reuse-in-designs` |
+| any layer | `Create component` | same article as above |
+| an asset, in a plugins context | `Plugins` | `articles/360042532714-Use-plugins-in-files` |
+
+**Not found in any primary source** — "we could not find it", *not* "it does not
+exist": the menu for **nothing selected**, for **several nodes**, for a node
+**inside a frame**, and for a **text node**. No article read enumerates those item
+sets, and none documents the menu's order or separators.
+
+Searches performed on 2026-10-05, recorded so the absence is auditable:
+
+- help-centre search `?query=context menu` → 696 results; the only canvas-menu hits
+  are the fragments above (the rest are the Actions menu, MCP pages, Figma Make
+  chat context, and FigJam's `1500004292221`, a different editor).
+- `articles/360040328653-Use-Figma-products-with-a-keyboard` read in full —
+  navigation, object creation, keyboard box selection, screen readers, the
+  shortcuts panel; **no context-menu section**.
+- a web search for a UI3-era context-menu changelog or release note found nothing
+  that enumerates the menu.
+
+**Consequence for the build:** the fragments above are usable as they stand;
+everything else has to be designed, and that design is a **recorded divergence**
+from Figma rather than a match, because the primary source does not establish it.
