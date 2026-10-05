@@ -126,7 +126,7 @@ function requestToken(request: Request): string | null {
  * 403 naming the host it would not accept — including the URL it advertises.
  */
 export const DEFAULT_ALLOWED_HOSTS = ['localhost', '127.0.0.1', '::1', '[::1]'];
-const DEFAULT_ORIGINS = ['http://localhost', 'http://127.0.0.1', 'http://[::1]'];
+export const DEFAULT_ORIGINS = ['http://localhost', 'http://127.0.0.1', 'http://[::1]'];
 
 function hostAllowed(host: string | null, allowed: string[]): boolean {
   if (!host) return true; // direct handler invocation without a Host header

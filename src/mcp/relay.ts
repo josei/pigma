@@ -94,6 +94,12 @@ export interface RelayOptions {
    */
   sessionTokens?: TokenStore;
   /**
+   * Hosts the bridge answers for. Defaults to loopback. A hosted deployment adds
+   * its public host, so the editor can connect over the tunnel — the TOKEN is
+   * still required, so this widens reachability, not access.
+   */
+  allowedHosts?: string[];
+  /**
    * How long one bridge command may take before it is failed.
    *
    * THE INTENT IS LIVENESS — the comment on `failPending` says "their editor is
@@ -118,10 +124,24 @@ export interface RelayOptions {
 
 const DEFAULT_ORIGINS = ['http://localhost', 'http://127.0.0.1', 'http://[::1]'];
 
-function loopbackHost(host: string | null): boolean {
+/** The hosts the bridge answers for when no allowlist is given: loopback only. */
+export const DEFAULT_BRIDGE_HOSTS = ['localhost', '127.0.0.1', '::1', '[::1]'];
+
+/**
+ * Is this Host header one the bridge answers for?
+ *
+ * THIS WAS HARDCODED LOOPBACK WITH NO OPTION, which refused every public Host — so
+ * a hosted editor could never connect the bridge over a tunnel. That contradicted
+ * the design: `sessionTokens` exists "so an editor on the hosted site can connect
+ * without knowing the operator's secret", and `--hosted` wires the MCP session to
+ * the bridge session. A HOSTED EDITOR CONNECTING IS THE INTENT; the loopback list
+ * was an un-parameterised default, not a security posture. The security boundary
+ * is the TOKEN, which is unchanged and still required.
+ */
+function hostAllowed(host: string | null, allowed: string[]): boolean {
   if (!host) return true;
   const hostname = host.startsWith('[') ? host.slice(0, host.indexOf(']') + 1) : host.split(':')[0] ?? host;
-  return ['localhost', '127.0.0.1', '::1', '[::1]'].includes(hostname);
+  return allowed.includes(hostname);
 }
 
 function originAllowed(origin: string | null, allowed: string[]): boolean {
@@ -140,6 +160,7 @@ interface SyncPayload {
 export function createBridge(options: RelayOptions = {}): BridgeHandle {
   const token = options.token ?? randomBytes(16).toString('hex');
   const sessionTokens = options.sessionTokens;
+  const allowedHosts = options.allowedHosts ?? DEFAULT_BRIDGE_HOSTS;
   /**
    * A hosted deployment mints per-session tokens for MCP clients (`POST
    * /mcp/token`). The editor's bridge must accept one too: the operator's
@@ -265,7 +286,7 @@ export function createBridge(options: RelayOptions = {}): BridgeHandle {
     // deployment's app root got the bridge's 403 instead of the app.
     if (!url.pathname.startsWith('/bridge')) return false;
     const origin = request.headers.origin ?? null;
-    if (!loopbackHost(request.headers.host ?? null) || !originAllowed(origin, allowedOrigins)) {
+    if (!hostAllowed(request.headers.host ?? null, allowedHosts) || !originAllowed(origin, allowedOrigins)) {
       response.writeHead(403, { 'content-type': 'application/json' });
       response.end(JSON.stringify({ error: 'host/origin not allowed' }));
       return true;
