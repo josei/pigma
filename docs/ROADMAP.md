@@ -331,13 +331,28 @@ server), **the build output** (the read is conditional and returns early when `d
 is absent), and **first-run state** (it appeared on run **3** - a **RACE**, not a
 first-run effect).
 
-**4. A BRIDGE COMMAND TIMEOUT under load - observed once, not yet chased.** RUN 1 of
-round 116 reported **1 flaky**: `B11d` (a Figma REST import) failed with
+**4. A BRIDGE COMMAND TIMEOUT under load - FIXED.** RUN 1 of round 116 reported
+**1 flaky**: `B11d` (a Figma REST import) failed with
 **`Bridge command "setFile" timed out after 10000 ms`** (`isError: true`), so the
 import never completed and the expected *"Imported"* toast never appeared; it passed
-on retry. **A distinct symptom** from the three above - it is the **MCP bridge's 10 s
-command timeout** being exceeded under load, not a fixture, a collection phase or an
-assertion. **Observed once; not yet pursued.** Recorded rather than dismissed.
+on retry. **A distinct symptom** from the three above - the **MCP bridge's command
+timeout** being exceeded under load, not a fixture, a collection phase or an
+assertion.
+
+  **It was a LIVENESS INTENT IMPLEMENTED AS A WORK BUDGET.** The timer's own comment
+  said the intent was *"their editor is gone or stalled"*, but nothing in the protocol
+  can tell **stalled** from **busy**: the editor sends no progress while it runs a
+  command, and the only heartbeat is server-to-client. So the timer was the sole
+  watcher, and at 10 s it killed healthy work - `setFile` is a whole document import
+  plus a settle.
+
+  **The number was also in TWO places**, the CLI's literal shadowing the relay's
+  fallback, so changing one would silently not change the other. Now **one exported
+  constant** (`DEFAULT_COMMAND_TIMEOUT_MS = 30_000`, imported by the CLI), raised
+  because the evidence says the work legitimately exceeds the old budget - the test
+  harness itself already used 60 s for exactly this reason. **The proper separation is
+  reported, not done:** have the editor emit progress for a command id and reset THAT
+  command's timer, so liveness and work duration are genuinely separate.
 
 **3. A GENUINE FAILURE - REPRODUCIBLE, and now CLOSED.** Do **not** merge this into
 the two above, and do **not** call it flaky: it was **reproducible**.
