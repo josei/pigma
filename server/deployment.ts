@@ -12,14 +12,14 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createCollabServer, type CollabServer } from '../src/collab/server';
 import { resolveLimits, type RelayLimits } from '../src/collab/limits';
 import { createMcpServer } from '../src/mcp/protocol';
-import { DEFAULT_ORIGINS } from '../src/mcp/transports/http';
 import { createSession } from '../src/mcp/session';
 import { nodeRasterizer } from '../src/mcp/raster.node';
 import { createNodePluginInterpreter } from '../src/mcp/plugin/interpreter.node';
 import { TokenStore } from '../src/mcp/tokens';
-import { createHttpHandler, DEFAULT_ALLOWED_HOSTS } from '../src/mcp/transports/http';
+import { createHttpHandler } from '../src/mcp/transports/http';
 import { toNodeHandler } from '../src/mcp/transports/node';
-import { createBridge, DEFAULT_BRIDGE_HOSTS, type BridgeHandle } from '../src/mcp/relay';
+import { createBridge, type BridgeHandle } from '../src/mcp/relay';
+import { DEFAULT_ALLOWED_HOSTS, DEFAULT_ORIGINS } from '../src/mcp/origins';
 import { CONFIG_PATH, buildConfig, serializeConfig, type DeploymentConfig } from './config';
 
 export interface DeploymentOptions {
@@ -98,7 +98,7 @@ export async function startDeployment(options: DeploymentOptions): Promise<Deplo
   const bridge = options.bridge
     ? createBridge({
         ...(options.bridgeToken ? { token: options.bridgeToken } : {}),
-        ...(publicHost ? { allowedHosts: [publicHost, ...DEFAULT_BRIDGE_HOSTS] } : {}),
+        ...(publicHost ? { allowedHosts: [publicHost, ...DEFAULT_ALLOWED_HOSTS] } : {}),
         // The bridge's ORIGIN allowlist follows the same rule. Without it the SSE
         // connect (a GET, no Origin) opened and every PUSH (a POST, with Origin)
         // was refused — the same asymmetry as the MCP handler, one allowlist over.
@@ -129,6 +129,16 @@ export async function startDeployment(options: DeploymentOptions): Promise<Deplo
     ...(hasStatic ? { staticDir: options.staticDir } : {}),
     ...(options.dataDir ? { dataDir: options.dataDir } : {}),
     ...(options.token ? { token: options.token } : {}),
+    // The relay gets the SAME two allowlists as the MCP endpoint and the bridge,
+    // from the same shared defaults and the same --public-url. The room key stays
+    // the boundary; this only stops a page the user did not choose from opening a
+    // socket at all.
+    ...(publicOrigin
+      ? {
+          allowedHosts: [publicHost as string, ...DEFAULT_ALLOWED_HOSTS],
+          allowedOrigins: [publicOrigin, ...DEFAULT_ORIGINS],
+        }
+      : {}),
     limits,
     handle: handleExtra,
   });
