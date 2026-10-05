@@ -94,7 +94,7 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **283 browser tests passing / 0 failing**, measured twice
+Current state: **285 browser tests passing / 0 failing**, measured twice
 back-to-back (exit 0 both runs) with **0 orphan processes**. `npx vitest run` =
 1069 passing across 117 files.
 
@@ -536,3 +536,11 @@ with a stated tolerance, plus a self-check that the diff is not blind).
 The pixel diff is a REGRESSION harness; the parity claim rests on
 `scripts/parity-spec.mjs`, whose EXTERNAL section currently measures one cited
 structural fact and **no pixels** — see "Parity evidence" above.
+
+## A flaky run is reported, not smoothed over
+
+If a browser run reports a `flaky`, it is stated with the run rather than replaced by the
+passing count. Example: `b16-mcp-bridge`'s *B16c* (a wrong token rejected with a visible
+error) flaked once during a 2026-10-05 pass - **282 passed + 1 flaky** - and the next run
+passed **285 / 0 flaky**. A count that moved because another track added specs is
+attributed the same way.

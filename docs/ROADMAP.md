@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1069 unit tests / 117 files**, **283 browser tests passing / 0 failing**, **15 Rust tests passing**,
+Last verified: **1069 unit tests / 117 files**, **285 browser tests passing / 0 failing**, **15 Rust tests passing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -580,16 +580,40 @@ INLINE**, so the operation **EXISTED TWICE AND ONLY ONE COPY RAN**. The branch n
 including the rollback test, which **now exercises the real function**. **A DUPLICATE
 FOUND IS BETTER THAN A CORPSE REMOVED** - and it is worth saying which of the two it was.
 
-**AND THE OPEN QUESTION IS KEPT OPEN:** the serving-path fallback tries the previous
-version **WITHOUT SWAPPING THE POINTER**, so **a corrupt active version stays active and
-is re-tried on every resolve**. That is **SAFER than demoting on a transient read
-error**, but **THE POINTER THEN LIES ABOUT WHAT IS SERVED**. Being resolved this round;
-**not claimed done.**
+**CLOSED: THE POINTER NOW NAMES WHAT IT SERVES** - and the reasoning is a design
+principle, not a detail.
+
+The serving-path fallback tried the previous version **WITHOUT SWAPPING THE POINTER**, so
+a corrupt active version **stayed active and was re-tried on every resolve**. The
+decision was **DEMOTE**, made on **WHAT A CALLER CAN RELY ON**: **TWO callers read
+`active_bundle` - the WINDOW URL and `ASSETORIGIN`** - so a pointer naming a version
+that failed to serve would make **BOTH DESCRIBE A BUNDLE THE USER IS NOT ON**: *the
+payload and the window agreeing with each other and both wrong.*
+
+**The fallback demotes using `rollback`, WHICH SWAPS rather than discards** - so a
+**transient read failure does not lose the newer bundle**, and **the next check can
+re-activate it**. **The cost is stated:** *a single bad read demotes the active pointer
+until something re-activates it.*
+
+**And `assetOrigin` cannot lie**, because it derives from the **SAME RESOLVER the scheme
+handler uses** - so **"active" has ONE DEFINITION in both directions**.
+
+**The test shape, recorded:** the fallback test asserts **the POINTER** - it **names the
+version served**, its **previous is the corrupt one SWAPPED NOT LOST**, and a **SECOND
+RESOLVE IS STABLE** - plus `asset_origin_and_the_serving_path_agree_about_active`, which
+walks **no-bundle -> good -> corrupt-active** and asserts **the served version always
+equals the pointer version**. *(`src-tauri/src/assets.rs`; `cargo test` = **15 passing**,
+measured.)*
 
 **AND THE HONEST LIMIT, stated rather than left implicit: THE WINDOW-LEVEL PROOF IS NOT
-DELIVERED.** The **layer-level** tests prove the serving path returns the cached version,
-the fallback, and the rejection; **the WINDOW actually loading a marker bundle has not
-been observed.**
+DELIVERED - and it still is not.** The **layer-level** tests prove the serving path
+returns the cached version, the fallback, and the rejection; **the WINDOW actually
+loading a marker bundle has not been observed.**
+
+**A BISECT IS IN FLIGHT AND ITS RESULT IS NOT PRE-EMPTED.** The shell is being rebuilt
+**at the commit BEFORE the serving change** to establish whether **that change caused the
+harness stall**, or whether **round 125's success was luck**. **Until it reports, the
+window-level gap above stays stated as a gap.**
 
 **And the documentation currently CLAIMS the wired behaviour**: `docs/DESKTOP.md` says
 *"the window loads the active bundle through the `pigma://localhost`"*. **A documented
@@ -602,6 +626,26 @@ claim defects: a reader ACTS on it.
   window* would be **a worse bug than the one being fixed**;
 - show a **BAD-HASH bundle is REJECTED AT THE SERVING PATH**, not only at the install
   path.
+
+### Text controls: two that were inconclusive are now MEASURED
+
+The docs no longer call these unmeasured. All three drive the **RENDERED** output, not the
+model field (`tests/browser/b21-text-controls.spec.ts`):
+
+| Control | What is measured |
+| --- | --- |
+| **Decorate** | the rendered `text-decoration` changes **none -> underline -> line-through**, in the **SVG** and in the **PDF path** |
+| **Line height** on a **wrapping** node | the rendered tspans move apart - **H 51 -> 105**, the second tspan's `dy` increases |
+| **Letter spacing** | the rendered text bounding **width grows** |
+
+**AND THE EMPTY-TEXT NODE IS NOT A DEAD END FOR THE USER.** The **2.9 x 12.4 px box is
+the EDITOR'S, not the node's**: the node **keeps its drawn size and stays selectable**,
+and **SELECT PLUS ENTER enters text editing** - Figma's own way. (The layer rows'
+**double-click starts a RENAME**, worth recording because it is a different action from
+the one a reader would assume.)
+
+**THE TINY BOX FOOLED THE TEST, NOT THE USER, and no fix was warranted** - recorded as a
+**real outcome**, not as a closed bug.
 
 ### Two surfaces still being swept
 
