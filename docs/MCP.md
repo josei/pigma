@@ -227,6 +227,13 @@ claims otherwise.
 
 ## Supported tools
 
+The published list is the registry in `src/mcp/toolCatalog.ts`, and the tests
+enumerate it from the **running server** instead of asserting a number: the real
+stdio process (`tests/mcp/stdioTransport.test.ts`), the real HTTP endpoint over
+both JSON and SSE (`tests/mcp/rawHarness.test.ts`), and every tool through the
+real call path (`tests/mcp/toolParity.test.ts`) each compare the server's own
+`tools/list` against the registry, so a count can never drift from the list.
+
 Read: `get_design_context` (React + Tailwind code by default; `framework:
 react|html`, `styling: tailwind|css`, structured context included),
 `get_metadata` (XML outline; page list fallback), `get_screenshot` (**PNG** via
@@ -376,6 +383,36 @@ machine. A controllable deployment advertises its endpoint at `GET /config.json`
 — see
 [`SELF_HOSTING.md`](./SELF_HOSTING.md#the-config-surface-how-the-app-finds-mcp) —
 and the desktop app reports the same facts over `desktop_info`.
+
+#### Panel states: where the app thinks MCP is
+
+The panel renders one of three states, which differ only in endpoint and whether
+a token is required (`data-mcp-state` on the panel;
+`resolveMcpAvailability` in `src/config/mcpAvailability.ts`):
+
+| State | Decided by | Endpoint | Token |
+| --- | --- | --- | --- |
+| `hosted` | nothing local or advertised | `https://getpigma.com/mcp` | per session, minted by the panel |
+| `desktop` | the shell's `desktop_info` report | `http://127.0.0.1:<port>/mcp` | none |
+| `self-hosted` | `GET /config.json`, or an endpoint the user typed | that endpoint | if the deployment asks for one |
+
+Only the shell's own report yields `desktop`: a **server** advertising a loopback
+URL is `self-hosted`, because "on this machine" is not the same fact as "served
+by the app".
+
+The report's field names are a contract, not a guess. `desktop_info` is a Tauri
+command, and `DesktopInfo` in `src-tauri/src/main.rs` carries
+`#[serde(rename_all = "camelCase")]`, so the panel reads `mcpEndpoint` and
+`mcpTokenRequired`. A mismatch here fails **silently** — the panel would fall
+through to `hosted` with no error — so it is pinned on both sides: the Rust test
+`desktop_info_serializes_camel_case` asserts the exact wire keys, and
+`src/config/mcpAvailability.test.ts` feeds that payload through
+`readDesktopInfo`. `tests/browser/b34-mcp-gating.spec.ts` **B34d** drives the
+real panel in Chromium with the shell's payload injected through
+`window.__TAURI__.core.invoke`, so the desktop state is exercised end to end from
+a browser spec. What is **not** exercised headlessly is the webview IPC hop
+itself: it needs a display server and the shell, so the payload is supplied at
+the exact seam the shell writes to.
 
 #### Deploying the hosted endpoint
 
@@ -541,7 +578,7 @@ and its documented limitations (component sets, numeric font weight).
 ## Testing
 
 ```bash
-npx vitest run tests/mcp     # 58 tests
+npx vitest run tests/mcp     # the whole MCP surface (registry, transports, relay, SDK interop)
 ```
 
 Covers: protocol + version negotiation with unknown client names; every tool;

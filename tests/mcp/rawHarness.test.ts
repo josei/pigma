@@ -124,7 +124,7 @@ describe('a raw JSON-RPC harness with no SDK', () => {
     record({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, listed);
     const tools = (listed.body as { result?: { tools?: Array<{ name: string; inputSchema: unknown }> } }).result?.tools ?? [];
     expect(tools.map((tool) => tool.name).sort()).toEqual(allTools.map((tool) => tool.definition.name).sort());
-    expect(tools).toHaveLength(35);
+    expect(tools).toHaveLength(allTools.length);
     // The schemas travel with the tools: a harness builds its arguments from them.
     for (const tool of tools) {
       expect(tool.inputSchema, `${tool.name} has no inputSchema on the wire`).toMatchObject({ type: 'object' });
@@ -160,7 +160,7 @@ describe('a raw JSON-RPC harness with no SDK', () => {
     const sse = await rpc(url, { jsonrpc: '2.0', id: 5, method: 'tools/list' }, 'text/event-stream');
     expect(sse.transport).toBe('sse');
     record({ jsonrpc: '2.0', id: 5, method: 'tools/list' }, sse);
-    expect(((sse.body as { result?: { tools?: unknown[] } }).result?.tools ?? [])).toHaveLength(35);
+    expect(((sse.body as { result?: { tools?: unknown[] } }).result?.tools ?? [])).toHaveLength(allTools.length);
 
     // 7. Unknown methods are answered, not dropped.
     const unknown = await rpc(url, { jsonrpc: '2.0', id: 6, method: 'does/not/exist' });

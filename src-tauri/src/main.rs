@@ -27,6 +27,12 @@ use tauri::{Manager, UriSchemeContext};
 
 /// Facts the frontend asks for on boot.
 #[derive(serde::Serialize)]
+// The frontend reads this payload by name (`src/config/mcpAvailability.ts`,
+// `readDesktopInfo`). `#[derive(Serialize)]` alone emits the Rust field names
+// (snake_case), which the panel does not read — it looks for `mcpEndpoint` — so
+// the desktop state would silently never resolve. camelCase is the contract;
+// `desktop_info_serializes_camel_case` below pins it.
+#[serde(rename_all = "camelCase")]
 struct DesktopInfo {
     /// Effective MCP endpoint: this shell's loopback server (MCP is not hosted).
     mcp_endpoint: String,
@@ -264,12 +270,12 @@ fn serve_bundle(app: &tauri::AppHandle, request_path: &str) -> tauri::http::Resp
 fn main() {
     tauri::Builder::default()
         .manage(Mutex::new(Config::default()))
-        // NOTE (unverified here): this machine has no Rust toolchain, so the
-        // `UriSchemeContext<'_, tauri::Wry>` closure signature, the
-        // `responder.respond(..)` call and the `spawn_blocking` above are
-        // written against the Tauri 2 API docs and MUST be confirmed with
-        // `cargo check` (and `cargo test` for src/assets.rs) on a machine with
-        // rustup + the Tauri system prerequisites.
+        // Confirmed on a machine with the Rust toolchain and the Tauri system
+        // prerequisites (rustc 1.99.0, webkit2gtk-4.1/gtk+-3.0/libsoup-3.0):
+        // `cargo check` is clean and `cargo test` passes. The closure signature,
+        // the `responder.respond(..)` call and the bundle read all typecheck;
+        // the webview itself is not exercised headlessly here (no display
+        // server), so the IPC hop is verified only to the extent above.
         .register_asynchronous_uri_scheme_protocol("pigma", |ctx: UriSchemeContext<'_, tauri::Wry>, request, responder| {
             let app = ctx.app_handle().clone();
             let path = request.uri().path().to_string();
@@ -297,4 +303,41 @@ fn main() {
         .invoke_handler(tauri::generate_handler![desktop_info, desktop_asset_status, desktop_asset_check])
         .run(tauri::generate_context!())
         .expect("error while running Pigma");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The frontend's `readDesktopInfo` reads these keys by name, so the wire
+    /// shape is a contract. Asserting the whole key set means a rename of any
+    /// field fails here rather than silently producing no desktop state.
+    #[test]
+    fn desktop_info_serializes_camel_case() {
+        let value = serde_json::to_value(DesktopInfo {
+            mcp_endpoint: "http://127.0.0.1:3001/mcp".to_string(),
+            relay_url: "wss://getpigma.com/relay".to_string(),
+            local_mcp_endpoint: "http://127.0.0.1:3001/mcp".to_string(),
+            local_relay_url: "ws://127.0.0.1:3002/relay".to_string(),
+            mcp_token_required: false,
+            asset_origin: None,
+        })
+        .expect("DesktopInfo serializes");
+        let object = value.as_object().expect("DesktopInfo is an object");
+        let mut keys: Vec<&str> = object.keys().map(String::as_str).collect();
+        keys.sort_unstable();
+        assert_eq!(
+            keys,
+            ["assetOrigin", "localMcpEndpoint", "localRelayUrl", "mcpEndpoint", "mcpTokenRequired", "relayUrl"],
+        );
+        assert_eq!(
+            object.get("mcpEndpoint").and_then(|value| value.as_str()),
+            Some("http://127.0.0.1:3001/mcp"),
+        );
+        assert_eq!(object.get("mcpTokenRequired").and_then(|value| value.as_bool()), Some(false));
+        assert!(
+            !object.contains_key("mcp_endpoint"),
+            "snake_case keys never reach the panel's `readDesktopInfo`",
+        );
+    }
 }
