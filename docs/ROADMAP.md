@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1069 unit tests / 117 files**, **271 browser tests passing / 0 failing**,
+Last verified: **1069 unit tests / 117 files**, **276 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -490,6 +490,42 @@ brought into the repo as **committed fixtures** and diffed against the `DOCUMENT
 values - which turns those literals from memory into evidence. Until then, this
 row is a statement about our own consistency, not about Figma.
 
+### The shortcut table, swept in BOTH directions
+
+A surface in its own right: not only "does every key do something", but "does every
+action have a key, and is the key shown".
+
+| Category | Finding |
+| --- | --- |
+| **Advertised but not bound** | the context menu advertised **Command-Option-K** for *Create component* with **no `k` binding** - measured by pressing it (the row stayed **byte-identical**) against clicking it (the row **changed**); and **`C` for Comment**. |
+| **A divergence, cited** | **Shift-D** was bound to **Toggle dark theme** while Figma documents **Shift+D as DEV MODE**, and our Dev Mode toggle has **no shortcut** - the same key meaning different things, with Figma's use of it **unreachable by keyboard here**. |
+| **Missing vs Figma's documented set, cited** | **Shift+Enter** (select parent), **F6** / **Ctrl+F6** (focus the toolbar), **Option or Ctrl+Space** (keyboard box selection). |
+| **Bound but not advertised** | **eleven families**, all functional, **none shown in the UI**, while Figma's own shortcut panel documents its equivalents - a **DISCOVERABILITY divergence, not a defect** (worth saying which it is). |
+| **Collisions** | every letter shared between a meta and a non-meta form (**G, D, V, R, X, H**) was checked and **NONE** collide - **a clean bill**, recorded as one rather than left unsaid. |
+
+**AND A CODE-LEVEL BUG, NOW FIXED: `Enter` was handled TWICE**, and the second block
+called `preventDefault()` **before** testing whether the node is a container - so on a
+plain shape the key was **SWALLOWED with nothing happening**. **Consumed is worse than a
+dead binding**, because nothing downstream can use it either.
+
+**VERIFIED IN SOURCE, and this is ahead of the brief: three of the items above have
+already LANDED.** `src/hooks/useKeyboardShortcuts.ts` now binds **`meta+alt+k` to
+`createComponentFromSelection`** (with the comment *"the context menu advertised it and
+nothing bound it, which is the defect this fixes"*), carries **`c: 'comment'`** in
+`TOOL_KEYS` (*"Figma uses C for Comment; the toolbar advertised it and nothing bound
+it"*), and the `Enter` block now reads **"TEST FIRST, PREVENT ONLY WHEN ACTING"**,
+naming the old behaviour in exactly those terms. **And no dark-theme shortcut binding
+exists in the tree at all**, so the **Shift-D divergence is not present in this
+revision** either. **The brief describes the state before these landed.**
+
+**`C` for Comment was a PARITY GAP rather than a divergence** - Figma binds it.
+
+**And the retraction, which is the method working against itself:** an agent concluded
+**from a grep** that **space+drag pan** was absent, then **measured** it and found it
+**PANS**, and wrote the retraction into its own report. **A retraction caught by
+measurement** - the same lesson as the earlier one, **applied to the agent's own
+conclusion**.
+
 ### The signature defect class, swept SYSTEMATICALLY for the first time
 
 **About 300 UI affordances enumerated with `file:line` citations, about 296 wired, and
@@ -510,11 +546,16 @@ observable", not "does it render"** - which is the only question that finds this
 **These are an OPEN list.** The editor is fixing them this round and **nothing is claimed
 fixed until it reports.**
 
-**And the MCP half, stated honestly: `22` of `35` tools were CALLED for real and NONE
-was hollow** - with the eight the heuristic flagged verified by **printing the
-response**. The other **`13` were left on the parity table's word**, which is **an
-INFERENCE** and is being closed this round by calling them. **The honest state is "no
-hollow tool FOUND among those checked", NOT "all 35 verified".**
+**THE MCP HALF IS NOW COMPLETE, AND THE INFERENCE IS GONE.** `22` of `35` tools were
+called for real and **none** was hollow; the other **`13` were left on the parity
+table's word - an INFERENCE, and it was recorded as one.** This round **all thirteen
+were called**, and each answered its **DOCUMENTED CAPABILITY ERROR** (`isError` true,
+`supported` false, `capability` equal to the tool's name, a reason, and at least one
+alternative). So **`35` of `35` tools are verified by REAL CALL**, and "all 35 tools are
+wired" is now **OBSERVED rather than INFERRED**.
+
+**Keep the shape of that claim honest: the tool LIST was measured long ago; the CALLS
+are what closed this; the two are DIFFERENT claims.**
 
 **The method note - the same lesson as the retraction: a heuristic is a FILTER FOR WHERE
 TO LOOK, not a verdict.** The first heuristic was **too narrow**: creating tools return
