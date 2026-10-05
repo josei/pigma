@@ -7,6 +7,7 @@ const CREATE_OPTIONS: Array<{ type: StyleType; label: string }> = [
   { type: 'FILL', label: 'Fill' },
   { type: 'TEXT', label: 'Text' },
   { type: 'EFFECT', label: 'Effect' },
+  { type: 'GRID', label: 'Grid' },
 ];
 
 /** Local styles: create from the selection, apply, rename, update and delete. */

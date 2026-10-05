@@ -606,14 +606,16 @@ function nodeChange(
     const fill = bind(node.styles.fill);
     if (fill) change.styleIdForFill = { guid: fill };
     // A STROKE binding is `styleIdForStrokeFill` and reuses a FILL style — the
-    // wire has no STROKE styleType. `styleIdForGrid` is NOT written: the model's
-    // StyleType has no GRID, so there is nothing a grid binding could resolve to.
+    // wire has no STROKE styleType. A GRID binding is `styleIdForGrid` and now
+    // resolves, because the model carries the GRID style type.
     const stroke = bind(node.styles.stroke);
     if (stroke) change.styleIdForStrokeFill = { guid: stroke };
     const text = bind(node.styles.text);
     if (text) change.styleIdForText = { guid: text };
     const effect = bind(node.styles.effect);
     if (effect) change.styleIdForEffect = { guid: effect };
+    const grid = bind(node.styles.grid);
+    if (grid) change.styleIdForGrid = { guid: grid };
   }
   if ('boundVariables' in node && node.boundVariables && Object.keys(node.boundVariables).length > 0) {
     // The wire's home for a node's variable bindings is `variableConsumptionMap`,
@@ -887,6 +889,9 @@ const STYLE_NODE_TYPES: Record<string, string | null> = {
   // so RECTANGLE is used. This is the ONE inferred kind in the table and it is
   // labelled as such rather than presented as observed.
   EFFECT: 'RECTANGLE',
+  // OBSERVED (hellomate.fig): a GRID style's node kind is FRAME and its payload
+  // is `layoutGrids`.
+  GRID: 'FRAME',
 };
 
 /** The stable id a style's node entry and its bindings both derive from. */
@@ -946,6 +951,7 @@ function styleChange(
   if (definition.paints && definition.paints.length > 0) change.fillPaints = definition.paints;
   if (definition.effects && definition.effects.length > 0) change.effects = definition.effects;
   if (definition.text) Object.assign(change, textStyleFields(definition.text));
+  if (definition.layoutGrids && definition.layoutGrids.length > 0) change.layoutGrids = definition.layoutGrids;
   return change;
 }
 

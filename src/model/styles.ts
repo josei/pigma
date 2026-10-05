@@ -1,4 +1,4 @@
-import type { NodeStyleBinding, PigmaFile, SceneNode, StyleDefinition, StyleType } from './types';
+import type { LayoutGrid, NodeStyleBinding, PigmaFile, SceneNode, StyleDefinition, StyleType } from './types';
 import { findNode, updateNode } from './tree';
 import { nextNodeId } from './ids';
 
@@ -34,6 +34,12 @@ function payloadOf(node: SceneNode, type: StyleType): Partial<StyleDefinition> |
       return (node.effects ?? []).length > 0 ? { effects: (node.effects ?? []).map((effect) => ({ ...effect })) } : null;
     case 'TEXT':
       return node.type === 'TEXT' ? { text: { ...node.style } } : null;
+    case 'GRID': {
+      // `layoutGrids` lives on containers (frames), which is where a grid style's
+      // payload comes from.
+      const grids = (node as { layoutGrids?: LayoutGrid[] }).layoutGrids ?? [];
+      return grids.length > 0 ? { layoutGrids: grids.map((grid) => ({ ...grid })) } : null;
+    }
     default:
       return null;
   }
@@ -67,12 +73,15 @@ export function createStyleFromNode(
 }
 
 function bindingKey(type: StyleType): keyof NodeStyleBinding {
-  return type === 'FILL' ? 'fill' : type === 'TEXT' ? 'text' : 'effect';
+  if (type === 'FILL') return 'fill';
+  if (type === 'TEXT') return 'text';
+  if (type === 'GRID') return 'grid';
+  return 'effect';
 }
 
 function defaultStyleName(type: StyleType, file: PigmaFile): string {
   const count = Object.values(stylesOf(file)).filter((style) => style.type === type).length;
-  const label = type === 'FILL' ? 'Fill' : type === 'TEXT' ? 'Text' : 'Effect';
+  const label = type === 'FILL' ? 'Fill' : type === 'TEXT' ? 'Text' : type === 'GRID' ? 'Grid' : 'Effect';
   return `${label} ${count + 1}`;
 }
 
