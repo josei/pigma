@@ -6,10 +6,10 @@ import { autoLayoutOf } from '../model/autoLayout';
 import { backgroundBlurRadius, hasBackgroundBlur } from '../model/effects';
 import { gridBands } from '../model/constraints';
 import type { LayoutGrid } from '../model/types';
-import { applyToPoint, invert, transformToCss } from '../model/matrix';
-import type { PigmaFile, Rect, SceneNode, Transform } from '../model/types';
-import { cornerRadii } from '../render/SceneRenderer';
 import { hasChildren } from '../model/types';
+import { applyToPoint, invert, transformToCss } from '../model/matrix';
+import type { ContainerNode, PigmaFile, Rect, SceneNode, Transform } from '../model/types';
+import { cornerRadii } from '../render/SceneRenderer';
 import { createLineNode, createSectionNode, createTextNode } from '../model/factory';
 import { createsOnDrag, toolDraw } from '../model/toolDraw';
 import { positionNodes, reorderByDrag, resizeFromHandle, scaleSelection, setWorldRotation } from '../model/ops';
@@ -134,6 +134,22 @@ function rectFromPoints(a: Point, b: Point): Rect {
   };
 }
 
+/** Every mask's absolute box on the page, for the `View > Mask outlines` overlay. */
+function maskOutlineBoxes(file: PigmaFile, pageId: string): Array<{ x: number; y: number; width: number; height: number }> {
+  const page = findNode(file.document, pageId);
+  if (!page || page.type !== 'CANVAS') return [];
+  const boxes: Array<{ x: number; y: number; width: number; height: number }> = [];
+  const visit = (node: SceneNode): void => {
+    if (node.isMask) {
+      const bounds = absoluteBounds(file.document, node.id);
+      if (bounds) boxes.push({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height });
+    }
+    if (hasChildren(node)) for (const child of (node as ContainerNode).children) visit(child);
+  };
+  for (const child of page.children) visit(child);
+  return boxes;
+}
+
 export function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [interaction, setInteraction] = useState<Interaction | null>(null);
@@ -182,6 +198,7 @@ export function Canvas() {
   const pendingFit = useEditor((state) => state.pendingFit);
   const showGrid = useEditor((state) => state.showGrid);
   const showRulers = useEditor((state) => state.showRulers);
+  const showMaskOutlines = useEditor((state) => state.showMaskOutlines);
   const snapToObjects = useEditor((state) => state.snapToObjects);
   const snapToGrid = useEditor((state) => state.snapToGrid);
   const gridSize = useEditor((state) => state.gridSize);
@@ -1156,6 +1173,26 @@ export function Canvas() {
         } ${(containerRef.current?.clientHeight ?? 800) / viewport.zoom}`}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
       >
+        {/* MASK OUTLINES: Figma draws these GREEN, and only when `View > Mask
+            outlines` is on, so they cannot be confused with the PURPLE selection
+            outline. Chrome only — never exported. */}
+        {showMaskOutlines
+          ? maskOutlineBoxes(file, pageId).map((box, index) => (
+              <rect
+                key={index}
+                data-testid="mask-outline"
+                x={box.x}
+                y={box.y}
+                width={box.width}
+                height={box.height}
+                fill="none"
+                stroke="#0acf83"
+                strokeWidth={1 / viewport.zoom}
+                strokeDasharray={`${4 / viewport.zoom} ${3 / viewport.zoom}`}
+              />
+            ))
+          : null}
+
         {/* Dev-mode measurements (M14): canvas only, never exported. */}
         {showRedlines && redlineTargetId ? (
           <RedlineOverlay file={file} id={redlineTargetId} zoom={viewport.zoom} />

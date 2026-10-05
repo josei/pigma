@@ -253,6 +253,13 @@ export interface EditorState {
   /** Canvas aids: pixel grid, rulers, and what dragging snaps to. */
   showGrid: boolean;
   showRulers: boolean;
+  /**
+   * Draw GREEN outlines around masks on the canvas. Figma gates this behind
+   * `View > Mask outlines` and draws it green so it cannot be confused with the
+   * purple selection outline; ours lives in the main menu with the other view
+   * toggles, for the same reason.
+   */
+  showMaskOutlines: boolean;
   snapToObjects: boolean;
   snapToGrid: boolean;
   gridSize: number;
@@ -564,6 +571,7 @@ export interface EditorState {
   toggleMask: (ids?: string[]) => void;
   toggleGrid: () => void;
   toggleRulers: () => void;
+  toggleMaskOutlines: () => void;
   toggleSnapToObjects: () => void;
   toggleSnapToGrid: () => void;
   setPresentation: (on: boolean, frameId?: string | null) => void;
@@ -792,6 +800,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   devMode: false,
   showGrid: false,
   showRulers: true,
+  showMaskOutlines: false,
   snapToObjects: true,
   snapToGrid: false,
   gridSize: 8,
@@ -2575,6 +2584,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   },
   toggleGrid: () => set({ showGrid: !get().showGrid }),
   toggleRulers: () => set({ showRulers: !get().showRulers }),
+  toggleMaskOutlines: () => set({ showMaskOutlines: !get().showMaskOutlines }),
   toggleSnapToObjects: () => set({ snapToObjects: !get().snapToObjects }),
   toggleSnapToGrid: () => set({ snapToGrid: !get().snapToGrid }),
 
