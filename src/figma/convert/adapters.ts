@@ -650,11 +650,18 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
     children: [],
   };
 
-  const nativeBindings = normalizeBindings(
-    (node as FigNode & { variableBindings?: unknown }).variableBindings ??
-      (node as FigNode & { boundVariables?: unknown }).boundVariables,
-    ctx,
-  );
+  // The wire's home is `variableConsumptionMap`: a `VariableDataMap` whose entries
+  // carry `variableField` (the field association) and `variableData.value.alias`
+  // (the variable reference). `variableBindings` is not a schema name at all.
+  const consumption = (node as FigNode & { variableConsumptionMap?: unknown }).variableConsumptionMap;
+  const fromConsumption = consumptionBindings(consumption);
+  const nativeBindings =
+    fromConsumption ??
+    normalizeBindings(
+      (node as FigNode & { variableBindings?: unknown }).variableBindings ??
+        (node as FigNode & { boundVariables?: unknown }).boundVariables,
+      ctx,
+    );
   if (nativeBindings) normalized.bindings = nativeBindings;
   if (node.transform) {
     normalized.transform = [
@@ -855,6 +862,37 @@ function nativeTextStyle(raw: Record<string, unknown>): TextStyle | null {
   if (typeof raw.textCase === 'string') style.textCase = raw.textCase as TextStyle['textCase'];
   if (typeof raw.textDecoration === 'string') style.textDecoration = raw.textDecoration as TextStyle['textDecoration'];
   return style;
+}
+
+/** The wire's `VariableField` -> the model's binding property. */
+const VARIABLE_FIELD_PROPERTIES: Record<string, string> = {
+  OPACITY: 'opacity',
+  CORNER_RADIUS: 'cornerRadius',
+  VISIBLE: 'visible',
+};
+
+/**
+ * Read `variableConsumptionMap.entries` into the model's `Record<field,
+ * variableId>`. An entry whose `variableField` has no model property is skipped:
+ * the enum has 55 members and the model binds six properties.
+ */
+function consumptionBindings(raw: unknown): Record<string, string> | null {
+  if (!isRecord(raw)) return null;
+  const entries = raw.entries;
+  if (!Array.isArray(entries)) return null;
+  const out: Record<string, string> = {};
+  for (const entry of entries) {
+    if (!isRecord(entry)) continue;
+    const field = typeof entry.variableField === 'string' ? VARIABLE_FIELD_PROPERTIES[entry.variableField] : undefined;
+    if (!field) continue;
+    const data = isRecord(entry.variableData) ? entry.variableData : null;
+    const value = data && isRecord(data.value) ? data.value : null;
+    const alias = value && isRecord(value.alias) ? value.alias : null;
+    const guid = alias && isRecord(alias.guid) ? alias.guid : null;
+    if (!guid || typeof guid.sessionID !== 'number' || typeof guid.localID !== 'number') continue;
+    out[field] = `${guid.sessionID}:${guid.localID}`;
+  }
+  return Object.keys(out).length > 0 ? out : null;
 }
 
 function nativeStyleDefinition(node: FigNode, path: string, report: ReportBuilder): StyleDefinition | null {

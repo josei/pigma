@@ -31,6 +31,12 @@ describe('native export of prototype/variable metadata', () => {
     frame.children = [bound];
     page.children = [a, b, frame];
 
+    // A real document with bound variables also has the variables table, which is
+    // where the binding's RESOLVED type comes from.
+    file.variables = {
+      'v-brand': { id: 'v-brand', name: 'brand', resolvedType: 'COLOR', valuesByMode: {}, variableCollectionId: 'c1' },
+      'v-radius': { id: 'v-radius', name: 'radius', resolvedType: 'FLOAT', valuesByMode: {}, variableCollectionId: 'c1' },
+    };
     const union = booleanNodes(file, [a.id, b.id], 'SUBTRACT');
     const withBoolean = union.file;
     const boolean = withBoolean.document.children[0]!.children[0] as ContainerNode;
@@ -42,11 +48,17 @@ describe('native export of prototype/variable metadata', () => {
     expect(byName(boolean.name).booleanOperation).toBe('SUBTRACT');
     expect(byName('Scroller').overflowDirection).toBe('VERTICAL_SCROLLING');
     expect(byName('Scroller').frameMaskDisabled).toBe(false);
-    expect(byName('Bound rect').variableBindings).toEqual({
-      fills: { type: 'VARIABLE_ALIAS', id: 'v-brand' },
-      cornerRadius: { type: 'VARIABLE_ALIAS', id: 'v-radius' },
-    });
-    expect(warnings).toEqual([]);
+    // The wire's home is `variableConsumptionMap`, NOT `variableBindings` (a name
+    // the schema does not define, which kiwi dropped in silence). Each entry
+    // carries `variableField` — the field association — and the reference is
+    // `variableData.value.alias`.
+    const map = byName('Bound rect').variableConsumptionMap as { entries: Array<Record<string, unknown>> };
+    expect(map.entries.map((entry) => entry.variableField)).toEqual(['CORNER_RADIUS']);
+    expect(map.entries[0]?.variableData).toMatchObject({ dataType: 'ALIAS', resolvedDataType: 'FLOAT' });
+    expect(byName('Bound rect').variableBindings).toBeUndefined();
+    // `fills` has NO `VariableField` member (the enum has 55 and none is fills), so
+    // that binding is reported rather than guessed.
+    expect(warnings.some((line) => line.includes('variable binding on "fill"'))).toBe(true);
   });
 
   it('omits the fields when the model has nothing to say', () => {
@@ -59,6 +71,7 @@ describe('native export of prototype/variable metadata', () => {
     expect(rect.booleanOperation).toBeUndefined();
     expect(rect.overflowDirection).toBeUndefined();
     expect(rect.variableBindings).toBeUndefined();
+    expect(rect.variableConsumptionMap).toBeUndefined();
   });
 });
 
