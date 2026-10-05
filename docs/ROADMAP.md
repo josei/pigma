@@ -526,6 +526,47 @@ revision** either. **The brief describes the state before these landed.**
 measurement** - the same lesson as the earlier one, **applied to the agent's own
 conclusion**.
 
+### The desktop shell: a feature that does ALL its work and then never uses it
+
+**Two findings, both OPEN. Neither outcome is claimed - the editor is deciding this
+round whether to WIRE it or REMOVE it.**
+
+1. **The asset auto-update path fetches a bundle, sha256-verifies it, and installs it
+   into the cache - and then THE WINDOW NEVER LOADS IT.** The serving path is real and
+   **registered** (`register_asynchronous_uri_scheme_protocol("pigma", …)`,
+   `src-tauri/src/main.rs:279`), with path normalisation and `..` refused. But
+   **measured, the window config sets NO `url`**, so it loads the **embedded
+   `frontendDist` (`../dist`)** - and **no code in `src-tauri` or `src` ever REQUESTS
+   the scheme.** Every `pigma://` in the frontend and the tests is the **MCP RESOURCE
+   uri**, not the shell scheme.
+2. **`desktop_info.assetOrigin` is a HOLLOW FIELD.** Its own documentation says *the
+   scheme origin when a bundle is active*, and it is **hardcoded `None` in every
+   measured payload**, with **nothing able to make it non-null**.
+
+**So the feature does the entire expensive half of its job, and the thing it exists for
+- shipping a fix WITHOUT REBUILDING THE APP - does not happen.**
+
+**And the documentation currently CLAIMS the wired behaviour**: `docs/DESKTOP.md` says
+*"the window loads the active bundle through the `pigma://localhost`"*. **A documented
+feature that does not exist is worse than no feature** - the same lesson as the earlier
+claim defects: a reader ACTS on it.
+
+**The proof standard it was given, and it is the point:**
+- show the window **LOADING the marker bundle**;
+- show the **FALLBACK with no cached bundle** - an asset path that can *fail to a blank
+  window* would be **a worse bug than the one being fixed**;
+- show a **BAD-HASH bundle is REJECTED AT THE SERVING PATH**, not only at the install
+  path.
+
+### Two surfaces still being swept
+
+- **The TEXT EDITOR's own gestures** - double-click into the inline editor, typing,
+  Escape, auto-size, and the edges: **empty string, long line, multi-line paste, a
+  missing font**.
+- **`scripts/**` other than the flake harness** - starting with whether
+  `desktop-assets.mjs`'s output is **USED** at all. **A build step nobody reads is the
+  same class as the desktop scheme.** Room is left for both; no findings are pre-empted.
+
 ### The signature defect class, swept SYSTEMATICALLY for the first time
 
 **About 300 UI affordances enumerated with `file:line` citations, about 296 wired, and
