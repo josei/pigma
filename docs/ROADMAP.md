@@ -35,7 +35,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 | M10 | Layout systems — auto layout, wrap, sizing, constraints | **Shipped** | Row/Column: `b13-autolayout`, `b23-round9` (wrap packs lines, line gap, counter align), `b22-round8` (min/max + persistence), `b25-round11` (constraint icons, no overflow). **Grid auto layout — shipped for a SUBSET**: `LayoutMode` gains `GRID`, with Figma's own field names (`gridColumns`/`gridRows`/`GridTrackSize`, per-child `gridColumnAnchorIndex`/`gridColumnSpan`/...), FIXED tracks taking their pixels and the remainder shared by FLEX weights, row-major placement that skips manually anchored cells, honoured spans and a bounded scan; it is reached through `reflowTree`, the same choke point as the row/column flows, so every write path reflows a grid. Evidence: unit `src/model/gridLayout.test.ts`, browser `b57-grid-autolayout` (a 300-wide frame places three children at x 16 / 156 / 16 with the third wrapping to row 2; a column switched to FIXED 1px reflows to widths 1 / 255 / 1; resizing the frame resizes the fractional track). **Gaps, named: NOT full grid parity.** `gridRowSizing` is not implemented (the row count is derived); implicit tracks repeat the **last** declared track; **negative anchors** (Figma's -1) are unsupported; there is **no dense packing**; the track list **cannot be reordered** in the UI. Source: https://help.figma.com/hc/en-us/articles/31289469907863-Use-the-grid-auto-layout-flow |
 | M11 | Components & design systems | **Shipped** | Components, instances and override isolation: `b12-components`. **Component slots / instance swap - shipped for a SUBSET**: `NodeOverride.children` is the slot content and `materializeInstance` **merges**, so a component edit re-materialises the subtree **without wiping what the instance put in the slot**; `ComponentPropertyType` gains `'SLOT'`; the importer accepts Figma's `SLOT` property instead of reporting it unsupported; `resolvePropertyReferences` now honours `INSTANCE_SWAP`, and the validator keeps `componentPropertyReferences` / `componentProperties` across a load. **Gaps, named - NOT full slot parity:** `preferredValues` exists but the INSTANCE_SWAP picker still offers **every** component rather than the property's preferred set; there is **no drag-to-rearrange** and **no panel slot row**; per-slot defaults beyond the component's own children, and **nested slots**, are not modelled. Sources, by name: the Figma Help Center guide on **component slots**, and the Plugin API's **`ComponentPropertyType` / `addComponentProperty` with `'SLOT'`** | Variant sets: `b12` (two components combine into a set). Styles, variable collections and binding: `b20-vector-styles-variables`. Library publish and instance insertion: `b31-libraries` (`B31a` publish status, `B31b` an `INSTANCE` node appears, `B31c` master edit + republish). Unit: `library.test.ts`, `instances.test.ts` |
 | M12 | Prototyping — interactions, flows, overlays, presentation | **Shipped** | Start frame + hotspot: `b14-presentation`. Triggers incl. ON_HOVER, flows, overlay stacking: `b21-prototype-inspect`. Frame **scrolling** in presentation and **smart-animate interpolation** (35 intermediate samples between the two endpoints, read from the animated layer's computed CSS transform): `b33-animate-scroll`. Unit: `animate.test.ts`, `overlay.test.ts`, `prototype.test.ts` |
-| M13 | Collaboration — presence, follow, conflict, E2E rooms | **Shipped** (local relay) | Presence, cursors, follow: `b28-rooms` 4/4 — two contexts join the same room with different nicknames, the remote cursor is a `<g>` carrying an arrow path and a `<text>` label with the peer nickname, remote edits reach the peer view, follow changes the viewBox and Esc stops it. Conflict resolution: `b32-conflict` — edits to different nodes both survive, edits to the same node converge to one value on both sides. Share links: `b35-share-link` 4/4. Unit: `merge.test.ts`, `presence.test.ts`, `e2e.test.ts`, `share.test.ts`. **Caveat: every spec here runs against a LOCAL relay started by the fixture. The hosted PATH is now VALIDATED over a public origin** (a Cloudflare quick tunnel: 35 tools over `tools/list`, a non-vendor identity, the app root, `/config.json` and the bridge refusal - see Known limitations), **while `getpigma.com` itself remains NXDOMAIN** (measured 2026-10-05) - the hostname does not exist, and that fact does not change. |
+| M13 | Collaboration — presence, follow, conflict, E2E rooms | **Shipped** (local relay) | Presence, cursors, follow: `b28-rooms` 4/4 — two contexts join the same room with different nicknames, the remote cursor is a `<g>` carrying an arrow path and a `<text>` label with the peer nickname, remote edits reach the peer view, follow changes the viewBox and Esc stops it. Conflict resolution: `b32-conflict` — edits to different nodes both survive, edits to the same node converge to one value on both sides. Share links: `b35-share-link` 4/4. Unit: `merge.test.ts`, `presence.test.ts`, `e2e.test.ts`, `share.test.ts`. **Caveat: every spec here runs against a LOCAL relay started by the fixture. The hosted path is VALIDATED FOR HEADLESS CLIENTS ONLY** (a quick tunnel: `curl` gets mint + `initialize` + 35 tools) - **a BROWSER passes only 4 of 8 steps, and the hosted LOOP does not work yet** (two allowlists: the MCP ORIGIN list keeps loopback defaults, and the BRIDGE HOST check is hardcoded to loopback - see Known limitations). **`getpigma.com` itself remains NXDOMAIN** (measured 2026-10-05). |
 | M14 | Developer handoff — inspect, redlines, codegen | **Shipped** | `b21-prototype-inspect` (Inspect tab renders measurements + CSS and React code; the Show CSS/React controls are clicked, not just present) |
 | M15 | Extensibility — in-app plugins | **Shipped** | `b24-plugins-theme` (run a built-in; the document changes in exactly one history entry). Unit-only: `plugin.test.ts`, `run.test.ts`, `engine.test.ts` |
 | M16 | Export — SVG, PNG, PDF, copy, selection scope | **Shipped** | `b8-interchange`, `b19-features` (PNG 1x/2x/3x really scale; PDF magic bytes), `b21-prototype-inspect` (Copy as SVG/CSS), `b23-round9` (Export selection as PNG/SVG, Copy as PNG) |
@@ -107,13 +107,31 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 - **Layer EFFECTS are not part of the mask alpha.** What a mask masks by is its
   fills and strokes — a shadow or blur on the mask layer does not contribute to
   its alpha, so it does not widen or soften the masked region.
-- **Right-click context menu - BEING CLOSED this round.** The app has had **no
-  right-click context menu anywhere**, so "Use as mask" was reachable only from the
-  layer-row action and the Cmd/Ctrl+Alt+M shortcut. It is being built **against
-  Figma's DOCUMENTED menu shape rather than invented**. **Nothing is claimed done**:
-  room is left for what it finds, **including any Figma menu items it reports as
-  unbackable** (a documented item with no way to confirm it is not a licence to
-  invent one).
+- **Right-click context menu - NOT BUILT, STOPPED FOR A REASON.** The app has had
+  **no right-click context menu anywhere**, so "Use as mask" is reachable only from
+  the layer-row action and the Cmd/Ctrl+Alt+M shortcut. **It was not built this
+  round, and that is the rule working**: the editor established Figma's menu
+  **ACTIONS** from shortcut references, but **could not establish the menu's
+  STRUCTURE or its per-selection-case ITEM SETS from a primary source** - the help
+  article it fetched was the **keyboard** one, and the help **search page is
+  JS-rendered**. So it **STOPPED rather than inventing** the grouping and the
+  selection cases, **which is exactly the divergence the rule forbids**.
+
+  **Recorded as a STOP WITH ITS REASON, not as a failure** - and it is the **fourth
+  time this run** an agent has refused to invent a shape.
+
+  **What makes the next round SMALL, because it is grounded:** the actions **already
+  exist** as store/model functions (`groupNodes`, `ungroupNodes`, `booleanNodes`,
+  `duplicateSelection`, `deleteSelection`, `copySelection`, `toggleMask`, `selectAll`,
+  `frameSelection`), and **`src/ui/Menu.tsx` is a 106-line label/icon/action list** -
+  so the context menu is a **POSITIONED INSTANCE of an existing surface**, not a
+  second implementation.
+
+  **What would unblock it: ONE primary description of the canvas context menu WITH its
+  selection cases** - an article or a screenshot set. **Note, precisely: the help
+  screenshots are NOT in this repository** - they live in **`/tmp/pigma-ref`**
+  (ephemeral, uncommitted). A context-menu screenshot would need adding **there** (or
+  committed as a fixture) to unblock the work.
 - **A mask has no visual marker of its own**: there is no mask badge beside the
   layer name and no dashed mask outline on the canvas, so a mask is identified by
   its effect rather than by an indicator. **A SEPARATE gap from the context menu above, and it stays OPEN** unless the editor says otherwise.
@@ -129,8 +147,23 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
   `wss://getpigma.com/relay`, so **the hosted state offers an endpoint that cannot
   resolve today**. **`getpigma.com` still returns NXDOMAIN and THAT DOES NOT CHANGE.**
 
-  **But the hosted path is no longer merely unexercised — it is VALIDATED, over a
-  real public origin, and THREE defects came out of exposing it.** The shape is the
+  **But the hosted path is no longer merely unexercised — and the honest statement
+  of what is validated has TWO HALVES.** It is **VALIDATED FOR HEADLESS CLI CLIENTS,
+  NOT FOR A BROWSER, and the hosted LOOP does not work yet.** `curl` gets through -
+  mint, `initialize`, 35 tools - but a **browser against the public origin passes only
+  `4` of `8` steps**, and the two failures are **two allowlists**:
+
+  | Failing allowlist | Why |
+  | --- | --- |
+  | the **MCP ORIGIN** allowlist | `server/deployment.ts` passes **`allowedHosts` only**, so the handler keeps **`DEFAULT_ORIGINS`** (loopback). Measured: `POST /mcp/token` is **201 WITHOUT an `Origin` header** and **403 WITH the public one** - which is exactly **why `curl` passed and the panel cannot mint its own token** |
+  | the **BRIDGE HOST** check | **`loopbackHost()` is hardcoded with no option**, so the **editor cannot connect the bridge over a tunnel** |
+
+  **The consequence, observed:** with no editor able to connect, **every
+  document-touching tool answers "No editor is connected to the Pigma bridge"** - so
+  the **hosted loop (public MCP reaching the LIVE DOCUMENT) does not work over a
+  public origin yet.** **Both are being closed this round; neither is claimed fixed.**
+
+  **And THREE defects came out of exposing it.** The shape is the
   lesson: **each defect HID the next**, and none was visible until the deployment was
   actually exposed.
 
@@ -146,10 +179,12 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
   from a NON-VENDOR identity**; and `/bridge/events` **still refusing a public Host
   (403)** while loopback gets **401** (passes the host check, needs the token).
 
-  **Caveat, and it is the one that stops this being read as production:** a
-  **Cloudflare QUICK tunnel is account-less, has NO UPTIME GUARANTEE, and is for
-  VALIDATION, not production.** So the honest statement is that the hosted path is
-  **VALIDATED over a public origin** - **not** that the hosted service is
+  **Caveat, now LOAD-BEARING and measured: behind a QUICK TUNNEL, EVERY PEER LOOKS
+  LOOPBACK** - so **`POST /mcp/token` is open to anyone who knows the URL** - and a
+  Cloudflare **quick tunnel is account-less, EPHEMERAL, has NO UPTIME GUARANTEE, and
+  is for VALIDATION, not production.** So the honest statement is that the hosted path is
+  **VALIDATED for HEADLESS CLIENTS over a public origin** - **a browser gets 4 of 8
+  steps and the loop does not work yet** - **not** that the hosted service is
   production-ready, and **not** that `getpigma.com` exists.
 
   **And the mechanism that made defect 1 noticeable:** the **parity work had already
