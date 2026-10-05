@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { activeContainer, useEditor, type Tool } from '../store/editorStore';
-import { findNode } from '../model/tree';
+import { findNode, findParent } from '../model/tree';
 import { isContainer } from '../model/types';
 import { MAX_ZOOM, MIN_ZOOM } from '../collab/protocol';
 
@@ -68,6 +68,14 @@ export function useKeyboardShortcuts(): void {
       }
 
       if (typing) return;
+
+      // Figma's Create component: Cmd/Ctrl+Alt+K. The context menu advertised it and
+      // nothing bound it, which is the defect this fixes.
+      if (meta && event.altKey && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        state.createComponentFromSelection();
+        return;
+      }
 
       // Figma's mask shortcut: Cmd/Ctrl+Alt+M.
       if (meta && event.altKey && event.key.toLowerCase() === 'm') {
@@ -180,9 +188,14 @@ export function useKeyboardShortcuts(): void {
         state.toggleGrid();
         return;
       }
+      // Figma documents Shift+D as DEV MODE, and this used to toggle the dark theme
+      // — the same key meaning different things in the two apps, with Figma's use
+      // unreachable by keyboard here. The divergence is REMOVED: Dev Mode takes
+      // Figma's binding, and the theme keeps its entry in the main menu with no key,
+      // which is what Figma has (a theme is a preference, not a command).
       if (event.shiftKey && !meta && event.code === 'KeyD') {
         event.preventDefault();
-        state.toggleTheme();
+        state.toggleDevMode();
         return;
       }
       if (event.shiftKey && !meta && event.code === 'KeyX') {
@@ -242,11 +255,28 @@ export function useKeyboardShortcuts(): void {
         return;
       }
 
+      // Figma's Shift+Enter selects the PARENT of the selection.
+      if (event.key === 'Enter' && event.shiftKey && state.selection.length === 1) {
+        const id = state.selection[0];
+        const parent = id ? findParent(state.file.document, id) : null;
+        if (parent) {
+          event.preventDefault();
+          state.select([parent.id]);
+        }
+        return;
+      }
+
       if (event.key === 'Enter' && state.selection.length === 1) {
-        event.preventDefault();
+        // TEST FIRST, PREVENT ONLY WHEN ACTING. This used to call preventDefault()
+        // before the container test, so on a plain shape the key was SWALLOWED with
+        // nothing happening — worse than a dead binding, because the key is
+        // consumed and nothing downstream can use it.
         const id = state.selection[0];
         const node = id ? findNode(state.file.document, id) : null;
-        if (node && isContainer(node.type)) state.setEnteredContainer(node.id);
+        if (node && isContainer(node.type)) {
+          event.preventDefault();
+          state.setEnteredContainer(node.id);
+        }
         return;
       }
 
