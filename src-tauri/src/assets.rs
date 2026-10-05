@@ -426,6 +426,18 @@ pub fn read_status(root: &Path) -> AssetStatus {
 /// The bundle the shell should load: the pointer's version, falling back to the
 /// version kept for rollback when the active one is incomplete. Offline: no
 /// network involved, and a bundle that is not there is never returned.
+/// THE BUNDLE THE SERVING PATH WILL ACTUALLY SERVE — and the pointer is made to
+/// agree with that, because two callers read this: the window's URL and
+/// `assetOrigin` in `desktop_info`. If the pointer kept naming a version that
+/// failed to serve, BOTH would report a bundle the user is not on.
+///
+/// So when the active version fails verification the pointer is DEMOTED to the
+/// version actually served. That is `rollback`, which SWAPS the two versions rather
+/// than discarding one, so a transient read failure does not lose the newer bundle:
+/// the next check can activate it again. The cost is stated plainly — a single bad
+/// read demotes the active pointer until something re-activates it — and it is the
+/// right cost, because what a caller can RELY on is worth more than which version
+/// is nominally current.
 pub fn resolve_active_bundle(root: &Path) -> Option<(String, String, PathBuf)> {
     let pointer = read_pointer(root)?;
     let candidates = std::iter::once(pointer.version.clone()).chain(pointer.previous.clone());
@@ -445,6 +457,12 @@ pub fn resolve_active_bundle(root: &Path) -> Option<(String, String, PathBuf)> {
                     continue;
                 }
             }
+        }
+        // Served a version the pointer does not name: make the pointer say what is
+        // served, so `assetOrigin` and the window URL cannot describe a bundle the
+        // user is not on.
+        if version != pointer.version {
+            let _ = rollback(root);
         }
         return Some((version, pointer.entry.clone(), dir));
     }
@@ -959,5 +977,37 @@ mod serving_tests {
         fs::write(root.join(asset_dir("2.0.0")).join("index.html"), b"<html>TAMPERED</html>").unwrap();
         let resolved = resolve_active_bundle(&root);
         assert_eq!(resolved.map(|(v, _, _)| v), Some("1.0.0".to_string()));
+
+        // AND THE POINTER NOW SAYS SO. Two callers read this state — the window's
+        // URL and `assetOrigin` in `desktop_info` — so a pointer still naming the
+        // corrupt version would make BOTH report a bundle the user is not on.
+        let pointer = read_pointer(&root).expect("a pointer");
+        assert_eq!(pointer.version, "1.0.0", "the pointer still names the corrupt bundle");
+        // It SWAPPED rather than discarded: the newer version is recoverable.
+        assert_eq!(pointer.previous.as_deref(), Some("2.0.0"));
+        // And a second resolve is now stable: it serves the same thing without
+        // needing another demotion.
+        assert_eq!(
+            resolve_active_bundle(&root).map(|(v, _, _)| v),
+            Some("1.0.0".to_string()),
+        );
+    }
+
+    #[test]
+    fn asset_origin_and_the_serving_path_agree_about_active() {
+        // `assetOrigin` is derived from the SAME resolver the scheme handler uses, so
+        // "active" cannot mean one thing to the payload and another to the window.
+        let root = root("agree");
+        // No bundle at all: not active, and the payload would report None.
+        assert!(resolve_active_bundle(&root).is_none());
+        install(&root, "1.0.0", b"<html>good</html>", None);
+        assert!(resolve_active_bundle(&root).is_some());
+        // The active one corrupt, the previous good: the resolver demotes, so the
+        // payload's origin describes the version actually being served.
+        install(&root, "2.0.0", b"<html>cached</html>", Some("1.0.0"));
+        fs::write(root.join(asset_dir("2.0.0")).join("index.html"), b"<html>TAMPERED</html>").unwrap();
+        let served = resolve_active_bundle(&root).map(|(v, _, _)| v);
+        let pointer = read_pointer(&root).expect("a pointer");
+        assert_eq!(served.as_deref(), Some(pointer.version.as_str()), "the payload would lie");
     }
 }
