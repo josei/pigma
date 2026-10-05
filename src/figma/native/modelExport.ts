@@ -16,6 +16,7 @@ import type {
   DocumentNode,
   PrototypeAction,
   StyleDefinition,
+  TextStyle,
   LayoutGrid,
   AnyNode,
   AutoLayout,
@@ -811,9 +812,17 @@ const STYLE_CANVAS_NAME = 'Internal Only Canvas';
  * will not resolve.
  */
 const STYLE_NODE_TYPES: Record<string, string | null> = {
+  // OBSERVED (open-peeps.fig). Another working implementation (open-pencil) uses
+  // RECTANGLE, so the kind is a SWATCH SHAPE, not a canonical value — this one is
+  // picked because it is OBSERVED, not because it is "the" kind.
   FILL: 'ROUNDED_RECTANGLE',
-  TEXT: null,
-  EFFECT: null,
+  // CORROBORATED (open-pencil's resolver requires type 'TEXT' && styleType 'TEXT').
+  TEXT: 'TEXT',
+  // INFERRED — NO SOURCE OBSERVES AN EFFECT STYLE'S NODE KIND. By the swatch
+  // pattern it is rectangle-like, and open-pencil's own fill swatch is RECTANGLE,
+  // so RECTANGLE is used. This is the ONE inferred kind in the table and it is
+  // labelled as such rather than presented as observed.
+  EFFECT: 'RECTANGLE',
 };
 
 /** The stable id a style's node entry and its bindings both derive from. */
@@ -872,8 +881,32 @@ function styleChange(
   };
   if (definition.paints && definition.paints.length > 0) change.fillPaints = definition.paints;
   if (definition.effects && definition.effects.length > 0) change.effects = definition.effects;
-  if (definition.text) Object.assign(change, definition.text);
+  if (definition.text) Object.assign(change, textStyleFields(definition.text));
   return change;
+}
+
+/**
+ * A TEXT style's payload. The wire names are CORROBORATED (open-pencil reads
+ * fontSize, fontName, lineHeight, letterSpacing, textDecoration, textCase), and
+ * they are the same names `textFields` already writes for a text NODE — minus
+ * `textData`, which a style does not carry.
+ */
+function textStyleFields(text: TextStyle): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (text.fontSize !== undefined) out.fontSize = text.fontSize;
+  out.fontName = { family: text.fontFamily ?? '', style: wireFontStyle(text), postscript: '' };
+  if (text.textCase) out.textCase = text.textCase;
+  if (text.textDecoration) out.textDecoration = text.textDecoration;
+  if (text.lineHeight) {
+    out.lineHeight = {
+      value: text.lineHeight.value ?? 0,
+      units: text.lineHeight.unit === 'PERCENT' ? 'PERCENT' : text.lineHeight.unit === 'PIXELS' ? 'PIXELS' : 'RAW',
+    };
+  }
+  if (text.letterSpacing) {
+    out.letterSpacing = { value: text.letterSpacing.value ?? 0, units: text.letterSpacing.unit === 'PERCENT' ? 'PERCENT' : 'PIXELS' };
+  }
+  return out;
 }
 
 /** Build the decoded-message shape for a Pigma file. */

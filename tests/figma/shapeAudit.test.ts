@@ -47,14 +47,14 @@ describe('auditWireShapes', () => {
     // exporter used to write.
     change.componentPropDefs = { '1:1000001': { id: { sessionID: 1, localID: 1000001 }, name: 'disabled', type: 'BOOL' } };
 
-    // Round-trip that message through the encoder and the decoder.
-    const decoded = { nodeChanges: [] as unknown[] };
-    for (const entry of message.nodeChanges as Array<Record<string, unknown>>) {
-      if (entry.componentPropDefs) {
-        // What kiwi does with a map under a list-typed field: an empty list.
-        decoded.nodeChanges.push({ ...entry, componentPropDefs: [] });
-      }
-    }
+    // Round-trip that message through the encoder and the decoder. The decoded
+    // side has the SAME length — a real decode always does, and the audit matches
+    // positionally, refusing to claim a loss it cannot attribute.
+    const decoded = {
+      nodeChanges: (message.nodeChanges as Array<Record<string, unknown>>).map((entry) =>
+        entry.componentPropDefs ? { ...entry, componentPropDefs: [] } : { ...entry },
+      ),
+    };
 
     const mismatches = auditWireShapes(message, decoded);
     const hit = mismatches.find((m) => m.field === 'componentPropDefs')!;

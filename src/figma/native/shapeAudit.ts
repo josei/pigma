@@ -63,27 +63,40 @@ export function auditWireShapes(
   decoded: { nodeChanges?: unknown[] },
 ): ShapeMismatch[] {
   const mismatches: ShapeMismatch[] = [];
-  // The written message may not carry guids yet (the encoder assigns them), so the
-  // decoded side is indexed by guid AND by name; a written node matches on
-  // whichever it has.
+  const writtenChanges = (written.nodeChanges ?? []) as unknown[];
+  const decodedChanges = (decoded.nodeChanges ?? []) as unknown[];
+  // The written message usually has NO guids (the encoder assigns them), and names
+  // are NOT unique — 3712 nodes with repeated names made the old name fallback
+  // compare nodes against the wrong counterpart and report 1830 phantom losses. So
+  // match by POSITION: the decoder preserves the nodeChanges order, so entry i on
+  // the way in is entry i on the way out. If the lengths differ the correspondence
+  // cannot be trusted, and then we match on guid only — refusing to claim a loss we
+  // cannot attribute rather than crying wolf.
+  const aligned = writtenChanges.length === decodedChanges.length;
   const decodedById = new Map<string, Record<string, unknown>>();
-  const decodedByName = new Map<string, Record<string, unknown>>();
-  for (const change of decoded.nodeChanges ?? []) {
-    if (change && typeof change === 'object') {
-      const record = change as Record<string, unknown>;
-      const id = typeof record.guid === 'string' ? record.guid : null;
-      if (id) decodedById.set(id, record);
-      const name = typeof record.name === 'string' ? record.name : null;
-      if (name && !decodedByName.has(name)) decodedByName.set(name, record);
+  if (!aligned) {
+    for (const change of decodedChanges) {
+      if (change && typeof change === 'object') {
+        const record = change as Record<string, unknown>;
+        const id = typeof record.guid === 'string' ? record.guid : null;
+        if (id) decodedById.set(id, record);
+      }
     }
   }
 
-  for (const change of written.nodeChanges ?? []) {
+  for (const [index, change] of writtenChanges.entries()) {
     if (!change || typeof change !== 'object') continue;
     const record = change as Record<string, unknown>;
     const id = typeof record.guid === 'string' ? record.guid : '';
     const name = typeof record.name === 'string' ? record.name : id;
-    const back = (id ? decodedById.get(id) : undefined) ?? decodedByName.get(name);
+    const decodedEntry = aligned ? decodedChanges[index] : undefined;
+    const back =
+      decodedEntry && typeof decodedEntry === 'object'
+        ? (decodedEntry as Record<string, unknown>)
+        : id
+          ? decodedById.get(id)
+          : undefined;
+    if (!back) continue;
 
     for (const [field, value] of Object.entries(record)) {
       if (DEFAULTED_FIELDS.has(field)) continue;

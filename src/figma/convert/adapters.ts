@@ -834,6 +834,29 @@ function sortedNativeChildren(doc: FigDocument, parentId: string): FigNode[] {
  * carries paints/text/effects; a GRID style's `layoutGrids` has no model field, so
  * it is reported rather than dropped in silence.
  */
+/** A TEXT style's payload, read back from the wire's node-style field names. */
+function nativeTextStyle(raw: Record<string, unknown>): TextStyle | null {
+  const fontName = isRecord(raw.fontName) ? raw.fontName : null;
+  const fontSize = typeof raw.fontSize === 'number' ? raw.fontSize : undefined;
+  const family = fontName && typeof fontName.family === 'string' ? fontName.family : undefined;
+  if (!family && fontSize === undefined) return null;
+  const style: TextStyle = { fontFamily: family ?? 'Inter', fontSize: fontSize ?? 12 };
+  const fontStyle = fontName && typeof fontName.style === 'string' ? fontName.style : undefined;
+  if (fontStyle) style.fontStyle = fontStyle;
+  const lineHeight = isRecord(raw.lineHeight) ? raw.lineHeight : null;
+  if (lineHeight && typeof lineHeight.value === 'number') {
+    const units = typeof lineHeight.units === 'string' ? lineHeight.units : 'RAW';
+    style.lineHeight = { unit: units === 'PERCENT' ? 'PERCENT' : units === 'PIXELS' ? 'PIXELS' : 'AUTO', value: lineHeight.value };
+  }
+  const letterSpacing = isRecord(raw.letterSpacing) ? raw.letterSpacing : null;
+  if (letterSpacing && typeof letterSpacing.value === 'number') {
+    style.letterSpacing = { unit: letterSpacing.units === 'PERCENT' ? 'PERCENT' : 'PIXELS', value: letterSpacing.value };
+  }
+  if (typeof raw.textCase === 'string') style.textCase = raw.textCase as TextStyle['textCase'];
+  if (typeof raw.textDecoration === 'string') style.textDecoration = raw.textDecoration as TextStyle['textDecoration'];
+  return style;
+}
+
 function nativeStyleDefinition(node: FigNode, path: string, report: ReportBuilder): StyleDefinition | null {
   const raw = node as Record<string, unknown>;
   const type = typeof raw.styleType === 'string' ? (raw.styleType as StyleType) : null;
@@ -850,8 +873,13 @@ function nativeStyleDefinition(node: FigNode, path: string, report: ReportBuilde
   if (Array.isArray(fills) && fills.length > 0) definition.paints = fills as Paint[];
   const effects = raw.effects;
   if (Array.isArray(effects) && effects.length > 0) definition.effects = effects as Effect[];
-  const text = raw.textStyle ?? raw.style;
-  if (text && typeof text === 'object') definition.text = text as TextStyle;
+  // A TEXT style's payload is the SAME field names a text node carries (the six
+  // open-pencil corroborates): fontSize, fontName, lineHeight, letterSpacing,
+  // textDecoration, textCase.
+  if (type === 'TEXT') {
+    const text = nativeTextStyle(raw);
+    if (text) definition.text = text;
+  }
   if (Array.isArray(raw.layoutGrids) && raw.layoutGrids.length > 0) {
     report.addUnsupported({
       nodeId: id ?? name,
