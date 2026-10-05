@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1069 unit tests / 117 files**, **276 browser tests passing / 0 failing**,
+Last verified: **1069 unit tests / 117 files**, **280 browser tests passing / 0 failing**, **14 Rust tests passing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -546,6 +546,38 @@ round whether to WIRE it or REMOVE it.**
 **So the feature does the entire expensive half of its job, and the thing it exists for
 - shipping a fix WITHOUT REBUILDING THE APP - does not happen.**
 
+**CLOSED THIS ROUND: THE SHELL NOW SERVES THE BUNDLE IT INSTALLS.** The decision was
+**WIRE IT** rather than remove it, and the evidence is the lesson: the scheme handler
+was **already complete and safety-checked**, `docs/DESKTOP.md` **already claimed the
+behaviour**, the feature's **entire purpose is shipping a fix without rebuilding**, and
+removing it would have **deleted a working fetch/verify/install path plus a documented
+feature**.
+
+**What it does now:** the window **navigates to the active cached bundle at launch**, and
+**reloads only when a check CHANGES what is active** - so **a no-op check never
+interrupts**. And **`desktop_info.assetOrigin` is REAL**: the scheme origin when a cache
+is active, **`null` otherwise** - so **the payload and its own doc sentence finally agree
+in BOTH states**.
+
+**AND THE DEFECT THE WIRING EXPOSED, which is the most interesting thing in the round:
+THE MANIFEST WAS DROPPED AFTER INSTALL**, so the serving path could only check that the
+**entry FILE EXISTED** - **a corrupted bundle with the right names would have been
+served.** The fix **keeps the manifest beside the bundle and verifies the tree at serve
+time**, falling back to the **previous version and then to the embedded bundle**.
+
+**Proven by a test that WOULD HAVE PASSED BEFORE THE CHANGE:**
+`refuses_a_bundle_whose_tree_does_not_match_its_manifest` - alongside
+`falls_back_when_there_is_no_bundle` (**no cache cannot brick the window**). *Both in
+`src-tauri/src/assets.rs`; `cargo test` = **14 passing**, measured.*
+
+**The defect was invisible to the sweep because the path was UNREACHABLE. Wiring a thing
+is how you find out what it was hiding.**
+
+**AND THE HONEST LIMIT, stated rather than left implicit: THE WINDOW-LEVEL PROOF IS NOT
+DELIVERED.** The **layer-level** tests prove the serving path returns the cached version,
+the fallback, and the rejection; **the WINDOW actually loading a marker bundle has not
+been observed.**
+
 **And the documentation currently CLAIMS the wired behaviour**: `docs/DESKTOP.md` says
 *"the window loads the active bundle through the `pigma://localhost`"*. **A documented
 feature that does not exist is worse than no feature** - the same lesson as the earlier
@@ -560,6 +592,22 @@ claim defects: a reader ACTS on it.
 
 ### Two surfaces still being swept
 
+
+**AND THE TEXT-EDITOR SWEEP FOUND A DIVERGENCE IN THE MOST-USED SURFACE: CLICKING INSIDE
+THE INLINE EDITOR ENDS THE EDIT.** The mechanism: the canvas **takes focus on ANY
+pointerdown**, which **blurs the textarea**, and **its `onBlur` commits and closes** -
+so typing works and Escape closes, but **placing the caret by clicking does not**, while
+**Figma positions the caret when you click inside text**. The editor is fixing it this
+round with a **guard on the focus call rather than a special case**; **not claimed fixed.**
+
+**And what the sweep found WIRED, because a sweep that only lists defects is not a
+sweep:** the text tool, the double-click into a **focused** editor, typing, Escape,
+**horizontal align** (the rendered `text-anchor` and `x` change), **multi-line paste
+producing THREE `tspan`s**, the **empty-string** edge, and **Auto size Height** wrapping
+(**H 17 -> 118**).
+
+**And the `scripts/**` surface: ALL SIX wired**, with the build steps' output **genuinely
+read by the shell, the contract test, and the build**. **NO HOLLOW SCRIPT FOUND.**
 - **The TEXT EDITOR's own gestures** - double-click into the inline editor, typing,
   Escape, auto-size, and the edges: **empty string, long line, multi-line paste, a
   missing font**.
