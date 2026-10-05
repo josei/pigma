@@ -101,13 +101,10 @@ fn cache_root(app: &tauri::AppHandle, config: &Config) -> Result<PathBuf, String
 
 #[tauri::command]
 fn desktop_info(app: tauri::AppHandle, config: tauri::State<'_, Mutex<Config>>) -> DesktopInfo {
-    // READ THIS FIRST, BEFORE THE LOCK. `active_bundle` takes the same
-    // non-reentrant `Config` mutex, so calling it while this function holds the lock
-    // DEADLOCKED the command — and because the panel calls `desktop_info` on mount,
-    // the app never painted: the window was a single flat colour. Measured, not
-    // reasoned: the pre-change binary rendered 4687 colours, this one 1.
-    let asset_origin = active_bundle(&app).map(|_| ASSET_ORIGIN.to_string());
     let config = config.lock().expect("config lock");
+    // THE LOCKED FORM. `active_bundle` would take the same non-reentrant mutex again
+    // and deadlock this command — which is what blanked the window for three rounds.
+    let asset_origin = active_bundle_locked(&app, &config).map(|_| ASSET_ORIGIN.to_string());
     DesktopInfo {
         // MCP is not offered on the hosted site, so the desktop build reports the
         // loopback endpoint it serves itself; Rooms stay on the hosted relay.
@@ -225,10 +222,24 @@ fn fetch_asset(base: Option<&str>, path: &str) -> Result<Vec<u8>, String> {
 
 /// The cached bundle, when one is installed and complete. `None` means the shell
 /// falls back to the bundle it shipped with.
+///
+/// TAKES THE CONFIG LOCK. A caller that ALREADY HOLDS IT must use
+/// [`active_bundle_locked`] instead — the mutex is not reentrant, and calling this
+/// while holding it deadlocked `desktop_info`, which blanked the window for three
+/// rounds with an empty stderr. The split is the guard: a caller holding a `Config`
+/// cannot accidentally reach the lock-taking form, because that form needs the
+/// `AppHandle`'s state rather than the `&Config` it has in hand.
 fn active_bundle(app: &tauri::AppHandle) -> Option<(String, String, PathBuf)> {
     let config = app.state::<Mutex<Config>>();
     let config = config.lock().expect("config lock");
-    let root = cache_root(app, &config).ok()?;
+    active_bundle_locked(app, &config)
+}
+
+/// The cached bundle, for a caller that ALREADY HOLDS the config lock. This is the
+/// ONLY form that may be called from inside a locked region; it takes `&Config`, so
+/// it cannot reach the mutex at all.
+fn active_bundle_locked(app: &tauri::AppHandle, config: &Config) -> Option<(String, String, PathBuf)> {
+    let root = cache_root(app, config).ok()?;
     assets::resolve_active_bundle(&root)
 }
 
@@ -326,7 +337,19 @@ fn main() {
                     let after = assets::resolve_active_bundle(&root).map(|(version, _, _)| version);
                     // Reload ONLY when the check changed what is active, so a no-op
                     // check never interrupts the user.
-                    if after.is_some() && after != before {
+                    // NAVIGATE WHENEVER A BUNDLE IS ACTIVE AND THE WINDOW IS NOT
+                    // ALREADY ON IT. Comparing `after` to `before` alone missed the
+                    // case this feature exists for: a bundle that was ALREADY active
+                    // at launch, where `before == after` and the window kept loading
+                    // the embedded dist. The window's own URL is the thing to
+                    // compare against — measured: with a verified marker bundle
+                    // installed the capture was still the app, not the marker.
+                    let on_bundle = reload
+                        .get_webview_window("main")
+                        .and_then(|window| window.url().ok())
+                        .map(|url| url.scheme() == "pigma")
+                        .unwrap_or(false);
+                    if after.is_some() && (after != before || !on_bundle) {
                         if let Some(entry) = asset_entry_url(&reload) {
                             if let Some(window) = reload.get_webview_window("main") {
                                 let _ = window.eval(&format!(
