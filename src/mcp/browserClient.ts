@@ -65,9 +65,9 @@ export function connectBridge(options: BridgeClientOptions): BridgeClient {
     options.onStatus?.(next, detail);
   };
 
-  const post = async (body: unknown): Promise<void> => {
+  const post = async (body: unknown, path = '/bridge/result'): Promise<void> => {
     try {
-      await fetch(`${base}/bridge/result`, {
+      await fetch(`${base}${path}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-pigma-token': token },
         body: JSON.stringify({ ...(body as Record<string, unknown>), client: connectionId }),
@@ -119,6 +119,19 @@ export function connectBridge(options: BridgeClientOptions): BridgeClient {
   source.addEventListener('command', (event) => {
     const command = JSON.parse((event as MessageEvent<string>).data) as RelayCommand;
     void (async () => {
+      // PROGRESS: while this command runs, keep telling the bridge it is STILL
+      // WORKING. The bridge re-arms the command's timer on each report, so a long
+      // import stays alive and a command whose editor vanished stops reporting and
+      // fails on a SHORT silence instead of the full budget.
+      //
+      // A SYNCHRONOUS stretch of work cannot report — the event loop is blocked, and
+      // the bridge's TOTAL budget covers it. That is stated rather than hidden: the
+      // reports come from the await points, which is where a long command actually
+      // spends its time here.
+      const progress = setInterval(() => {
+        void post({ id: command.id, ok: true, progress: true }, '/bridge/progress');
+      }, 1_000);
+      const stopProgress = (): void => clearInterval(progress);
       try {
         try {
           checkRevision(revision, command.params?.expectedRevision);
@@ -153,6 +166,11 @@ export function connectBridge(options: BridgeClientOptions): BridgeClient {
         }
       } catch (error) {
         await post({ id: command.id, ok: false, error: error instanceof Error ? error.message : String(error) });
+      } finally {
+        // The command has settled: stop reporting progress. A report AFTER the
+        // result would re-arm a timer for an entry that no longer exists, which is
+        // harmless — but stopping keeps the traffic honest.
+        stopProgress();
       }
     })();
   });

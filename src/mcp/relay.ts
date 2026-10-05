@@ -34,6 +34,10 @@ interface PendingCommand {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
+  /** When this command started, for the TOTAL budget. */
+  startedAt: number;
+  /** Has the editor reported progress for this command at all? */
+  sawProgress: boolean;
 }
 
 interface Connection {
@@ -83,6 +87,13 @@ export interface BridgeHandle {
 /** The one place this number is defined; `bin.ts` imports it rather than repeating it. */
 export const DEFAULT_COMMAND_TIMEOUT_MS = 30_000;
 
+/**
+ * How long the bridge waits for a PROGRESS report before treating a command as
+ * stalled, once the editor has shown it reports progress at all. Short, because it
+ * measures silence rather than work.
+ */
+export const DEFAULT_COMMAND_SILENCE_MS = 5_000;
+
 export interface RelayOptions {
   port?: number;
   host?: string;
@@ -127,6 +138,8 @@ export interface RelayOptions {
    * duration are genuinely separate.
    */
   commandTimeoutMs?: number;
+  /** How long a command may go WITHOUT progress before it is failed. */
+  commandSilenceMs?: number;
 }
 
 // ONE definition of the loopback allowlists, shared with the MCP handler and the
@@ -157,6 +170,21 @@ export function createBridge(options: RelayOptions = {}): BridgeHandle {
     return sessionTokens.verify(value).ok;
   };
   const timeoutMs = options.commandTimeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS;
+  /**
+   * THE TWO BUDGETS, which is what separates liveness from work duration.
+   *
+   * `commandTimeoutMs` is the TOTAL budget — the old number, kept as the ceiling so
+   * an editor that never reports progress is bounded exactly as before. That is the
+   * COMPATIBILITY case: the bridge protocol is public, and a harness that does not
+   * send progress must keep working.
+   *
+   * `silenceTimeoutMs` is the LIVENESS budget, and it only applies ONCE an editor
+   * has reported progress for a command: from then on the timer measures SILENCE,
+   * not total work. A long import that keeps saying "still working" lives as long as
+   * it keeps saying it (up to the total), and one whose editor vanished stops
+   * saying it and dies after a short silence instead of the full 30 seconds.
+   */
+  const silenceTimeoutMs = options.commandSilenceMs ?? DEFAULT_COMMAND_SILENCE_MS;
   const allowedOrigins = options.allowedOrigins ?? DEFAULT_ORIGINS;
 
   const connections = new Set<Connection>();
@@ -188,12 +216,21 @@ export function createBridge(options: RelayOptions = {}): BridgeHandle {
     const id = nextId++;
     commands += 1;
     return new Promise<unknown>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        // Clear the entry so a settled command can never fire a late rejection.
-        pending.delete(id);
-        reject(new McpToolError(`Bridge command "${method}" timed out after ${timeoutMs} ms`));
-      }, timeoutMs);
-      pending.set(id, { resolve, reject, timer });
+      const startedAt = Date.now();
+      const arm = (ms: number): ReturnType<typeof setTimeout> =>
+        setTimeout(() => {
+          // Clear the entry so a settled command can never fire a late rejection.
+          pending.delete(id);
+          const elapsed = Date.now() - startedAt;
+          reject(
+            new McpToolError(
+              `Bridge command "${method}" timed out after ${elapsed} ms` +
+                (ms === silenceTimeoutMs ? ' with no progress from the editor' : ''),
+            ),
+          );
+        }, ms);
+      const timer = arm(timeoutMs);
+      pending.set(id, { resolve, reject, timer, startedAt, sawProgress: false });
       target.res.write(`event: command\ndata: ${JSON.stringify({ id, method, params })}\n\n`);
     });
   };
@@ -345,6 +382,52 @@ export function createBridge(options: RelayOptions = {}): BridgeHandle {
       };
       request.on('close', cleanup);
       response.on('close', cleanup);
+      return true;
+    }
+
+    // PROGRESS: the editor says a command is STILL WORKING. This resets that
+    // command's timer to the SILENCE budget, so a long import that keeps reporting
+    // stays alive while one whose editor vanished stops reporting and dies quickly.
+    // OPTIONAL by design: an editor that never calls this keeps the TOTAL budget,
+    // because the bridge protocol is public and other implementations must not have
+    // to know about progress to keep working.
+    if (url.pathname === '/bridge/progress' && request.method === 'POST') {
+      if (!accepts(typeof request.headers['x-pigma-token'] === 'string' ? request.headers['x-pigma-token'] : null)) {
+        response.writeHead(401, { 'content-type': 'application/json', ...cors });
+        response.end(JSON.stringify({ error: 'invalid token' }));
+        return true;
+      }
+      void readBody(request)
+        .then((body) => {
+          let id: number | null = null;
+          try {
+            const parsed = JSON.parse(body) as { id?: number };
+            id = typeof parsed.id === 'number' ? parsed.id : null;
+          } catch {
+            id = null;
+          }
+          const entry = id === null ? undefined : pending.get(id);
+          if (entry) {
+            clearTimeout(entry.timer);
+            entry.sawProgress = true;
+            // Re-arm at the SILENCE budget, never past the TOTAL budget.
+            const remaining = Math.max(1, timeoutMs - (Date.now() - entry.startedAt));
+            entry.timer = setTimeout(() => {
+              pending.delete(id as number);
+              entry.reject(
+                new McpToolError(
+                  `Bridge command timed out after ${Date.now() - entry.startedAt} ms with no progress from the editor`,
+                ),
+              );
+            }, Math.min(silenceTimeoutMs, remaining));
+          }
+          response.writeHead(204, cors);
+          response.end();
+        })
+        .catch(() => {
+          response.writeHead(400, { 'content-type': 'application/json', ...cors });
+          response.end(JSON.stringify({ error: 'bad body' }));
+        });
       return true;
     }
 
