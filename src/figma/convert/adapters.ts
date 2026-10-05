@@ -754,11 +754,17 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
   const autoLayout = mapNativeAutoLayout(node, ctx);
   if (autoLayout) normalized.autoLayout = autoLayout;
   if (typeof node.clipsContent === 'boolean') normalized.clipsContent = node.clipsContent;
-  if (typeof node.overflowDirection === 'string') normalized.overflowDirection = node.overflowDirection;
+  // The wire's name is `scrollDirection` and its values are the SHORT forms; the
+  // model keeps the REST vocabulary, so the values are translated on the way in.
+  const scrollDirection = typeof node.scrollDirection === 'string' ? node.scrollDirection : null;
+  if (scrollDirection) {
+    normalized.overflowDirection = MODEL_SCROLL_DIRECTIONS[scrollDirection] ?? scrollDirection;
+  } else if (typeof node.overflowDirection === 'string') {
+    normalized.overflowDirection = node.overflowDirection;
+  }
   if (typeof node.booleanOperation === 'string') normalized.booleanOperation = node.booleanOperation;
   // `frameMaskDisabled: false` means the frame clips (the default).
   if (typeof node.frameMaskDisabled === 'boolean') normalized.clipsContent = !node.frameMaskDisabled;
-  if (typeof node.overflowDirection === 'string') normalized.overflowDirection = node.overflowDirection;
   if (typeof node.booleanOperation === 'string') normalized.booleanOperation = node.booleanOperation;
   if (node.type === 'FRAME' && node.resizeToFit === true && !normalized.autoLayout) normalized.groupLike = true;
 
@@ -863,6 +869,13 @@ function nativeTextStyle(raw: Record<string, unknown>): TextStyle | null {
   if (typeof raw.textDecoration === 'string') style.textDecoration = raw.textDecoration as TextStyle['textDecoration'];
   return style;
 }
+
+/** The wire's `ScrollDirection` -> the model's `OverflowDirection`. */
+const MODEL_SCROLL_DIRECTIONS: Record<string, string> = {
+  HORIZONTAL: 'HORIZONTAL_SCROLLING',
+  VERTICAL: 'VERTICAL_SCROLLING',
+  BOTH: 'HORIZONTAL_AND_VERTICAL_SCROLLING',
+};
 
 /** The wire's `VariableField` -> the model's binding property. */
 const VARIABLE_FIELD_PROPERTIES: Record<string, string> = {

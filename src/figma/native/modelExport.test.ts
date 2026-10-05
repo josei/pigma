@@ -46,7 +46,10 @@ describe('native export of prototype/variable metadata', () => {
     const byName = (name: string) => changes.find((change) => change.name === name)!;
 
     expect(byName(boolean.name).booleanOperation).toBe('SUBTRACT');
-    expect(byName('Scroller').overflowDirection).toBe('VERTICAL_SCROLLING');
+    // The WIRE field is `scrollDirection`, with its own SHORT value vocabulary —
+    // `overflowDirection` is the REST name and the schema does not define it.
+    expect(byName('Scroller').scrollDirection).toBe('VERTICAL');
+    expect(byName('Scroller').overflowDirection).toBeUndefined();
     expect(byName('Scroller').frameMaskDisabled).toBe(false);
     // The wire's home is `variableConsumptionMap`, NOT `variableBindings` (a name
     // the schema does not define, which kiwi dropped in silence). Each entry
