@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1068 unit tests / 117 files**, **264 browser tests passing / 0 failing**,
+Last verified: **1069 unit tests / 117 files**, **264 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -132,13 +132,28 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
   screenshots are NOT in this repository** - they live in **`/tmp/pigma-ref`**
   (ephemeral, uncommitted). A context-menu screenshot would need adding **there** (or
   committed as a fixture) to unblock the work.
-- **The mask INDICATOR - being built this round.** A mask has had no visual marker of
-  its own: no badge beside the layer name and no mask outline on the canvas, so a mask
-  was identified only by its effect. It is being built **against Figma's DOCUMENTED
-  indicator**, and **the negative that matters is that the mask outline must be
-  DISTINGUISHABLE FROM THE SELECTION OUTLINE** - two overlays that say different things
-  must not look alike. **Not claimed done.** (A **SEPARATE** gap from the context menu
-  above.)
+- **The mask INDICATOR - NARROWED, not closed. Which parts:**
+
+  **Built and proven - the Layers-panel BADGE beside the layer name.** It is **always
+  on**, as Figma has it, it **reuses the existing badge shape** rather than inventing a
+  second affordance (**no second source of truth**), and it is **discriminated from the
+  selection mark in the browser**: the **badge is a separate ELEMENT**
+  (`data-testid="layer-mask-badge"`) while **selection is a row CLASS**
+  (`layer-row--selected`) - so **deselecting does not remove the badge**.
+
+  **NOT built, with reasons:**
+
+  | Part | Why not |
+  | --- | --- |
+  | the **UPWARD ARROW** on masked layers | a row **cannot know it is masked** without its parent and its index |
+  | the **CANVAS OUTLINE** | Figma **gates it behind View > Mask outlines**, and we have **no View menu** - so there is **no option to hang it on**, and an always-on outline would be **a divergence AND a collision risk** |
+
+  **Figma's actual shape, recorded with its source and its colours** (the colours are
+  what make the two outlines distinguishable **by construction**): the mask outlines
+  toggle lives under **View > Mask outlines** in Figma's documentation on **Masks**
+  (`help.figma.com/hc/en-us/articles/360040450253-Masks`), and Figma draws the **mask
+  outline in GREEN** while the **selection outline is PURPLE**. (A **SEPARATE** gap
+  from the context menu above.)
 
   **WHY THIS ONE GOT BUILT AND THE CONTEXT MENU DID NOT - the difference is worth
   stating: the mask indicator was NOT blocked on a missing source.** Figma's documented
@@ -173,15 +188,31 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
   wrong token is **401**, a foreign `Origin` is **403**, and `/mcp` with no token is
   **401**. **Neither gate became a pass-through.**
 
-  **THE REMAINING BLOCKER IS THE TUNNEL, and that is PROVEN - not inferred:**
-  `GET /bridge/events` through a Cloudflare **quick tunnel returns nothing in 8 s**,
-  while the **same request on loopback returns `event: hello` immediately**; and a
-  **controlled experiment with a third-party SSE server carrying NO Pigma code** also
-  returned nothing, even with `x-accel-buffering: no`. So **the tunnel does not stream
-  SSE**, and the relay's own headers are **REFUTED as the cause**.
+  **THE LOOP IS PROVEN SOUND ON LOOPBACK: 8 of 8** - the browser layer list gains the
+  node and `get_metadata` returns the browser's own node. **The loop works.**
 
-  **The editor is establishing this round whether the LOOP works on loopback**, which
-  would isolate the tunnel as the ONLY blocker. **The loop is NOT claimed to work.**
+  **The CLOUDFLARE QUICK TUNNEL does not stream SSE, and that is PROVEN - not
+  inferred:** `GET /bridge/events` through a quick tunnel returns **nothing in 8 s**
+  while the same request **on loopback returns `event: hello` immediately**; a
+  **third-party SSE server carrying NO Pigma code** also returned nothing, even with
+  `x-accel-buffering: no`; and **localtunnel DOES stream it**. So **the blocker is that
+  edge - not tunnelling in general, and not our headers** (the relay's headers are
+  **REFUTED**).
+
+  **So the PUBLIC path has TWO INDEPENDENT BLOCKERS, of different kinds - do not merge
+  them and do not describe it as blocked by one thing:**
+
+  1. **a CODE GAP, one line**: a **sixth defect**, the same class as the fourth - the
+     bridge's **ORIGIN** allowlist. `--public-url` extends the bridge **HOST** allowlist
+     but **not** its **ORIGIN** one, so over a public origin the page's SSE **GET** (no
+     `Origin`) passes while its **push POST** (which carries `Origin`) is **refused
+     403**. It is **the same asymmetry as the MCP handler, now in the bridge**.
+  2. **an ENVIRONMENTAL blocker**: the Cloudflare edge above.
+
+  **Because this is the THIRD instance of the same pattern it is SYSTEMATIC, not
+  accidental**: the editor is fixing it and **sweeping for every other allowlist
+  `--public-url` does not reach**. **Room is left for that sweep table, and the count
+  is NOT claimed fixed.**
 
   **And THREE defects came out of exposing it.** The shape is the
   lesson: **each defect HID the next**, and none was visible until the deployment was
@@ -242,7 +273,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 **No failing specs.** The suite is green: `CI=true npm run test:browser` = **262
 passed / 0 failed**, measured twice back-to-back, with **0 orphan processes**;
-`npx vitest run` = **1068 passing / 117 files**, deterministic whether or not
+`npx vitest run` = **1069 passing / 117 files**, deterministic whether or not
 `dist/` has been built. Every item previously listed here
 (B29c, B29d, B31b, B31c, B33a, B33b, B28b) now passes and has been removed.
 
