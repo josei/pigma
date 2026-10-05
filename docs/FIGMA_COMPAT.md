@@ -221,6 +221,30 @@ document:**
 | `TEXT` | `TEXT` | **CORROBORATED** |
 | `EFFECT` | - | **INFERRED** |
 
+### `StyleType` moved to the wire's SEVEN members - per-member, with reasons
+
+The type now has **seven** members, and each one is a **decision**:
+
+| Wire member | Decision |
+| --- | --- |
+| `GRID` | **ADDED** - it unblocked **three reported gaps at once** |
+| `STROKE` | **deliberately NOT modelled** - a stroke **BINDING** reuses a **FILL** style, so there is no stroke style to hold |
+| `EXPORT` | **deliberately NOT modelled** - **no model concept** to hold it |
+| `NONE` | **not a style kind** |
+
+**The type change was NOT free.** Adding `GRID` exposed **two real UI bugs** -
+`bindingKey('GRID')` returned **`'effect'`** and `defaultStyleName('GRID')` returned
+**`'Effect'`** - a **type the UI would have rendered as an effect**. Carrying the
+type through is exactly **what found them**; a type-only change would have shipped
+both. (Both are since fixed: `bindingKey` returns `grid`, `defaultStyleName` returns
+`Grid`.)
+
+**And the GRID round trip is NOT DONE.** The model's `LayoutGridPattern` is
+**`COLUMNS | ROWS | GRID`** with a **count**, while the wire's is only
+**`STRIPES | GRID`** with the **axis** carried in `type` + `axis`; the encoder
+**rejected `COLUMNS` LOUDLY**. A **mapper** is being written this round. **The GRID
+style is not claimed to work.**
+
 ### The three evidence labels for style node kinds - keep them distinct
 
 - **`FILL` -> `ROUNDED_RECTANGLE`: OBSERVED** (seen in the real payload).

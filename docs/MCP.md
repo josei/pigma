@@ -227,7 +227,7 @@ claims otherwise.
 
 ## Supported tools
 
-The published list is the registry in `src/mcp/toolCatalog.ts`, and the tests
+The published list is the registry `allTools` in `src/mcp/tools/index.ts`, and the tests
 enumerate it from the **running server** instead of asserting a number: the real
 stdio process (`tests/mcp/stdioTransport.test.ts`), the real HTTP endpoint over
 both JSON and SSE (`tests/mcp/rawHarness.test.ts`), and every tool through the
@@ -238,7 +238,7 @@ Read: `get_design_context` (React + Tailwind code by default; `framework:
 react|html`, `styling: tailwind|css`, structured context included),
 `get_metadata` (XML outline; page list fallback), `get_screenshot` (**PNG** via
 `@resvg/resvg-js`; `format:"svg"` optional, `scale` 0.01–4), `download_assets`
-(inline data URLs), `get_variable_defs` (variable bindings resolved to name,
+(**SVG, PNG or PDF** as inline data URLs; PNG honours `defaultScale`), `get_variable_defs` (variable bindings resolved to name,
 type, collection, and the value under the active mode; styles resolved against
 the file styles table), `get_libraries` (component/component-set/style/variable
 counts from the model, plus collections with their modes and active mode),
@@ -376,7 +376,7 @@ between hosts is the endpoint URL:
 
 | Deployment | Endpoint | Token |
 | --- | --- | --- |
-| Hosted (getpigma.com) | `https://getpigma.com/mcp` | **per session**, minted by `POST /mcp/token` |
+| Hosted (getpigma.com) | `https://getpigma.com/mcp` - **does not resolve today, see below** | **per session**, minted by `POST /mcp/token` |
 | Desktop app / `pigma mcp --http` | `http://127.0.0.1:<port>/mcp` | none |
 | Docker / self-host | `http://<server>:<port>/mcp` | none by default; `--mcp-token <secret>`, or `--hosted` to mint per-session tokens |
 | Self-host at a public address | `https://<your-host>/mcp` | recommended (`--mcp-token` or `--hosted`) |
@@ -398,6 +398,54 @@ their own machine. A controllable deployment advertises its endpoint at
 `GET /config.json` — see
 [`SELF_HOSTING.md`](./SELF_HOSTING.md#the-config-surface-how-the-app-finds-mcp) —
 and the desktop app reports the same facts over `desktop_info`.
+
+#### A class of defect: a description that contradicts the code
+
+Two were found and fixed: this document called **`get_figjam` a "capability-error
+tool" when it is implemented** (record 2 above counts it correctly), and a test
+labelled its list *"the complete Figma MCP tool surface as published"* while listing
+**our renamed** names.
+
+**The class, not just the instances: A DESCRIPTION THAT CONTRADICTS THE CODE IS WORSE
+THAN A WRONG COUNT, because a reader ACTS on it.** A wrong count is a number someone
+re-derives; a wrong description is a decision someone makes.
+
+**The sweep (2026-10-05) covered all 35 tools**: every `description` in
+`src/mcp/tools/*.ts`, every sentence here that characterises a tool, and every test
+name or comment that does, each checked against the parity table's outcome
+(`tests/mcp/toolParity.test.ts`: 18 real results, 17 capability errors).
+
+| Finding | Verdict |
+| --- | --- |
+| **34 of 35** tools describe what they do — the whole 17-tool capability-error family, `get_figjam`'s partial implementation, `create_new_file`'s design-only refusal, the Code Connect family | **consistent** |
+| `download_assets` still called "**SVG only**" here (three places) after the tool was widened to SVG/PNG/PDF | **contradiction — fixed** |
+| This file named `src/mcp/toolCatalog.ts` as the registry; the registry is `allTools` in `src/mcp/tools/index.ts` (that module holds the state filters) | **wrong fact — fixed** |
+| `tests/mcp/naming.test.ts` ran the same title-brand test twice | **dead duplicate — removed** |
+
+No tool is undescribed: all 35 are named and characterised here. `README.md` and
+`docs/ROADMAP.md` make no per-tool behaviour claim, so there is nothing to audit there.
+
+#### Parity with Figma's published MCP surface - MEASURED 2026-10-05
+
+Figma's published surface: **18 read + 11 write + 6 Weave = 35 tools, ONE prompt,
+NO resources.** Ours: **35 tools, 1 prompt, 3 resources, 0 templates.**
+
+| Bucket | Count |
+| --- | --- |
+| Tools Figma has that we **lack** | **0** |
+| Tools we have that Figma **lacks** | **0** |
+| Deliberate **renames** | **2** - `use_figma` -> `use_pigma`, `generate_figma_design` -> `generate_pigma_design` |
+| Documented **extension** | **3 resources** |
+| Same name, answers an explicit **CAPABILITY ERROR** | **17** - each needs a cloud / account / external service; none worth it |
+| Same name, **implemented but differing** | **16** - of which **2 are behavioural parity** |
+
+**The one cheap gap — now closed: `download_assets`.** It was SVG-only with inline
+data URLs, against Figma's temporary URLs and PNG / JPG / SVG / PDF. It now exports
+**SVG, PNG and PDF**: PNG through the rasterizer the other tools already use, PDF
+through the editor's vector writer (which had to be fixed first — it crashed on a
+modelled `UnsupportedPaint` such as a VIDEO fill, and now reports it as a warning).
+What remains different is transport and one format: Pigma has no asset host, so the
+bytes travel inline, and the editor does not produce JPG.
 
 #### Panel states: where the app thinks MCP is
 
@@ -605,7 +653,7 @@ from here):
 | --- | --- | --- |
 | `get_design_context` | React/Tailwind + Code Connect substitution + shader runtime | React + Tailwind / HTML + CSS from the model; no substitution |
 | `get_motion_context` | keyframe tracks + CSS `@keyframes` + motion.dev snippets | prototype interactions only (no keyframe model) |
-| `download_assets` | temporary URLs; PNG/JPG/SVG/PDF; raw source images | **SVG only**, inline data URLs; raw images for native imports |
+| `download_assets` | temporary URLs; PNG/JPG/SVG/PDF; raw source images | **PNG/SVG/PDF** as inline data URLs (no JPG); raw images for native imports |
 | `get_screenshot` | PNG only | PNG **and** `format:"svg"` (a superset) |
 | `get_libraries` | subscribed and available libraries (remote) | counts from the local model |
 | `search_design_system` | searches libraries (remote) | searches the local document |
@@ -616,10 +664,14 @@ from here):
 | `upload_assets` | uploads into a Figma file (remote) | `data:` URL into the local document |
 | `use_pigma` | server-side general-purpose write | Plugin API **subset** in a QuickJS sandbox, against the local document |
 
-The most actionable difference is `download_assets`: Figma returns URLs and
-PNG/JPG/SVG/PDF, Pigma returns inline SVG data URLs. The editor already exports
-PNG and PDF (M16), so widening that tool is cheap. Nothing else in the table is
-cheap — each is a model or product gap rather than a tool gap.
+The `download_assets` gap named in the previous round is closed: the tool now
+exports SVG, PNG and PDF through the editor's own writers, and
+`tests/mcp/downloadAssets.test.ts` proves the bytes over the real stdio CLI (PNG
+signature and IHDR scaling, `%PDF-1.4`). What is left is transport, not capability:
+Figma hands back temporary URLs and Pigma has no asset host, so the bytes travel
+inline; JPG is the one format the editor cannot produce. Nothing else in the table
+is cheap — each remaining difference is a model or product gap rather than a tool
+gap.
 
 `use_pigma` covers a documented Plugin API subset (see above): no `figma.ui`,
 no editable vector networks (networks convert to paths; reading one is an
