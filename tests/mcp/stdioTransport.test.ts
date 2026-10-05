@@ -128,7 +128,7 @@ describe('the stdio transport, in the same binary', () => {
     const listed = await client.request(2, 'tools/list');
     const names = ((listed.result?.tools ?? []) as Array<{ name: string }>).map((tool) => tool.name).sort();
     expect(names).toEqual(allTools.map((tool) => tool.definition.name).sort());
-    expect(names).toHaveLength(35);
+    expect(names).toHaveLength(allTools.length);
 
     // 3. A real write over stdio: create a document, then read it back.
     const created = await client.request(3, 'tools/call', { name: 'create_new_file', arguments: { name: 'Stdio', editorType: 'design' } });

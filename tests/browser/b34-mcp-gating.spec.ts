@@ -85,8 +85,10 @@ test('B34b an advertised self-hosted endpoint surfaces the endpoint and a token'
  * An ADVERTISED loopback endpoint is still `self-hosted`: `desktop` is reserved
  * for the Tauri shell reporting `desktop_info` (resolveMcpAvailability: the
  * `desktop` branch comes from environment.desktop, the advertised branch always
- * yields self-hosted). The desktop state therefore cannot be reached from a
- * browser spec - it needs the shell.
+ * yields self-hosted). B34d below reaches the desktop state by supplying the
+ * shell's own report the way the shell does - `window.__TAURI__.core.invoke` -
+ * so the state IS reachable from a browser spec; only the real IPC hop needs
+ * the shell.
  */
 test('B34c an advertised loopback endpoint is self-hosted and labelled as this machine', async ({
   page,
@@ -103,4 +105,42 @@ test('B34c an advertised loopback endpoint is self-hosted and labelled as this m
   await expect(panel(page)).toHaveAttribute('data-mcp-state', 'self-hosted');
   await expect(panel(page)).toContainText('127.0.0.1');
   await expect(panel(page)).toContainText(/this machine/i);
+});
+
+/**
+ * The desktop state, from the shell's own report.
+ *
+ * `desktop_info` is a Tauri command: the panel reaches it through
+ * `window.__TAURI__.core.invoke` (src/config/mcpAvailability.ts,
+ * `readDesktopInfo`). A browser has no shell, but a spec can supply the report
+ * the shell would return, and then the state resolves exactly as it does in the
+ * desktop build. The payload below is the shell's wire shape - camelCase, from
+ * `#[serde(rename_all = "camelCase")]` on `DesktopInfo` in
+ * src-tauri/src/main.rs, pinned there by `desktop_info_serializes_camel_case`
+ * and in src/config/mcpAvailability.test.ts.
+ */
+test('B34d the desktop state is reached from the shell’s desktop_info report', async ({ page }) => {
+  const info = {
+    mcpEndpoint: 'http://127.0.0.1:3001/mcp',
+    relayUrl: 'wss://getpigma.com/relay',
+    localMcpEndpoint: 'http://127.0.0.1:3001/mcp',
+    localRelayUrl: 'ws://127.0.0.1:3002/relay',
+    mcpTokenRequired: false,
+    assetOrigin: null,
+  };
+  // Before the app boots: `readEnvironment` reads the report once, on mount.
+  await page.addInitScript((report) => {
+    (window as unknown as { __TAURI__: unknown }).__TAURI__ = {
+      core: { invoke: async (command: string) => (command === 'desktop_info' ? report : null) },
+    };
+  }, info);
+  await openTools(page);
+
+  await expect(panel(page)).toHaveAttribute('data-mcp-state', 'desktop');
+  await expect(panel(page)).toHaveAttribute('data-mcp-endpoint', info.mcpEndpoint);
+  // The desktop state is the loopback endpoint and needs no token.
+  await expect(panel(page)).toContainText('served by the desktop app');
+  await expect(page.locator('input[aria-label="MCP token"]')).toHaveValue('none required');
+  // A token is never offered for a state that needs none.
+  await expect(page.locator('button[aria-label="Get a session token"]')).toHaveCount(0);
 });

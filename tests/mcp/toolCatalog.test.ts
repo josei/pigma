@@ -75,7 +75,7 @@ describe('the registry is the single source of truth', () => {
   it('exposes exactly the published tool set', () => {
     expect(toolNames(allTools)).toEqual(PUBLISHED_TOOL_NAMES);
     expect(toolCount(allTools)).toBe(PUBLISHED_TOOL_NAMES.length);
-    expect(allTools).toHaveLength(35);
+    expect(allTools).toHaveLength(PUBLISHED_TOOL_NAMES.length);
   });
 
   it('has no duplicate names and a usable definition for each tool', () => {
@@ -112,7 +112,7 @@ describe('what each state advertises', () => {
     // per state so a future gated tool changes exactly one of these numbers.
     for (const [label, state] of states) {
       const advertised = advertisedTools(allTools, state);
-      expect(`${label}: ${toolCount(advertised)}`).toBe(`${label}: 35`);
+      expect(`${label}: ${toolCount(advertised)}`).toBe(`${label}: ${PUBLISHED_TOOL_NAMES.length}`);
       expect(toolNames(advertised)).toEqual(PUBLISHED_TOOL_NAMES);
     }
   });
@@ -144,7 +144,7 @@ describe('what each state advertises', () => {
     for (const state of [HOSTED_STATE, SELF_HOSTED_STATE, { kind: 'desktop', shellPresent: false } as McpState]) {
       const advertised = advertisedTools(catalog, state);
       expect(advertised.map((tool) => tool.definition.name)).not.toContain('open_in_desktop');
-      expect(toolCount(advertised)).toBe(35);
+      expect(toolCount(advertised)).toBe(allTools.length);
       // …and nothing that *is* advertised would fail on arrival.
       for (const tool of advertised) expect(isServiceable(tool, state)).toBe(true);
     }
@@ -153,10 +153,10 @@ describe('what each state advertises', () => {
   it('reflects the state in the server it builds', async () => {
     const desktop = createMcpServer({ session: createSession(null), state: DESKTOP_STATE });
     const hosted = createMcpServer({ session: createSession(null), state: HOSTED_STATE });
-    expect(toolCount(desktop.tools)).toBe(35);
-    expect(toolCount(hosted.tools)).toBe(35);
+    expect(toolCount(desktop.tools)).toBe(allTools.length);
+    expect(toolCount(hosted.tools)).toBe(allTools.length);
     // Both still answer with the registry's names.
     const listed = await hosted.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' });
-    expect((resultOf(listed)?.tools as unknown[])).toHaveLength(35);
+    expect((resultOf(listed)?.tools as unknown[])).toHaveLength(allTools.length);
   });
 });

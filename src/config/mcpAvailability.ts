@@ -38,10 +38,16 @@ export interface McpAdvertisement {
   bridgeBase: string | null;
 }
 
-/** What the Tauri shell reports (`desktop_info`, see docs/DESKTOP.md). */
+/**
+ * What the Tauri shell reports (`desktop_info`, see docs/DESKTOP.md).
+ *
+ * The field names are the wire contract: the shell's `DesktopInfo` struct
+ * carries `#[serde(rename_all = "camelCase")]`, pinned by the Rust test
+ * `desktop_info_serializes_camel_case` (`src-tauri/src/main.rs`).
+ */
 export interface DesktopInfo {
   mcpEndpoint?: unknown;
-  mcpToken?: unknown;
+  mcpTokenRequired?: unknown;
 }
 
 export type McpAvailability =
@@ -152,10 +158,11 @@ export async function readDesktopInfo(): Promise<{ advertisement: McpAdvertiseme
     const info = (await invoke('desktop_info')) as DesktopInfo | null;
     const endpoint = normalizeEndpoint(info?.mcpEndpoint, null);
     if (endpoint === null) return null;
-    const token = typeof info?.mcpToken === 'string' && info.mcpToken.trim() !== '' ? info.mcpToken.trim() : null;
+    // The shell's loopback server needs no token (the CLI's loopback default);
+    // the shell reports whether one *would* be required instead of sending one.
     return {
-      advertisement: { endpoint, mode: 'loopback', tokenRequired: token !== null, bridgeBase: null },
-      token,
+      advertisement: { endpoint, mode: 'loopback', tokenRequired: info?.mcpTokenRequired === true, bridgeBase: null },
+      token: null,
     };
   } catch {
     // A shell that does not answer simply means no desktop endpoint: the panel

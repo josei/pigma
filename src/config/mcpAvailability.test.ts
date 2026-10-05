@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CONFIG_PATH } from '../../server/config';
 import {
   MCP_CONFIG_PATH,
   offersMcp,
   readAdvertisedMcp,
+  readDesktopInfo,
   resolveMcpAvailability,
   toAdvertisement,
 } from './mcpAvailability';
@@ -129,5 +130,65 @@ describe('MCP availability', () => {
         headers: { 'content-type': 'application/json' },
       })) as unknown as typeof fetch;
     expect(await readAdvertisedMcp(ok)).toEqual({ ...loopback, tokenRequired: false, bridgeBase: null });
+  });
+});
+
+describe('the desktop shell’s report', () => {
+  it('resolves the desktop state from the payload the shell actually serializes', async () => {
+    // These are the wire keys of the shell's `DesktopInfo` struct, pinned
+    // Rust-side by `desktop_info_serializes_camel_case` (src-tauri/src/main.rs).
+    // Reading a field the shell does not send is how the desktop state silently
+    // disappears: the panel falls through to hosted with no error.
+    const payload = {
+      mcpEndpoint: 'http://127.0.0.1:3001/mcp',
+      relayUrl: 'wss://getpigma.com/relay',
+      localMcpEndpoint: 'http://127.0.0.1:3001/mcp',
+      localRelayUrl: 'ws://127.0.0.1:3002/relay',
+      mcpTokenRequired: false,
+      assetOrigin: null,
+    };
+    vi.stubGlobal('window', { __TAURI__: { core: { invoke: async () => payload } } });
+    try {
+      const report = await readDesktopInfo();
+      expect(report).toEqual({
+        advertisement: {
+          endpoint: payload.mcpEndpoint,
+          mode: 'loopback',
+          tokenRequired: false,
+          bridgeBase: null,
+        },
+        token: null,
+      });
+      // …and that report is what puts the panel in its desktop state.
+      expect(
+        resolveMcpAvailability({ desktop: report!.advertisement, advertised: null, desktopToken: report!.token }),
+      ).toEqual({ kind: 'desktop', endpoint: payload.mcpEndpoint, token: null, tokenRequired: false });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('honours a shell that reports a token is required', async () => {
+    vi.stubGlobal('window', {
+      __TAURI__: {
+        core: {
+          invoke: async () => ({ mcpEndpoint: 'http://127.0.0.1:3001/mcp', mcpTokenRequired: true }),
+        },
+      },
+    });
+    try {
+      const report = await readDesktopInfo();
+      expect(report?.advertisement.tokenRequired).toBe(true);
+      expect(resolveMcpAvailability({ desktop: report!.advertisement, advertised: null })).toMatchObject({
+        kind: 'desktop',
+        tokenRequired: true,
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('is no shell at all in a browser, without touching the network', async () => {
+    expect(await readDesktopInfo()).toBeNull();
   });
 });

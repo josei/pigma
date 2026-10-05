@@ -145,7 +145,7 @@ describe('every tool works through the real call path', () => {
   it('exercises every registered tool exactly once', async () => {
     const names = allTools.map((tool) => tool.definition.name).sort();
     expect(names).toEqual(Object.keys(EXPECTATIONS).sort());
-    expect(names).toHaveLength(35);
+    expect(names).toHaveLength(allTools.length);
 
     const harness = await startParityHarness();
     harnesses.push(harness);
