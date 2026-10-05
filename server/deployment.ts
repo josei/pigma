@@ -16,7 +16,7 @@ import { createSession } from '../src/mcp/session';
 import { nodeRasterizer } from '../src/mcp/raster.node';
 import { createNodePluginInterpreter } from '../src/mcp/plugin/interpreter.node';
 import { TokenStore } from '../src/mcp/tokens';
-import { createHttpHandler } from '../src/mcp/transports/http';
+import { createHttpHandler, DEFAULT_ALLOWED_HOSTS } from '../src/mcp/transports/http';
 import { toNodeHandler } from '../src/mcp/transports/node';
 import { createBridge, type BridgeHandle } from '../src/mcp/relay';
 import { CONFIG_PATH, buildConfig, serializeConfig, type DeploymentConfig } from './config';
@@ -25,6 +25,13 @@ export interface DeploymentOptions {
   /** Requested port; `0` asks the OS for a free one. */
   port: number;
   host: string;
+  /**
+   * The address users reach this deployment on when it is behind a proxy or
+   * tunnel. When set, the advertised MCP and relay URLs use it and its host is
+   * allowed through the MCP endpoint's host check; when absent both fall back to
+   * the bind address, which is correct on loopback and wrong in public.
+   */
+  publicUrl?: string;
   /** Built assets to serve; omitted serves the relay only. */
   staticDir?: string;
   /** Snapshot directory; omitted keeps snapshots in memory. */
@@ -114,8 +121,15 @@ export async function startDeployment(options: DeploymentOptions): Promise<Deplo
 
   // The real address is only known now (the port may have been 0): build the
   // advertised URLs and the MCP endpoint.
+  //
+  // A deployment behind a proxy or tunnel must advertise the address users
+  // actually reach, not the address it bound. Deriving both from the bind
+  // address is correct on loopback and wrong in public in TWO ways at once: the
+  // advertised endpoint is unreachable, and the MCP host allowlist — loopback by
+  // default — rejects the real Host with a 403 that names the host it refused.
   const reachable = options.host === '0.0.0.0' || options.host === '::' ? '127.0.0.1' : options.host;
-  const httpBase = `http://${reachable}:${port}`;
+  const publicOrigin = normalizeOrigin(options.publicUrl);
+  const httpBase = publicOrigin ?? `http://${reachable}:${port}`;
   const mcpUrl = `${httpBase}${options.mcpPath}`;
   if (options.mcp) {
     const handler = createHttpHandler(
@@ -131,13 +145,14 @@ export async function startDeployment(options: DeploymentOptions): Promise<Deplo
         endpoint: mcpUrl,
         state: options.bridge ? 'hosted' : 'self-hosted',
         ...(mcpTokens ? { tokens: mcpTokens } : {}),
+        ...(publicOrigin ? { allowedHosts: [new URL(publicOrigin).hostname, ...DEFAULT_ALLOWED_HOSTS] } : {}),
       },
     );
     nodeMcpHandler = toNodeHandler(handler);
   }
 
   const config = buildConfig({
-    relayUrl: `ws://${reachable}:${port}/collab`,
+    relayUrl: `${httpBase.replace(/^http/, 'ws')}/collab`,
     relayTokenRequired: options.token !== undefined,
     ...(options.mcp ? { mcpUrl } : {}),
     mcpTokenRequired: mcpTokens !== undefined,
@@ -162,4 +177,20 @@ export async function startDeployment(options: DeploymentOptions): Promise<Deplo
       await server.close();
     },
   };
+}
+
+/**
+ * An origin (`scheme://host[:port]`) with any path, query or trailing slash
+ * stripped, or `undefined` when the value is not an absolute http(s) URL. A
+ * deployment's advertised base is an origin, not a page.
+ */
+function normalizeOrigin(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return undefined;
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return undefined;
+  }
 }

@@ -119,7 +119,13 @@ function requestToken(request: Request): string | null {
   return direct && direct.trim().length > 0 ? direct.trim() : null;
 }
 
-const DEFAULT_HOSTS = ['localhost', '127.0.0.1', '::1', '[::1]'];
+/**
+ * The hosts the MCP endpoint accepts when the caller supplies no allowlist:
+ * loopback only. A deployment that is reachable on a public address MUST pass
+ * its own host (see `server/deployment.ts`) or every request is refused with a
+ * 403 naming the host it would not accept — including the URL it advertises.
+ */
+export const DEFAULT_ALLOWED_HOSTS = ['localhost', '127.0.0.1', '::1', '[::1]'];
 const DEFAULT_ORIGINS = ['http://localhost', 'http://127.0.0.1', 'http://[::1]'];
 
 function hostAllowed(host: string | null, allowed: string[]): boolean {
@@ -170,7 +176,7 @@ export function createHttpHandler(
   server: McpServer,
   options: HttpTransportOptions = {},
 ): (request: Request) => Promise<Response> {
-  const allowedHosts = options.allowedHosts ?? DEFAULT_HOSTS;
+  const allowedHosts = options.allowedHosts ?? DEFAULT_ALLOWED_HOSTS;
   const allowedOrigins = options.allowedOrigins ?? DEFAULT_ORIGINS;
   const endpoint = options.endpoint ?? 'http://localhost/mcp';
   const name = options.name ?? 'pigma';

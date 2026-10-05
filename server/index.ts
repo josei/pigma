@@ -39,6 +39,7 @@ if (options.help) {
 const deployment = await startDeployment({
   port: options.port,
   host: options.host,
+  ...(options.publicUrl !== undefined ? { publicUrl: options.publicUrl } : {}),
   ...(options.staticDir !== undefined ? { staticDir: options.staticDir } : {}),
   ...(options.dataDir !== undefined ? { dataDir: options.dataDir } : {}),
   ...(options.token !== undefined ? { token: options.token } : {}),
