@@ -129,37 +129,10 @@ export interface RelayOptions {
   commandTimeoutMs?: number;
 }
 
-// ONE definition of the loopback origins, shared with the MCP handler: two copies
-// of the same list is how `--public-url` came to reach one allowlist and not the
-// other.
-import { DEFAULT_ORIGINS } from './transports/http';
-
-/** The hosts the bridge answers for when no allowlist is given: loopback only. */
-export const DEFAULT_BRIDGE_HOSTS = ['localhost', '127.0.0.1', '::1', '[::1]'];
-
-/**
- * Is this Host header one the bridge answers for?
- *
- * THIS WAS HARDCODED LOOPBACK WITH NO OPTION, which refused every public Host — so
- * a hosted editor could never connect the bridge over a tunnel. That contradicted
- * the design: `sessionTokens` exists "so an editor on the hosted site can connect
- * without knowing the operator's secret", and `--hosted` wires the MCP session to
- * the bridge session. A HOSTED EDITOR CONNECTING IS THE INTENT; the loopback list
- * was an un-parameterised default, not a security posture. The security boundary
- * is the TOKEN, which is unchanged and still required.
- */
-function hostAllowed(host: string | null, allowed: string[]): boolean {
-  if (!host) return true;
-  const hostname = host.startsWith('[') ? host.slice(0, host.indexOf(']') + 1) : host.split(':')[0] ?? host;
-  return allowed.includes(hostname);
-}
-
-function originAllowed(origin: string | null, allowed: string[]): boolean {
-  if (!origin) return true;
-  const match = /^(https?:\/\/[^/]+)/.exec(origin);
-  const base = match?.[1] ?? origin;
-  return allowed.some((entry) => base === entry || base.startsWith(`${entry}:`));
-}
+// ONE definition of the loopback allowlists, shared with the MCP handler and the
+// collab relay: separate copies are how `--public-url` came to reach one allowlist
+// and not another, three times.
+import { DEFAULT_ALLOWED_HOSTS as DEFAULT_BRIDGE_HOSTS, DEFAULT_ORIGINS, hostAllowed, originAllowed } from './origins';
 
 interface SyncPayload {
   file?: PigmaFile;

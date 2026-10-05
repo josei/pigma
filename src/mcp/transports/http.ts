@@ -25,6 +25,7 @@
  * There is deliberately **no client allowlist**: any MCP client may connect.
  */
 import type { JsonRpcMessage, JsonRpcResponse } from '../types';
+import { DEFAULT_ALLOWED_HOSTS, DEFAULT_ORIGINS, hostAllowed, originAllowed } from '../origins';
 import { ErrorCode } from '../types';
 import type { McpServer } from '../protocol';
 import { harnessConfigs, type HarnessConfigEntry } from '../harnessConfig';
@@ -125,25 +126,8 @@ function requestToken(request: Request): string | null {
  * its own host (see `server/deployment.ts`) or every request is refused with a
  * 403 naming the host it would not accept — including the URL it advertises.
  */
-export const DEFAULT_ALLOWED_HOSTS = ['localhost', '127.0.0.1', '::1', '[::1]'];
-export const DEFAULT_ORIGINS = ['http://localhost', 'http://127.0.0.1', 'http://[::1]'];
 
-function hostAllowed(host: string | null, allowed: string[]): boolean {
-  if (!host) return true; // direct handler invocation without a Host header
-  const hostname = host.startsWith('[') ? host.slice(0, host.indexOf(']') + 1) : host.split(':')[0] ?? host;
-  return allowed.includes(hostname) || allowed.includes(host);
-}
-
-function originAllowed(origin: string | null, allowed: string[]): boolean {
-  if (!origin) return true;
-  // Same rule as the relay (src/mcp/relay.ts): the allowlist names hosts, so any
-  // port on an allowed host is allowed. An exact-match check here silently
-  // refused the editor's own dev origin (http://127.0.0.1:5173), which broke the
-  // panel's token mint against a local hosted-mode server.
-  const match = /^(https?:\/\/[^/]+)/.exec(origin);
-  const base = match?.[1] ?? origin;
-  return allowed.some((entry) => base === entry || base.startsWith(`${entry}:`));
-}
+export { DEFAULT_ORIGINS, DEFAULT_ALLOWED_HOSTS } from '../origins';
 
 function jsonResponse(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {

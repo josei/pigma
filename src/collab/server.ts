@@ -25,8 +25,13 @@ import { decodeClientMessage, encodeMessage, type ServerMessage } from './protoc
 import { RoomRegistry, type Snapshot } from './room';
 import { RateLimiter, resolveLimits, type RelayLimits } from './limits';
 import { acceptWebSocket, isWebSocketUpgrade, type WebSocketConnection } from './websocket';
+import { DEFAULT_ALLOWED_HOSTS, DEFAULT_ORIGINS, hostAllowed, originAllowed } from '../mcp/origins';
 
 export interface CollabServerOptions {
+  /** Hosts the relay answers for. Defaults to loopback. */
+  allowedHosts?: string[];
+  /** Origins the relay accepts. Defaults to loopback. A deployment adds its public origin. */
+  allowedOrigins?: string[];
   /** Directory of built static assets to serve. Omitted: only the relay + /health. */
   staticDir?: string;
   /** Directory for one snapshot file per room. Omitted: snapshots stay in memory. */
@@ -105,6 +110,8 @@ function tokenMatches(expected: string, provided: string | null): boolean {
 }
 
 export function createCollabServer(options: CollabServerOptions = {}): CollabServer {
+  const allowedHosts = options.allowedHosts ?? DEFAULT_ALLOWED_HOSTS;
+  const allowedOrigins = options.allowedOrigins ?? DEFAULT_ORIGINS;
   const sockets = new Map<string, { roomId: string; connection: WebSocketConnection }>();
   /** Every accepted connection, including ones that never sent `hello`. */
   const connections = new Set<WebSocketConnection>();
@@ -346,6 +353,23 @@ export function createCollabServer(options: CollabServerOptions = {}): CollabSer
     const url = new URL(request.url ?? '/', 'http://localhost');
     if (url.pathname !== '/collab' || !isWebSocketUpgrade(request)) {
       socket.write('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    // THE RELAY HAD NEITHER CHECK. A cross-origin WebSocket has no browser-enforced
+    // origin gate, so any page a user visits could open one to their relay and, with
+    // a known room, join it — cross-site WebSocket hijacking. The room key remains
+    // the boundary; this is an ADDITION, and it reuses the SAME rules and defaults
+    // as the MCP endpoint and the bridge (one definition, in `mcp/origins`).
+    //
+    // Browsers DO send `Origin` on an upgrade (the WebSocket handshake spec requires
+    // it), and a missing Origin is accepted so non-browser clients keep working —
+    // the threat this closes is a page the user did not choose.
+    if (
+      !hostAllowed(request.headers.host ?? null, allowedHosts) ||
+      !originAllowed(request.headers.origin ?? null, allowedOrigins)
+    ) {
+      socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
       socket.destroy();
       return;
     }
