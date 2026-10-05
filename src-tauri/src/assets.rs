@@ -432,11 +432,28 @@ pub fn resolve_active_bundle(root: &Path) -> Option<(String, String, PathBuf)> {
     for version in candidates {
         let dir = root.join(asset_dir(&version));
         let hashes = hash_tree(&dir);
-        if hashes.contains_key(&pointer.entry) {
-            return Some((version, pointer.entry.clone(), dir));
+        if !hashes.contains_key(&pointer.entry) {
+            continue;
         }
+        // VERIFY AT THE SERVING PATH, not only at install. A bundle whose manifest
+        // is present and whose tree does not match it is NOT served; the next
+        // candidate (the previous version) is tried instead, and if none passes the
+        // window falls back to the bundle baked into the binary.
+        if let Ok(json) = fs::read_to_string(root.join(manifest_file(&version))) {
+            if let Ok(manifest) = parse_manifest(&json) {
+                if !verify_bundle(&manifest, &hashes).ok {
+                    continue;
+                }
+            }
+        }
+        return Some((version, pointer.entry.clone(), dir));
     }
     None
+}
+
+/// Where a version's manifest is kept, beside its bundle.
+pub fn manifest_file(version: &str) -> String {
+    format!("manifest-{}.json", version.replace(['/', '\\', ':'], "_"))
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -570,6 +587,13 @@ where
             let _ = fs::remove_dir_all(&target);
             if let Err(error) = fs::rename(&staging, &target) {
                 return fail(error.to_string(), root);
+            }
+            // THE MANIFEST IS KEPT WITH THE BUNDLE, so the SERVING path can verify
+            // too. It used to be dropped after activation, which meant the scheme
+            // handler could only check that the entry FILE EXISTED — a corrupted
+            // bundle with the right file names would have been served.
+            if let Ok(json) = serde_json::to_string(manifest) {
+                let _ = write_atomically(&root.join(manifest_file(&version)), json.as_bytes());
             }
 
             let next = Pointer {
@@ -857,5 +881,87 @@ mod tests {
         let empty = temp_root("empty");
         assert!(resolve_active_bundle(&empty).is_none());
         assert_eq!(read_status(&empty).current_version, None);
+    }
+}
+
+#[cfg(test)]
+mod serving_tests {
+    use super::*;
+
+    fn root(tag: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("pigma-serving-{tag}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// Lay down a bundle exactly as `apply_update` does: the tree, the pointer and
+    /// the manifest that was kept beside it.
+    fn install(root: &Path, version: &str, body: &[u8], previous: Option<&str>) {
+        let dir = root.join(asset_dir(version));
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("index.html"), body).unwrap();
+        let mut assets: BTreeMap<String, String> = BTreeMap::new();
+        assets.insert("index.html".into(), sha256_hex(body));
+        let manifest = AssetManifest {
+            schema: MANIFEST_SCHEMA.into(),
+            version: version.into(),
+            entry: "index.html".into(),
+            assets,
+        };
+        fs::write(
+            root.join(manifest_file(version)),
+            serde_json::to_string(&manifest).unwrap(),
+        )
+        .unwrap();
+        write_pointer(
+            root,
+            &Pointer {
+                version: version.into(),
+                entry: "index.html".into(),
+                previous: previous.map(str::to_string),
+            },
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn serves_the_active_bundle() {
+        let root = root("active");
+        install(&root, "2.0.0", b"<html>cached</html>", None);
+        let resolved = resolve_active_bundle(&root);
+        assert_eq!(resolved.map(|(v, _, _)| v), Some("2.0.0".to_string()));
+    }
+
+    #[test]
+    fn falls_back_when_there_is_no_bundle() {
+        // The negative that matters most: no cache must NOT brick the window — the
+        // caller keeps the bundle baked into the binary.
+        let root = root("empty");
+        assert_eq!(resolve_active_bundle(&root), None);
+    }
+
+    #[test]
+    fn refuses_a_bundle_whose_tree_does_not_match_its_manifest() {
+        // VERIFICATION AT THE SERVING PATH. A corrupted file with the right name used
+        // to pass, because only the entry's EXISTENCE was checked.
+        let root = root("corrupt");
+        install(&root, "2.0.0", b"<html>cached</html>", None);
+        fs::write(root.join(asset_dir("2.0.0")).join("index.html"), b"<html>TAMPERED</html>").unwrap();
+        assert_eq!(
+            resolve_active_bundle(&root),
+            None,
+            "a tampered bundle was served",
+        );
+    }
+
+    #[test]
+    fn falls_back_to_the_previous_version_when_the_active_one_is_corrupt() {
+        let root = root("rollback");
+        install(&root, "1.0.0", b"<html>good</html>", None);
+        install(&root, "2.0.0", b"<html>cached</html>", Some("1.0.0"));
+        fs::write(root.join(asset_dir("2.0.0")).join("index.html"), b"<html>TAMPERED</html>").unwrap();
+        let resolved = resolve_active_bundle(&root);
+        assert_eq!(resolved.map(|(v, _, _)| v), Some("1.0.0".to_string()));
     }
 }
