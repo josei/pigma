@@ -12,13 +12,14 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createCollabServer, type CollabServer } from '../src/collab/server';
 import { resolveLimits, type RelayLimits } from '../src/collab/limits';
 import { createMcpServer } from '../src/mcp/protocol';
+import { DEFAULT_ORIGINS } from '../src/mcp/transports/http';
 import { createSession } from '../src/mcp/session';
 import { nodeRasterizer } from '../src/mcp/raster.node';
 import { createNodePluginInterpreter } from '../src/mcp/plugin/interpreter.node';
 import { TokenStore } from '../src/mcp/tokens';
 import { createHttpHandler, DEFAULT_ALLOWED_HOSTS } from '../src/mcp/transports/http';
 import { toNodeHandler } from '../src/mcp/transports/node';
-import { createBridge, type BridgeHandle } from '../src/mcp/relay';
+import { createBridge, DEFAULT_BRIDGE_HOSTS, type BridgeHandle } from '../src/mcp/relay';
 import { CONFIG_PATH, buildConfig, serializeConfig, type DeploymentConfig } from './config';
 
 export interface DeploymentOptions {
@@ -88,7 +89,17 @@ export async function startDeployment(options: DeploymentOptions): Promise<Deplo
 
   // The bridge is how a hosted MCP call reaches the user's live document. Its
   // token is a deployment secret: printed for the operator, never advertised.
-  const bridge = options.bridge ? createBridge({ ...(options.bridgeToken ? { token: options.bridgeToken } : {}) }) : undefined;
+  // The bridge's HOST allowlist follows the same rule as the MCP one: a hosted
+  // deployment adds its public host so the EDITOR can connect over the tunnel.
+  // The bridge's TOKEN gate is unchanged and still required — this widens
+  // reachability, not access.
+  const publicHost = options.publicUrl ? new URL(normalizeOrigin(options.publicUrl) ?? '').hostname : null;
+  const bridge = options.bridge
+    ? createBridge({
+        ...(options.bridgeToken ? { token: options.bridgeToken } : {}),
+        ...(publicHost ? { allowedHosts: [publicHost, ...DEFAULT_BRIDGE_HOSTS] } : {}),
+      })
+    : undefined;
 
   let nodeMcpHandler: ((request: IncomingMessage, response: ServerResponse) => void) | undefined;
   let configJson = '';
@@ -145,7 +156,18 @@ export async function startDeployment(options: DeploymentOptions): Promise<Deplo
         endpoint: mcpUrl,
         state: options.bridge ? 'hosted' : 'self-hosted',
         ...(mcpTokens ? { tokens: mcpTokens } : {}),
-        ...(publicOrigin ? { allowedHosts: [new URL(publicOrigin).hostname, ...DEFAULT_ALLOWED_HOSTS] } : {}),
+        // BOTH allowlists follow the same rule. Passing only `allowedHosts` left
+        // the ORIGIN allowlist at its loopback default, so a browser sitting ON
+        // the public origin was refused (403 with an Origin header, 201 without) —
+        // which is why curl probes passed while the panel could not mint a token.
+        // The origin gate is CSRF protection; for a browser SERVED BY that origin
+        // the correct answer is to allow that origin, not to remove the gate.
+        ...(publicOrigin
+          ? {
+              allowedHosts: [new URL(publicOrigin).hostname, ...DEFAULT_ALLOWED_HOSTS],
+              allowedOrigins: [publicOrigin, ...DEFAULT_ORIGINS],
+            }
+          : {}),
       },
     );
     nodeMcpHandler = toNodeHandler(handler);
