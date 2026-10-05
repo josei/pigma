@@ -11,7 +11,7 @@ accepted (and tested).
 
 > **Not Figma's hosted server.** Tool names, arguments, and workflows are
 > implemented locally. Where the hosted server needs Figma cloud, a codebase, or
-> Code Connect, the difference is listed under [Parity gaps](#parity-gaps).
+> Code Connect, the difference is listed in the [measured parity diff](#figma-parity-the-measured-diff).
 
 ## Naming: Pigma names its own tools
 
@@ -47,7 +47,7 @@ description works identically.
 | --- | --- | --- |
 | `use_figma` | `use_pigma` | The tool runs a Figma **dialect** script in Pigma's own sandbox, against a **local** document; the name implied Figma was executing it. |
 | `generate_figma_design` | `generate_pigma_design` | Names the implementer; the description states the Figma relationship (Figma captures live web UI; Pigma has no capture backend). |
-| `get_figjam` | `get_figjam` (**unchanged**) | Names the artifact requested (a FigJam board), like `.fig` names a file format, and it is a capability-error tool that answers "Pigma has no FigJam support" — it cannot send anyone to Figma. |
+| `get_figjam` | `get_figjam` (**unchanged**) | Names the artifact requested (a FigJam board), like `.fig` names a file format. It is **implemented**, not a capability error: it returns the XML outline plus PNG screenshots, with `capabilities.figjamSemantics: false` — FigJam connectors, tables and stickies are not modelled, so their fields stay in each node's raw metadata (`src/mcp/tools/platform.ts`). It cannot send anyone to Figma. |
 
 Calling an old name is not a silent failure: the server answers
 `Unknown tool "use_figma": it was renamed to "use_pigma" …` (see
@@ -358,6 +358,14 @@ prompt `create_design_system_rules` (Figma's published prompt name and shape:
 it asks the agent to write a rules file for design-system-aware code generation,
 using the Pigma tools as sources of truth).
 
+That is the whole surface: **3 resources, 0 resource templates, 1 prompt** — and
+all four are served, not merely listed. Measured from the real server path over
+both transports (stdio CLI and HTTP: `resources/list`, `resources/templates/list`,
+`prompts/list`, then a `resources/read` of every uri and a `prompts/get` of the
+prompt — all succeed with their declared mime types), and asserted end to end by
+`tests/mcp/resourcesPrompts.test.ts`, which also checks the advertised
+capabilities against the dispatcher in both directions.
+
 ---
 
 ## Transports: Streamable HTTP, with stdio as an extra
@@ -373,14 +381,21 @@ between hosts is the endpoint URL:
 | Docker / self-host | `http://<server>:<port>/mcp` | none by default; `--mcp-token <secret>`, or `--hosted` to mint per-session tokens |
 | Self-host at a public address | `https://<your-host>/mcp` | recommended (`--mcp-token` or `--hosted`) |
 
-**The hosted endpoint works with no download** (decision 2026-10-03, docs/ROADMAP.md):
-getpigma.com serves MCP through the relay, so Claude/ChatGPT can drive Pigma
-straight away. The relay executes the tools over the bridge, so it necessarily
-sees tool calls — accepted, under a hard policy that it **logs nothing and stores
-nothing** of MCP traffic (aggregate counters only, never payloads). The desktop
-app and self-hosting remain available for users who want the endpoint on their own
-machine. A controllable deployment advertises its endpoint at `GET /config.json`
-— see
+**The hosted endpoint is a design decision, not a measured deployment.**
+Decision 2026-10-03 (docs/ROADMAP.md): getpigma.com serves MCP through the relay,
+so Claude/ChatGPT can drive Pigma with no download. The relay executes the tools
+over the bridge, so it necessarily sees tool calls — accepted, under a hard policy
+that it **logs nothing and stores nothing** of MCP traffic (aggregate counters
+only, never payloads).
+
+**Measured status (2026-10-05):** the host does not resolve — `getpigma.com`
+returns NXDOMAIN from the system resolver and from two independent public
+resolvers (Google and Cloudflare DoH), and `www.`/`relay.`/`app.` are the same,
+so the hosted endpoint could not be exercised from this machine. The blocker is
+not authentication and not QA: the deployment is not published in DNS. The
+desktop app and self-hosting remain available for users who want the endpoint on
+their own machine. A controllable deployment advertises its endpoint at
+`GET /config.json` — see
 [`SELF_HOSTING.md`](./SELF_HOSTING.md#the-config-surface-how-the-app-finds-mcp) —
 and the desktop app reports the same facts over `desktop_info`.
 
@@ -546,27 +561,65 @@ client-identity based:
 
 ---
 
-## Differences from Figma's hosted server
+## Figma parity: the measured diff
 
-| Area | Figma | Pigma |
+Reference: Figma's published surface,
+[`tools-and-prompts`](https://developers.figma.com/docs/figma-mcp-server/tools-and-prompts/)
+— 18 read + 11 write + 6 Weave = **35 tools**, plus **one** MCP prompt. Measured
+against the running server (`tools/list`, `resources/list`, `prompts/list` over
+stdio and HTTP, every item read/get): **35 tools, 1 prompt, 3 resources, 0
+resource templates**.
+
+**Names: complete.** Every one of Figma's 35 tool names is registered. The only
+two differences are deliberate renames (`use_figma` → `use_pigma`,
+`generate_figma_design` → `generate_pigma_design`, see
+[Naming](#naming-pigma-names-its-own-tools)), and an old name gets an explicit
+"it was renamed to …" error, never "unknown tool".
+`tests/mcp/protocol.test.ts` asserts this against the server's own `tools/list`
+and pins every parameter name Figma publishes.
+
+**Resources: an addition, not a gap.** Figma's page documents no MCP resources;
+Pigma serves three (`pigma://document`, `pigma://document/metadata`,
+`pigma://document/selection`) and an empty template list.
+
+**Semantics: two classes.**
+
+*17 tools are registered and answer an explicit capability error* — Figma runs
+them against its cloud and account, and Pigma has no such backend:
+
+| Family | Tools | What it would take | Worth it? |
+| --- | --- | --- | --- |
+| Account | `whoami` | accounts + auth | No — local-first, no accounts |
+| Capture | `generate_pigma_design` | a browser-capture backend | No — out of scope |
+| Generative plugins | `list_generative_plugins`, `get_generative_plugin`, `create_generative_plugin`, `update_generative_plugin` | a hosted plugin-authoring service | No — Pigma's plugins are in-app |
+| Shaders | `list_shaders`, `list_file_shaders`, `get_shader`, `create_shader`, `update_shader` | a shader model and library | No — a model gap, not an MCP gap |
+| Weave | the six `weave_*` tools | the third-party weavy.ai service and a paid account | No — external service |
+
+*16 implemented tools behave differently* (the other two implemented tools are
+behavioral parity: `get_metadata` matches Figma's documented page-list fallback
+for a missing or unknown `nodeId`, and `get_variable_defs` covers the same
+intent — variables plus styles; Figma's exact response shape is not verifiable
+from here):
+
+| Tool | Figma | Pigma |
 | --- | --- | --- |
-| `get_design_context` | React/Tailwind + Code Connect substitution | React + Tailwind / HTML + CSS codegen from the model; no substitution |
-| `get_screenshot` | PNG | **PNG** (SVG renderer + rasterizer) |
-| `download_assets` | Temporary URLs | Inline data URLs |
-| `create_new_file` | Cloud drafts | Local Pigma file |
-| `upload_assets` | Cloud upload | `data:` URL in the document |
-| `use_pigma` | Plugin JS in Figma's sandbox | Plugin JS in a QuickJS sandbox (subset) |
-| Code Connect | Cloud project | `file.meta.codeConnect` |
-| `get_motion_context` | Keyframes, CSS snippets | Prototype interactions only |
+| `get_design_context` | React/Tailwind + Code Connect substitution + shader runtime | React + Tailwind / HTML + CSS from the model; no substitution |
+| `get_motion_context` | keyframe tracks + CSS `@keyframes` + motion.dev snippets | prototype interactions only (no keyframe model) |
+| `download_assets` | temporary URLs; PNG/JPG/SVG/PDF; raw source images | **SVG only**, inline data URLs; raw images for native imports |
+| `get_screenshot` | PNG only | PNG **and** `format:"svg"` (a superset) |
+| `get_libraries` | subscribed and available libraries (remote) | counts from the local model |
+| `search_design_system` | searches libraries (remote) | searches the local document |
+| Code Connect: `get_code_connect_map`, `add_code_connect_map`, `send_code_connect_mappings`, `get_context_for_code_connect`, `get_code_connect_suggestions` | a cloud Code Connect project | `file.meta.codeConnect`; no source guessing |
+| `create_new_file` | blank Design / FigJam / Slides | Design only — any other `editorType` is refused with a clear error |
+| `get_figjam` | FigJam → XML + node screenshots | XML + PNG screenshots, `capabilities.figjamSemantics: false` |
+| `generate_diagram` | a FigJam diagram from Mermaid | local nodes; Mermaid **flowcharts only** |
+| `upload_assets` | uploads into a Figma file (remote) | `data:` URL into the local document |
+| `use_pigma` | server-side general-purpose write | Plugin API **subset** in a QuickJS sandbox, against the local document |
 
-## Parity gaps
-
-Registered with honest results: `whoami`, `generate_pigma_design` (capability
-errors), `get_libraries` remote entries, `get_code_connect_suggestions` (no
-source guessing). Generative plugins, shaders, and the Weave family are
-registered but always answer with an explicit capability result (see above).
-Every tool name in Figma's published MCP tool list is registered (asserted in
-`tests/mcp/protocol.test.ts`).
+The most actionable difference is `download_assets`: Figma returns URLs and
+PNG/JPG/SVG/PDF, Pigma returns inline SVG data URLs. The editor already exports
+PNG and PDF (M16), so widening that tool is cheap. Nothing else in the table is
+cheap — each is a model or product gap rather than a tool gap.
 
 `use_pigma` covers a documented Plugin API subset (see above): no `figma.ui`,
 no editable vector networks (networks convert to paths; reading one is an

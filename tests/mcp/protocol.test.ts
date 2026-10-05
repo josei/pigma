@@ -622,7 +622,9 @@ describe('MCP resources and prompts', () => {
     expect(messages[0]?.content.text).toContain('rules/');
   });
 
-  // The complete Figma MCP tool surface as published (docs/rest-api + MCP tools page).
+  // Figma's complete published MCP tool surface (docs/figma-mcp-server/tools-and-prompts),
+  // with Pigma's two deliberate renames applied (`use_figma` -> `use_pigma`,
+  // `generate_figma_design` -> `generate_pigma_design`, docs/MCP.md#naming).
   const PUBLISHED_TOOLS = [
     'download_assets', 'get_code_connect_map', 'get_code_connect_suggestions', 'get_context_for_code_connect',
     'get_design_context', 'get_figjam', 'get_generative_plugin', 'get_libraries', 'get_metadata', 'get_motion_context',
