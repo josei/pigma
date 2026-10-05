@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1064 unit tests / 115 files**, **262 browser tests passing / 0 failing**,
+Last verified: **1068 unit tests / 117 files**, **262 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -153,7 +153,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 **No failing specs.** The suite is green: `CI=true npm run test:browser` = **262
 passed / 0 failed**, measured twice back-to-back, with **0 orphan processes**;
-`npx vitest run` = **1064 passing / 115 files**, deterministic whether or not
+`npx vitest run` = **1068 passing / 117 files**, deterministic whether or not
 `dist/` has been built. Every item previously listed here
 (B29c, B29d, B31b, B31c, B33a, B33b, B28b) now passes and has been removed.
 
@@ -235,31 +235,38 @@ What follows is *coverage* still missing, not failures:
   of `npm test`** - **a green manual check is not a green suite**.
 - **File System Access** — the menu entries are asserted (`b25-round11` `B25c`);
   the OS file-picker round trip cannot be driven headlessly.
-- **Figma pixel parity** is the **weakest claim in the project**, and the M9 row now
-  says why: `scripts/parity-spec.mjs` compares the app against an **UNCITED
-  `DOCUMENTED` constant table**, and **four of its checks compare Pigma at DPR 2
-  against Pigma at DPR 1** - **self-consistency, not a comparison against anything
-  outside this repo**. **NO FIGMA RENDERING IS MEASURED**, so **11/11 is a CONTRACT
-  CHECK ON OUR OWN CONSTANTS, not evidence of 1:1 visual parity**. `b39-pixel-diff`
-  catches regressions against the app's own committed baseline - the same
-  limitation, and it is not an image diff against Figma's screenshots either.
+- **Figma pixel parity - the most important finding in these docs.** The parity
+  script now keeps the two kinds of evidence **separate on purpose** and prints, as
+  measured 2026-10-05:
 
-### Landed this round
+  - **INTERNAL 11 passed / 11**
+  - **EXTERNAL 0 passed / 1** - **1 structure, 0 pixel**
+  - **VISUAL PARITY: UNSUPPORTED**
+  - and it **EXITS NON-ZERO BY DESIGN**, because it cannot support its own claim.
 
-- **`download_assets` widened** to **SVG / PNG / PDF**. **JPG is NOT claimed** -
-  there is **no encoder** for it, so it is not produced and not promised.
-- **The description sweep covered all 35 tools.** It found **ONE contradiction at
-  three sites** (fixed) and **two further factual defects** (fixed). The class
-  remains the one above: *a description that contradicts the code is worse than a
-  wrong count.*
-- **A LIVE BUG the widening exposed, now fixed:** PDF export **crashed on `VIDEO` /
-  `PATTERN` paints**. Worth recording because the widening is what surfaced it - the
-  feature work is what found the defect.
+  **The red exit is INTENTIONAL, not a regression.** A reader who sees a failing
+  script and assumes breakage would be wrong; a reader who sees it and assumes the
+  claim is fine would be wrong too.
 
-**In progress, room left for its findings: the parity script is being RESTRUCTURED to
-label every check `INTERNAL` or `EXTERNAL`, and to FAIL a reference that lacks
-provenance.** No numbers are pre-empted here; the restructuring's own results belong
-in this section when they land.
+  **The one measured external row - the FIRST external number this project has ever
+  had against Figma:** the **properties-panel tab count**. Figma documents **TWO**
+  tabs with edit access; Pigma renders **THREE**; **delta 1**. It is cited to the
+  Figma Help Center article with its **capture date** (2026-10-05) and the article's
+  own sentence quoted. **It currently FAILS.** Both halves matter: it is **real
+  external evidence**, and **it does not pass**.
+
+  **Why the two counts are separate, and must stay so:** **INTERNAL 11/11 is a
+  contract check on OUR OWN constants**; **EXTERNAL 0/1 is a comparison against a
+  cited outside source**. Counted together, either could be read as the other.
+
+  **A future external geometry reference - and what kind it is.** Figma's own
+  **shipped CSS** is being attempted this round: numeric, citable, and needing **no
+  pixel interpretation**. If it lands, **what it establishes must be stated
+  precisely: Figma's shipped stylesheet describes Figma's DOCUMENTED / IMPLEMENTED
+  geometry, NOT its rendered pixels.** That would upgrade the claim from *"we match
+  our own constants"* to *"we match Figma's stylesheet"* - a **real step up, and
+  NOT pixel parity**. **It must not become "pixel parity achieved".** Room is left
+  for the result; no numbers are pre-empted.
 
 ### How the Figma matching was actually done
 
