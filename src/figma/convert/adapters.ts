@@ -84,6 +84,8 @@ export interface NormalizedNode {
   gridColumnGuids?: string[];
   /** The wire style guids per property; not yet resolved to table ids. */
   styleGuids?: Record<string, string>;
+  /** Library style references per property: `{ key, version }`. */
+  styleAssetRefs?: Record<string, { key: string; version: string }>;
   gridRowGuids?: string[];
   /** The native `mask` flag, carried into the model's `isMask`. */
   isMask?: boolean;
@@ -736,6 +738,7 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
   // `styleID` (legacy single style) and the `inherit*StyleID` family are NOT
   // read: they are different concepts, not the node's per-property bindings.
   const styleBindings: Record<string, string> = {};
+  const styleAssetRefs: Record<string, { key: string; version: string }> = {};
   for (const [field, property] of [
     ['styleIdForFill', 'fill'],
     ['styleIdForStrokeFill', 'stroke'],
@@ -743,10 +746,29 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
     ['styleIdForEffect', 'effect'],
     ['styleIdForGrid', 'grid'],
   ] as const) {
-    const id = idOfGuid(isRecord(node[field]) ? (node[field] as Record<string, unknown>).guid : null);
-    if (id) styleBindings[property] = id;
+    const value = isRecord(node[field]) ? (node[field] as Record<string, unknown>) : null;
+    if (!value) continue;
+    const id = idOfGuid(value.guid);
+    if (id) {
+      styleBindings[property] = id;
+      continue;
+    }
+    // A LIBRARY style is referenced by `assetRef: { key, version }` instead of a
+    // guid. The reference survives as its key; the table row for it is created by
+    // the converter, which is where the file's style table is assembled.
+    const assetRef = isRecord(value.assetRef) ? value.assetRef : null;
+    if (assetRef && typeof assetRef.key === 'string') {
+      styleBindings[property] = assetRef.key;
+      // The VERSION must travel too: a library reference is `{ key, version }` and
+      // keeping only the key would narrow it silently.
+      styleAssetRefs[property] = {
+        key: assetRef.key,
+        version: typeof assetRef.version === 'string' ? assetRef.version : '',
+      };
+    }
   }
   if (Object.keys(styleBindings).length > 0) normalized.styleGuids = styleBindings;
+  if (Object.keys(styleAssetRefs).length > 0) normalized.styleAssetRefs = styleAssetRefs;
   const autoLayout = mapNativeAutoLayout(node, ctx);
   if (autoLayout) normalized.autoLayout = autoLayout;
   if (typeof node.clipsContent === 'boolean') normalized.clipsContent = node.clipsContent;
@@ -912,9 +934,18 @@ function consumptionBindings(raw: unknown): Record<string, string> | null {
   if (!isRecord(raw)) return null;
   const entries = raw.entries;
   if (!Array.isArray(entries)) return null;
+  const paintBindingIndices: number[] = [];
   const out: Record<string, string> = {};
   for (const entry of entries) {
     if (!isRecord(entry)) continue;
+    // A paint binding arrives as `variableField: MISSING` plus a `nodeField` index.
+    // The entry does NOT say whether the index is into `fills` or `strokes`, so it
+    // cannot be placed in the model's `boundVariables` (which keys by property)
+    // without guessing. Reported rather than guessed.
+    if (entry.variableField === 'MISSING') {
+      paintBindingIndices.push(typeof entry.nodeField === 'number' ? entry.nodeField : -1);
+      continue;
+    }
     const field = typeof entry.variableField === 'string' ? VARIABLE_FIELD_PROPERTIES[entry.variableField] : undefined;
     if (!field) continue;
     const data = isRecord(entry.variableData) ? entry.variableData : null;
@@ -923,6 +954,11 @@ function consumptionBindings(raw: unknown): Record<string, string> | null {
     const guid = alias && isRecord(alias.guid) ? alias.guid : null;
     if (!guid || typeof guid.sessionID !== 'number' || typeof guid.localID !== 'number') continue;
     out[field] = `${guid.sessionID}:${guid.localID}`;
+  }
+  if (paintBindingIndices.length > 0) {
+    // The indexes are known; which paint list they index is not. Surfaced as a
+    // report on the node's raw so the caller can warn.
+    out['__paintBindingIndices'] = paintBindingIndices.join(',');
   }
   return Object.keys(out).length > 0 ? out : null;
 }

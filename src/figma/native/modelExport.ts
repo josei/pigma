@@ -598,24 +598,30 @@ function nodeChange(
     // A binding is a `StyleId { guid }` that must resolve to a style entry we
     // WRITE. Both sides derive the guid from the same source (`styleGuid`), so a
     // written binding always resolves.
-    const bind = (id: string | undefined): Guid | null => {
+    // A `StyleId` is `{ guid, assetRef }`: a LOCAL style is referenced by guid, a
+    // LIBRARY style by `{ key, version }`. The resolver tries guid first and falls
+    // back to assetRef, so a reference may carry either.
+    const ref = (id: string | undefined): Record<string, unknown> | null => {
       if (!id) return null;
       const definition = ctx.file.styles?.[id];
-      return definition ? guidFor(styleGuid(id, definition), ctx.sessionID) : null;
+      if (!definition) return null;
+      if (definition.guid) return { guid: guidFor(styleGuid(id, definition), ctx.sessionID) };
+      if (definition.assetRef) return { assetRef: definition.assetRef };
+      return null;
     };
-    const fill = bind(node.styles.fill);
-    if (fill) change.styleIdForFill = { guid: fill };
+    const fill = ref(node.styles.fill);
+    if (fill) change.styleIdForFill = fill;
     // A STROKE binding is `styleIdForStrokeFill` and reuses a FILL style — the
     // wire has no STROKE styleType. A GRID binding is `styleIdForGrid` and now
     // resolves, because the model carries the GRID style type.
-    const stroke = bind(node.styles.stroke);
-    if (stroke) change.styleIdForStrokeFill = { guid: stroke };
-    const text = bind(node.styles.text);
-    if (text) change.styleIdForText = { guid: text };
-    const effect = bind(node.styles.effect);
-    if (effect) change.styleIdForEffect = { guid: effect };
-    const grid = bind(node.styles.grid);
-    if (grid) change.styleIdForGrid = { guid: grid };
+    const stroke = ref(node.styles.stroke);
+    if (stroke) change.styleIdForStrokeFill = stroke;
+    const text = ref(node.styles.text);
+    if (text) change.styleIdForText = text;
+    const effect = ref(node.styles.effect);
+    if (effect) change.styleIdForEffect = effect;
+    const grid = ref(node.styles.grid);
+    if (grid) change.styleIdForGrid = grid;
   }
   if ('boundVariables' in node && node.boundVariables && Object.keys(node.boundVariables).length > 0) {
     // The wire's home for a node's variable bindings is `variableConsumptionMap`,
@@ -627,7 +633,7 @@ function nodeChange(
     // (My round-100 note named this field; round 104 retracted it on a grep that
     // only matched definition names. The retraction was wrong and the field is
     // right here on NodeChange. A retraction is a conclusion and needs evidence.)
-    const entries = toVariableConsumptionEntries(node.boundVariables as Record<string, string>, ctx);
+    const entries = toVariableConsumptionEntries(node.boundVariables as Record<string, string>, node, ctx);
     if (entries.length > 0) change.variableConsumptionMap = { entries };
   }
   if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
@@ -824,12 +830,53 @@ function componentPropDefs(
   return out;
 }
 
+/** The target variable's own resolved type, or null when the file does not have it. */
+function resolvedOf(variableId: string, ctx: ExportContext): string | null {
+  return ctx.file.variables?.[variableId]?.resolvedType ?? null;
+}
+
 function toVariableConsumptionEntries(
   bindings: Record<string, string>,
+  node: AnyNode,
   ctx: ExportContext,
 ): Array<Record<string, unknown>> {
   const entries: Array<Record<string, unknown>> = [];
   for (const [property, variableId] of Object.entries(bindings)) {
+    // A PAINT binding is NOT a `VariableField` member: the wire keys it by a field
+    // name carrying the paint INDEX — `fills/<i>/color`, `strokes/<i>/color`
+    // (CORROBORATED: open-pencil's resolver matches /^(fills|strokes)\/(\d+)\/color$/).
+    // The model binds a WHOLE `fill`, so it is translated to every paint that has a
+    // color; paints without one (an image, or a gradient's stops) are REPORTED.
+    if (property === 'fill' || property === 'stroke') {
+      const paints = property === 'fill' ? (node as { fills?: Paint[] }).fills : (node as { strokes?: Paint[] }).strokes;
+      const bucket = property === 'fill' ? 'fills' : 'strokes';
+      const list = Array.isArray(paints) ? paints : [];
+      let written = 0;
+      list.forEach((paint, index) => {
+        if (!paint || typeof paint !== 'object') return;
+        const kind = (paint as { type?: string }).type;
+        if (kind !== 'SOLID') {
+          ctx.warnings.push(
+            `variable binding on "${property}" was narrowed: ${bucket}/${index} is a ${kind ?? 'unknown'} paint, and the wire binds a paint's COLOR`,
+          );
+          return;
+        }
+        entries.push({
+          nodeField: index,
+          variableField: 'MISSING',
+          variableData: {
+            value: { alias: { guid: guidFor(variableId, ctx.sessionID) } },
+            dataType: 'ALIAS',
+            resolvedDataType: resolvedOf(variableId, ctx),
+          },
+        });
+        written += 1;
+      });
+      if (written === 0 && list.length === 0) {
+        ctx.warnings.push(`variable binding on "${property}" was dropped: the node has no paints to bind`);
+      }
+      continue;
+    }
     const variableField = BINDING_VARIABLE_FIELDS[property];
     if (!variableField) {
       // The wire's `VariableField` enum has 55 members and NOT ONE of them is
@@ -845,7 +892,7 @@ function toVariableConsumptionEntries(
     // and the two enums differ — `VariableDataType` has ALIAS, `VariableResolvedDataType`
     // does NOT (it is BOOLEAN/FLOAT/STRING/COLOR/…). The model's variables table
     // knows the type; without it the binding is reported rather than guessed.
-    const resolved = ctx.file.variables?.[variableId]?.resolvedType;
+    const resolved = resolvedOf(variableId, ctx);
     if (!resolved) {
       ctx.warnings.push(
         `variable binding on "${property}" was dropped: variable ${variableId} is not in the file's variables table, so its resolved type is unknown`,

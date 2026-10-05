@@ -136,7 +136,9 @@ function buildBase(node: NormalizedNode, type: NodeType, state: ConvertState): B
     fills: node.fills,
     strokes: node.strokes,
     effects: node.effects,
-    raw: node.styleGuids ? { ...node.raw, styleGuids: node.styleGuids } : node.raw,
+    raw: node.styleGuids
+      ? { ...node.raw, styleGuids: node.styleGuids, ...(node.styleAssetRefs ? { styleAssetRefs: node.styleAssetRefs } : {}) }
+      : node.raw,
   };
   if (node.blendMode) base.blendMode = node.blendMode;
   if (node.strokeWeight !== undefined) base.strokeWeight = node.strokeWeight;
@@ -236,7 +238,9 @@ function convertCanvas(node: NormalizedNode, state: ConvertState, path: string):
     strokes: [],
     effects: [],
     children,
-    raw: node.styleGuids ? { ...node.raw, styleGuids: node.styleGuids } : node.raw,
+    raw: node.styleGuids
+      ? { ...node.raw, styleGuids: node.styleGuids, ...(node.styleAssetRefs ? { styleAssetRefs: node.styleAssetRefs } : {}) }
+      : node.raw,
   };
   if (node.backgroundColor) canvas.backgroundColor = node.backgroundColor;
   return canvas;
@@ -328,6 +332,24 @@ function buildFile(roots: NormalizedNode[], envelope: Envelope, report: ReportBu
   // style's table ID, and the table is only known HERE — after the tree is built.
   // Round 102 called this "the second pass"; it is one walk over the model, and it
   // needs no separate pass over the wire.
+  // Library style references: a binding whose value is a KEY (not a table id) points
+  // at a style the library holds, not this file. Give it a table row carrying the
+  // assetRef, so the binding resolves and the missing content is explicit.
+  const libraryRefs: Record<string, StyleDefinition> = {};
+  const noteLibraryRef = (
+    value: string,
+    definition: StyleDefinition | undefined,
+    assetRef: { key: string; version: string } | undefined,
+  ): void => {
+    if (definition) return;
+    libraryRefs[value] = {
+      key: value,
+      name: value,
+      type: 'FILL',
+      assetRef: assetRef ?? { key: value, version: '' },
+    };
+  };
+
   if (envelope.styles && Object.keys(envelope.styles).length > 0) {
     const idForGuid = new Map<string, string>();
     for (const [id, definition] of Object.entries(envelope.styles)) {
@@ -339,7 +361,15 @@ function buildFile(roots: NormalizedNode[], envelope: Envelope, report: ReportBu
         const bound: Record<string, string> = {};
         for (const [property, guid] of Object.entries(guids)) {
           const id = idForGuid.get(guid);
-          if (id) bound[property] = id;
+          if (id) {
+            bound[property] = id;
+            continue;
+          }
+          // No table row for this value: it is a LIBRARY style key, and its
+          // `{ key, version }` travels with the node.
+          const assetRefs = node.raw?.styleAssetRefs as Record<string, { key: string; version: string }> | undefined;
+          noteLibraryRef(guid, envelope.styles?.[guid], assetRefs?.[property]);
+          bound[property] = guid;
         }
         if (Object.keys(bound).length > 0) node.styles = bound;
       }
@@ -365,13 +395,14 @@ function buildFile(roots: NormalizedNode[], envelope: Envelope, report: ReportBu
     raw: docRoot?.raw ?? {},
   };
 
+  const styles = { ...(envelope.styles ?? {}), ...libraryRefs };
   const file: PigmaFile = {
     schema: 'pigma/1',
     source: { kind: 'figma', fileKey: envelope.fileKey ?? options.fileKey, importedAt: (options.now ?? Date.now)() },
     name: options.name ?? envelope.name,
     lastModified: envelope.lastModified,
     document,
-    ...(envelope.styles ? { styles: envelope.styles } : {}),
+    ...(Object.keys(styles).length > 0 ? { styles } : {}),
     ...(envelope.variables?.variableCollections ? { variableCollections: envelope.variables.variableCollections } : {}),
     ...(envelope.variables?.variables ? { variables: envelope.variables.variables } : {}),
     ...(envelope.variables?.activeModes ? { activeModes: envelope.variables.activeModes } : {}),

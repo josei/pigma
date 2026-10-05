@@ -621,6 +621,13 @@ export interface StyleDefinition {
    * written to the wire, and the pre-encode check reports it.
    */
   guid?: string;
+  /**
+   * A LIBRARY style's reference: `{ key, version }`. A published style is
+   * referenced this way rather than by guid (CORROBORATED: the reference resolver
+   * tries `guid` FIRST and falls back to `assetRef` through an asset map). Two
+   * strings, so the model can carry it.
+   */
+  assetRef?: { key: string; version: string };
   description?: string;
   paints?: Paint[];
   text?: TextStyle;
