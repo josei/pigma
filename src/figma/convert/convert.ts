@@ -136,7 +136,7 @@ function buildBase(node: NormalizedNode, type: NodeType, state: ConvertState): B
     fills: node.fills,
     strokes: node.strokes,
     effects: node.effects,
-    raw: node.raw,
+    raw: node.styleGuids ? { ...node.raw, styleGuids: node.styleGuids } : node.raw,
   };
   if (node.blendMode) base.blendMode = node.blendMode;
   if (node.strokeWeight !== undefined) base.strokeWeight = node.strokeWeight;
@@ -236,7 +236,7 @@ function convertCanvas(node: NormalizedNode, state: ConvertState, path: string):
     strokes: [],
     effects: [],
     children,
-    raw: node.raw,
+    raw: node.styleGuids ? { ...node.raw, styleGuids: node.styleGuids } : node.raw,
   };
   if (node.backgroundColor) canvas.backgroundColor = node.backgroundColor;
   return canvas;
@@ -324,6 +324,30 @@ function buildFile(roots: NormalizedNode[], envelope: Envelope, report: ReportBu
   const state: ConvertState = { report, count: 0, parentAbs: null };
   const canvasNodes = pages.map((page, index) => convertCanvas(page, state, `pages[${index}]`));
 
+  // Resolve style bindings: the wire carries a style GUID, the model binds by the
+  // style's table ID, and the table is only known HERE — after the tree is built.
+  // Round 102 called this "the second pass"; it is one walk over the model, and it
+  // needs no separate pass over the wire.
+  if (envelope.styles && Object.keys(envelope.styles).length > 0) {
+    const idForGuid = new Map<string, string>();
+    for (const [id, definition] of Object.entries(envelope.styles)) {
+      if (definition.guid) idForGuid.set(definition.guid, id);
+    }
+    const resolveBindings = (node: { raw?: Record<string, unknown>; styles?: Record<string, string>; children?: unknown[] }): void => {
+      const guids = node.raw?.styleGuids as Record<string, string> | undefined;
+      if (guids) {
+        const bound: Record<string, string> = {};
+        for (const [property, guid] of Object.entries(guids)) {
+          const id = idForGuid.get(guid);
+          if (id) bound[property] = id;
+        }
+        if (Object.keys(bound).length > 0) node.styles = bound;
+      }
+      for (const child of (node.children ?? []) as Array<typeof node>) resolveBindings(child);
+    };
+    for (const canvas of canvasNodes) resolveBindings(canvas as unknown as Parameters<typeof resolveBindings>[0]);
+  }
+
   const document: DocumentNode = {
     id: docRoot?.id ?? 'import:document',
     name: docRoot?.name ?? envelope.name,
@@ -399,6 +423,14 @@ export function figDocumentToPigmaFile(source: FigDocument, options: ConvertOpti
   const adapted = adaptNativeTree(source, report);
   const roots = adapted.roots;
   const nativeStyles = adapted.styles;
+  if (source.extraChunks > 0) {
+    report.addUnsupported({
+      nodeId: 'document',
+      path: 'canvas.fig',
+      feature: 'chunk',
+      detail: `${source.extraChunks} chunk(s) beyond the schema and the message were not decoded`,
+    });
+  }
   const now = (options.now ?? Date.now)();
   const metaName = source.meta && typeof source.meta.file_name === 'string' ? source.meta.file_name : 'Untitled';
   return buildFile(

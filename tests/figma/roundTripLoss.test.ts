@@ -445,35 +445,48 @@ describe('style bindings survive through the style table', () => {
 
     const reimported = await roundTrip(withStyles, 'circle.fig');
     const back = byName(reimported, 'Subject')!;
-    // MEASURED: neither half carries the binding. The EXPORT does not write it
-    // (no style definition is written, so a binding would dangle — see the test
-    // below), and the IMPORT could not resolve it either. Pinned as a fact.
-    expect(back.styles?.fill, 'the binding does not survive yet').toBeUndefined();
+    // MEASURED, and now a different answer: the binding DOES survive, because the
+    // definition is written and the import resolves the guid against the table.
+    // NOTE the id CHANGES across the round trip: the imported table is keyed by the
+    // wire guid (the REST path keys by Figma's id the same way), so what must hold
+    // is that the binding still RESOLVES — not that it keeps the local id.
+    expect(back.styles?.fill, 'the binding now survives').toBe('1:42');
+    expect(reimported.styles?.[back.styles!.fill!]?.name).toBe('Brand fill');
     // The style TABLE does not cross the wire either: the native envelope has no
     // style table, so the guids the binding would match against are gone too.
     // Both halves of this gap are pinned, not assumed.
     expect(reimported.styles?.['style:1']?.guid, 'the style table does not survive yet').toBeUndefined();
   });
 
-  it('never writes a binding it cannot back with a definition, and reports the drop', () => {
-    const file = emptyFile('Dangling style');
+  it('writes the DEFINITION, so a binding no longer dangles, and round-trips both', async () => {
+    const file = emptyFile('Bound style');
     const page = file.document.children[0]!;
-    const rect = createRectNode(file.document, 0, 0, 100, 50);
+    const rect = createRectNode(file.document, 10, 10, 80, 40);
     rect.name = 'Subject';
     rect.styles = { fill: 'style:1' };
     page.children = [rect];
-    // A style WITH a wire guid: this is the case that used to dangle, because the
-    // binding was written while the definition is written NOWHERE.
-    const withStyles = { ...file, styles: { 'style:1': { key: 'key-1', name: 'Brand fill', type: 'FILL' as const, guid: '1:42' } } };
-    const { message, warnings } = pigmaToFigMessage(withStyles, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors });
-    const change = (message.nodeChanges as Array<Record<string, unknown>>).find((entry) => entry.name === 'Subject')!;
-    // NO DANGLING REFERENCE: no definition is written, so no binding is written.
-    expect(change.styleIdForFill, 'a binding to an unwritten definition would dangle').toBeUndefined();
-    // And the drop is REPORTED, naming the node and the style.
-    const reported = warnings.filter((line) => line.includes('style binding'));
-    expect(reported.length, JSON.stringify(warnings)).toBeGreaterThan(0);
-    expect(reported[0]).toContain('Subject');
-    expect(reported[0]).toContain('Brand fill');
+    const withStyles = {
+      ...file,
+      styles: {
+        'style:1': {
+          key: 'key-1',
+          name: 'Brand/01',
+          type: 'FILL' as const,
+          guid: '0:4',
+          paints: [{ type: 'SOLID' as const, color: { r: 1, g: 0, b: 0, a: 1 }, opacity: 1, visible: true, blendMode: 'NORMAL' as const }],
+        },
+      },
+    };
+    const reimported = await roundTrip(withStyles, 'circle.fig');
+    // The DEFINITION crossed: the style is a node entry in the table again.
+    const style = reimported.styles?.['0:4'];
+    expect(style?.name).toBe('Brand/01');
+    expect(style?.type).toBe('FILL');
+    expect(style?.paints).toHaveLength(1);
+    // And the BINDING came back, still resolving to that style.
+    const back = byName(reimported, 'Subject')!;
+    expect(back.styles?.fill, 'the binding did not survive').toBe('0:4');
+    expect(reimported.styles?.[back.styles!.fill!]?.name).toBe('Brand/01');
   });
 });
 
