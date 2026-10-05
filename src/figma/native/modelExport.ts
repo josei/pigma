@@ -951,7 +951,9 @@ function styleChange(
   if (definition.paints && definition.paints.length > 0) change.fillPaints = definition.paints;
   if (definition.effects && definition.effects.length > 0) change.effects = definition.effects;
   if (definition.text) Object.assign(change, textStyleFields(definition.text));
-  if (definition.layoutGrids && definition.layoutGrids.length > 0) change.layoutGrids = definition.layoutGrids;
+  if (definition.layoutGrids && definition.layoutGrids.length > 0) {
+    change.layoutGrids = definition.layoutGrids.map(toNativeLayoutGrid);
+  }
   return change;
 }
 

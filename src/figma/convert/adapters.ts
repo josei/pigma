@@ -706,17 +706,7 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
   else if (typeof stackAlign === 'string') normalized.layoutAlign = 'INHERIT';
   if (typeof node.stackChildPrimaryGrow === 'number') normalized.layoutGrow = node.stackChildPrimaryGrow;
   if (Array.isArray(node.layoutGrids)) {
-    const grids = node.layoutGrids.filter(isRecord).map((grid) => ({
-      // The schema splits what the model folds: axis separates COLUMNS from ROWS.
-      pattern: grid.pattern === 'GRID' ? ('GRID' as const) : grid.axis === 'X' ? ('COLUMNS' as const) : ('ROWS' as const),
-      sectionSize: typeof grid.sectionSize === 'number' ? grid.sectionSize : 0,
-      ...(typeof grid.numSections === 'number' ? { count: grid.numSections } : {}),
-      ...(typeof grid.gutterSize === 'number' ? { gutterSize: grid.gutterSize } : {}),
-      ...(typeof grid.offset === 'number' ? { offset: grid.offset } : {}),
-      ...(typeof grid.type === 'string' ? { alignment: grid.type as 'MIN' } : {}),
-      ...(isRecord(grid.color) ? { color: grid.color as never } : {}),
-      visible: grid.visible !== false,
-    }));
+    const grids = node.layoutGrids.filter(isRecord).map(fromWireLayoutGrid);
     if (grids.length > 0) normalized.layoutGrids = grids;
   }
   const interactions = fromNativeInteractions(node);
@@ -876,6 +866,27 @@ function nativeTextStyle(raw: Record<string, unknown>): TextStyle | null {
   return style;
 }
 
+/**
+ * A layout grid, wire -> model. The schema SPLITS what the model FOLDS: the wire
+ * has `pattern: STRIPES | GRID` plus `axis: X | Y`, while the model has
+ * `pattern: COLUMNS | ROWS | GRID`. So STRIPES+axis X is COLUMNS and STRIPES+axis
+ * Y is ROWS. `numSections` is the model's `count` (the same number under a
+ * different name), and the wire's `type: LayoutGridType` (MIN | CENTER | STRETCH
+ * | MAX) is the model's `alignment`.
+ */
+export function fromWireLayoutGrid(grid: Record<string, unknown>): LayoutGrid {
+  return {
+    pattern: grid.pattern === 'GRID' ? 'GRID' : grid.axis === 'X' ? 'COLUMNS' : 'ROWS',
+    sectionSize: typeof grid.sectionSize === 'number' ? grid.sectionSize : 0,
+    ...(typeof grid.numSections === 'number' ? { count: grid.numSections } : {}),
+    ...(typeof grid.gutterSize === 'number' ? { gutterSize: grid.gutterSize } : {}),
+    ...(typeof grid.offset === 'number' ? { offset: grid.offset } : {}),
+    ...(typeof grid.type === 'string' ? { alignment: grid.type as LayoutGrid['alignment'] } : {}),
+    ...(isRecord(grid.color) ? { color: grid.color as never } : {}),
+    visible: grid.visible !== false,
+  };
+}
+
 /** The wire's `ScrollDirection` -> the model's `OverflowDirection`. */
 const MODEL_SCROLL_DIRECTIONS: Record<string, string> = {
   HORIZONTAL: 'HORIZONTAL_SCROLLING',
@@ -942,7 +953,9 @@ function nativeStyleDefinition(node: FigNode): StyleDefinition | null {
   // A GRID style's payload. OBSERVED on hellomate.fig, and the model now has the
   // GRID type and a `layoutGrids` field to hold it.
   const grids = raw.layoutGrids;
-  if (Array.isArray(grids) && grids.length > 0) definition.layoutGrids = grids as LayoutGrid[];
+  if (Array.isArray(grids) && grids.length > 0) {
+    definition.layoutGrids = grids.filter(isRecord).map(fromWireLayoutGrid);
+  }
   return definition;
 }
 
