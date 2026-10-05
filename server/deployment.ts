@@ -93,11 +93,16 @@ export async function startDeployment(options: DeploymentOptions): Promise<Deplo
   // deployment adds its public host so the EDITOR can connect over the tunnel.
   // The bridge's TOKEN gate is unchanged and still required — this widens
   // reachability, not access.
-  const publicHost = options.publicUrl ? new URL(normalizeOrigin(options.publicUrl) ?? '').hostname : null;
+  const publicOrigin = normalizeOrigin(options.publicUrl);
+  const publicHost = publicOrigin ? new URL(publicOrigin).hostname : null;
   const bridge = options.bridge
     ? createBridge({
         ...(options.bridgeToken ? { token: options.bridgeToken } : {}),
         ...(publicHost ? { allowedHosts: [publicHost, ...DEFAULT_BRIDGE_HOSTS] } : {}),
+        // The bridge's ORIGIN allowlist follows the same rule. Without it the SSE
+        // connect (a GET, no Origin) opened and every PUSH (a POST, with Origin)
+        // was refused — the same asymmetry as the MCP handler, one allowlist over.
+        ...(publicOrigin ? { allowedOrigins: [publicOrigin, ...DEFAULT_ORIGINS] } : {}),
       })
     : undefined;
 
@@ -139,7 +144,6 @@ export async function startDeployment(options: DeploymentOptions): Promise<Deplo
   // advertised endpoint is unreachable, and the MCP host allowlist — loopback by
   // default — rejects the real Host with a 403 that names the host it refused.
   const reachable = options.host === '0.0.0.0' || options.host === '::' ? '127.0.0.1' : options.host;
-  const publicOrigin = normalizeOrigin(options.publicUrl);
   const httpBase = publicOrigin ?? `http://${reachable}:${port}`;
   const mcpUrl = `${httpBase}${options.mcpPath}`;
   if (options.mcp) {

@@ -100,6 +100,15 @@ export interface RelayOptions {
    */
   allowedHosts?: string[];
   /**
+   * Origins the bridge accepts. Defaults to loopback. A hosted deployment adds its
+   * public origin, because the editor's PUSH is a POST that carries an Origin while
+   * its SSE connect is a GET that does not — so a host-only allowlist lets the
+   * stream open and refuses every push. The origin gate is CSRF protection: for a
+   * page SERVED BY that origin the answer is to allow that origin, never to drop
+   * the gate. The TOKEN gate is unchanged.
+   */
+  allowedOrigins?: string[];
+  /**
    * How long one bridge command may take before it is failed.
    *
    * THE INTENT IS LIVENESS — the comment on `failPending` says "their editor is
@@ -118,11 +127,12 @@ export interface RelayOptions {
    * duration are genuinely separate.
    */
   commandTimeoutMs?: number;
-  /** Browser origin allowed to connect. Defaults to loopback origins. */
-  allowedOrigins?: string[];
 }
 
-const DEFAULT_ORIGINS = ['http://localhost', 'http://127.0.0.1', 'http://[::1]'];
+// ONE definition of the loopback origins, shared with the MCP handler: two copies
+// of the same list is how `--public-url` came to reach one allowlist and not the
+// other.
+import { DEFAULT_ORIGINS } from './transports/http';
 
 /** The hosts the bridge answers for when no allowlist is given: loopback only. */
 export const DEFAULT_BRIDGE_HOSTS = ['localhost', '127.0.0.1', '::1', '[::1]'];
