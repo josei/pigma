@@ -34,7 +34,11 @@ async function freePort(): Promise<number> {
   return port;
 }
 
-async function waitForRelay(url: string, token: string, timeoutMs = 30000): Promise<void> {
+// The relay is a `vite-node` process start. This deadline is SEPARATE from the test
+// timeout and from the fixture's own, so raising the fixture's does not raise this -
+// seen at round 122: `relay at http://127.0.0.1:33465 did not become ready within
+// 30000ms` while a heavily loaded run took 16.9m. Kept in step with the fixture.
+async function waitForRelay(url: string, token: string, timeoutMs = 90_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
