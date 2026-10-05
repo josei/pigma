@@ -127,6 +127,8 @@ export interface FigDocument {
   schema: KiwiSchema;
   compiledSchema: CompiledSchema;
   rawChunks: Uint8Array[];
+  /** Chunks beyond the schema and the message; decoded nowhere, reported loudly. */
+  extraChunks: number;
   message: Record<string, unknown>;
   blobs: FigBlob[];
   meta?: Record<string, unknown>;
@@ -193,6 +195,11 @@ export function parseFigBinary(data: Uint8Array, decompress: Decompressors): Fig
   if (rawChunks.length < 2) {
     throw new FigmaImportError('INVALID_BINARY', `Expected at least 2 chunks, found ${rawChunks.length}`);
   }
+  // ONLY rawChunks[1] is decoded. Every real file has exactly two chunks, so this
+  // is correct today — but a file carrying a third would be SILENTLY truncated.
+  // Record the extras so the converter can report them; a silent truncation is
+  // exactly the class of loss this run exists to kill.
+  const extraChunks = rawChunks.length - 2;
 
   let schema: KiwiSchema;
   try {
@@ -231,6 +238,7 @@ export function parseFigBinary(data: Uint8Array, decompress: Decompressors): Fig
     schema,
     compiledSchema,
     rawChunks,
+    extraChunks,
     message,
     blobs,
     images: new Map(),

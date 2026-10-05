@@ -13,7 +13,9 @@
 import { invert } from '../../model/matrix';
 import type {
   ComponentPropertyDefinition,
+  DocumentNode,
   PrototypeAction,
+  StyleDefinition,
   LayoutGrid,
   AnyNode,
   AutoLayout,
@@ -585,25 +587,22 @@ function nodeChange(
   // a style created in Pigma has none, and the write is skipped so the pre-encode
   // check reports it rather than writing something the schema cannot encode.
   if (node.styles) {
-    // A style binding is a REFERENCE to a style definition. We write no style
-    // definitions at all (`styles` is in the omit list below), so writing a
-    // binding would produce a file whose reference DANGLES — and a dangling
-    // reference is worse than a loud drop: Figma either drops the binding or
-    // errors, and nothing in our output says so.
-    //
-    // So: NO DEFINITION, NO BINDING. Every dropped binding is reported here,
-    // naming the node and the style, so the loss is documented rather than
-    // silent. The wire fields (`styleIdForFill`/`styleIdForStrokeFill`/
-    // `styleIdForText`/`styleIdForEffect`/`styleIdForGrid`) are ready for the day
-    // a style DEFINITION can be written — see the STYLE message work.
-    for (const [property, id] of Object.entries(node.styles)) {
-      if (!id) continue;
+    // A binding is a `StyleId { guid }` that must resolve to a style entry we
+    // WRITE. Both sides derive the guid from the same source (`styleGuid`), so a
+    // written binding always resolves.
+    const bind = (id: string | undefined): Guid | null => {
+      if (!id) return null;
       const definition = ctx.file.styles?.[id];
-      ctx.warnings.push(
-        `style binding on "${node.name}" (${property} -> ${definition?.name ?? id}) was dropped: ` +
-          'no style definition is written to the file, so a binding would dangle',
-      );
-    }
+      return definition ? guidFor(styleGuid(id, definition), ctx.sessionID) : null;
+    };
+    const fill = bind(node.styles.fill);
+    if (fill) change.styleIdForFill = { guid: fill };
+    // `styleIdForStrokeFill` and `styleIdForGrid` have no model source field — a
+    // MODEL GAP, reported rather than invented.
+    const text = bind(node.styles.text);
+    if (text) change.styleIdForText = { guid: text };
+    const effect = bind(node.styles.effect);
+    if (effect) change.styleIdForEffect = { guid: effect };
   }
   if ('boundVariables' in node && node.boundVariables && Object.keys(node.boundVariables).length > 0) {
     change.variableBindings = toNativeBindings(node.boundVariables as Record<string, string>);
@@ -799,6 +798,84 @@ function toNativeBindings(bindings: Record<string, string>): Record<string, unkn
   return out;
 }
 
+/** The hidden canvas real files keep their styles on. */
+const STYLE_CANVAS_NAME = 'Internal Only Canvas';
+
+/**
+ * The node kind a style entry carries. `type` is a NORMAL node kind and
+ * `styleType` is the distinguisher — confirmed by observation, not assumed:
+ *   FILL -> ROUNDED_RECTANGLE  (open-peeps.fig)
+ *   GRID -> FRAME              (hellomate.fig; GRID is not a model style type yet)
+ * TEXT and EFFECT have NO observation. A null here means we cannot write that
+ * style, and it is REPORTED rather than guessed: a wrong kind is a style that
+ * will not resolve.
+ */
+const STYLE_NODE_TYPES: Record<string, string | null> = {
+  FILL: 'ROUNDED_RECTANGLE',
+  TEXT: null,
+  EFFECT: null,
+};
+
+/** The stable id a style's node entry and its bindings both derive from. */
+function styleGuid(styleId: string, definition: StyleDefinition): string {
+  return definition.guid ?? styleId;
+}
+
+/**
+ * Reuse the document's "Internal Only Canvas" if it has one, otherwise emit a
+ * synthetic CANVAS node change for it. The model is NOT mutated: the canvas and
+ * the style entries exist in the message, which is what crosses the wire.
+ */
+function styleCanvas(root: DocumentNode, nodeChanges: Array<Record<string, unknown>>, ctx: ExportContext): Guid {
+  const existing = root.children.find((page) => page.name === STYLE_CANVAS_NAME);
+  if (existing) return guidFor(existing.id, ctx.sessionID);
+  const guid = guidFor(`${root.id}:style-canvas`, ctx.sessionID);
+  nodeChanges.push({
+    guid,
+    phase: 'CREATED',
+    parentIndex: { guid: guidFor(root.id, ctx.sessionID), position: positionFor(root.children.length, root.children.length + 1) },
+    type: 'CANVAS',
+    name: STYLE_CANVAS_NAME,
+    visible: false,
+    backgroundColor: { r: 0.11764705926179886, g: 0.11764705926179886, b: 0.11764705926179886, a: 1 },
+  });
+  return guid;
+}
+
+/** One style entry, in the observed shape. Null when the kind is unobserved. */
+function styleChange(
+  styleId: string,
+  definition: StyleDefinition,
+  canvas: Guid,
+  index: number,
+  ctx: ExportContext,
+): Record<string, unknown> | null {
+  const nodeType = STYLE_NODE_TYPES[definition.type];
+  if (!nodeType) {
+    ctx.warnings.push(
+      `style "${definition.name}" (${definition.type}) was not written: no node kind has been OBSERVED for a ${definition.type} style`,
+    );
+    return null;
+  }
+  const change: Record<string, unknown> = {
+    guid: guidFor(styleGuid(styleId, definition), ctx.sessionID),
+    phase: 'CREATED',
+    parentIndex: { guid: canvas, position: positionFor(index, index + 1) },
+    type: nodeType,
+    name: definition.name,
+    styleType: definition.type,
+    sortPosition: positionFor(index, index + 1),
+    visible: true,
+    opacity: 1,
+    size: { x: 100, y: 100 },
+    transform: { m00: 1, m01: 0, m02: 0, m10: 0, m11: 1, m12: 0 },
+  };
+  if (definition.paints && definition.paints.length > 0) change.fillPaints = definition.paints;
+  if (definition.effects && definition.effects.length > 0) change.effects = definition.effects;
+  if (definition.text) Object.assign(change, definition.text);
+  return change;
+}
+
 /** Build the decoded-message shape for a Pigma file. */
 /**
  * Fields a user would notice losing, so the warning can say so rather than
@@ -887,6 +964,20 @@ export function pigmaToFigMessage(
     const children = page.children;
     children.forEach((child, index) => emit(child, guidFor(page.id, ctx.sessionID), positionFor(index, children.length)));
   });
+
+  // STYLES AS NODE ENTRIES — the shape OBSERVED in real files. A style is a normal
+  // node on the hidden "Internal Only Canvas", distinguished by `styleType`, with
+  // its payload in the normal fields. Writing the DEFINITION is what makes a
+  // binding honest, so round 109's no-dangling mitigation is removed here: a
+  // binding to a definition we write does not dangle.
+  const styles = Object.entries(file.styles ?? {});
+  if (styles.length > 0) {
+    const canvas = styleCanvas(root, nodeChanges, ctx);
+    styles.forEach(([id, definition], index) => {
+      const entry = styleChange(id, definition, canvas, index, ctx);
+      if (entry) nodeChanges.push(entry);
+    });
+  }
 
   // Report what the schema cannot carry, before the caller encodes. A seed whose
   // schema cannot be read is left to the encoder to reject: this is a report, not
