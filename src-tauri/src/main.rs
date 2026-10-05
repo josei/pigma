@@ -101,6 +101,12 @@ fn cache_root(app: &tauri::AppHandle, config: &Config) -> Result<PathBuf, String
 
 #[tauri::command]
 fn desktop_info(app: tauri::AppHandle, config: tauri::State<'_, Mutex<Config>>) -> DesktopInfo {
+    // READ THIS FIRST, BEFORE THE LOCK. `active_bundle` takes the same
+    // non-reentrant `Config` mutex, so calling it while this function holds the lock
+    // DEADLOCKED the command — and because the panel calls `desktop_info` on mount,
+    // the app never painted: the window was a single flat colour. Measured, not
+    // reasoned: the pre-change binary rendered 4687 colours, this one 1.
+    let asset_origin = active_bundle(&app).map(|_| ASSET_ORIGIN.to_string());
     let config = config.lock().expect("config lock");
     DesktopInfo {
         // MCP is not offered on the hosted site, so the desktop build reports the
@@ -114,7 +120,7 @@ fn desktop_info(app: tauri::AppHandle, config: tauri::State<'_, Mutex<Config>>) 
         // REAL now, not a constant: the origin when a cached bundle is active, and
         // `None` when the window is on the shipped bundle. That is what the field's
         // own doc has always claimed.
-        asset_origin: active_bundle(&app).map(|_| ASSET_ORIGIN.to_string()),
+        asset_origin,
     }
 }
 
@@ -305,22 +311,13 @@ fn main() {
                 let config = config.lock().expect("config lock");
                 (cache_root(&handle, &config).ok(), config.manifest_url.clone())
             };
-            // THE WINDOW ACTUALLY LOADS THE CACHE. Before this, the shell fetched,
-            // verified and installed a bundle and then kept loading the one baked
-            // into the binary — the whole point of the feature (ship a fix without
-            // rebuilding the app) never happened, and `assetOrigin` was a constant.
-            //
-            // 1. If a bundle is ALREADY active, start on it.
-            // 2. Otherwise start on the shipped bundle (the window's own default),
-            //    and reload onto the cached one if a check installs one.
-            if let Some(entry) = asset_entry_url(&handle) {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.eval(&format!(
-                        "window.location.replace({})",
-                        serde_json::to_string(&entry).unwrap_or_else(|_| "\"pigma://localhost/\"".to_string()),
-                    ));
-                }
-            }
+            // THE WINDOW LOADS THE CACHE — but ONLY once the page it is on has
+            // loaded. An `eval` here navigates a webview that has no document yet,
+            // and the result was a BLANK WINDOW: measured, the post-change binary
+            // rendered a single flat colour where the pre-change one rendered the
+            // app. The navigation now happens after the launch check, by which time
+            // the page exists — and it happens for the SAME reason the feature
+            // exists: a bundle that became active must be the one served.
             if let Some(root) = root {
                 let reload = handle.clone();
                 std::thread::spawn(move || {
