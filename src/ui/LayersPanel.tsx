@@ -29,9 +29,11 @@ interface RowProps {
   onToggleExpand: (id: string) => void;
   renamingId: string | null;
   onStartRename: (id: string | null) => void;
+  /** True when a sibling below this layer in the same parent is a mask. */
+  masked?: boolean;
 }
 
-function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRename }: RowProps) {
+function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRename, masked }: RowProps) {
   const selection = useEditor((state) => state.selection);
   const select = useEditor((state) => state.select);
   const toggleVisible = useEditor((state) => state.toggleVisible);
@@ -102,6 +104,21 @@ function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRe
             {node.name}
           </span>
         )}
+        {masked ? (
+          // Figma: "the mask is shown in the Layers panel with a mask icon AND AN
+          // UPWARD-FACING ARROW ON THE MASKED LAYERS"
+          // (help.figma.com/hc/en-us/articles/360040450253-Masks). The arrow marks
+          // the layers the mask CLIPS, not the mask; it points up because the mask
+          // sits BELOW them.
+          <span
+            className="layer-row__masked-arrow"
+            data-testid="layer-masked-arrow"
+            data-tooltip="Masked by the layer below"
+            aria-label="Masked"
+          >
+            ↑
+          </span>
+        ) : null}
         {node.isMask ? (
           // Figma's own indicator: "the mask is shown in the Layers panel with a
           // mask icon" (help.figma.com/hc/en-us/articles/360040450253-Masks). It
@@ -168,7 +185,7 @@ function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRe
         </span>
       </div>
       {expandable && isOpen
-        ? [...node.children].reverse().map((child) => (
+        ? [...node.children].reverse().map((child, panelIndex, ordered) => (
             <LayerRow
               key={child.id}
               node={child}
@@ -177,6 +194,12 @@ function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRe
               onToggleExpand={onToggleExpand}
               renamingId={renamingId}
               onStartRename={onStartRename}
+              // A layer is MASKED when a sibling BELOW it in the same parent is a
+              // mask. The panel renders children reversed, so a mask appears LOWER
+              // in the list and the layers it clips are the ones above it — which is
+              // why the arrow Figma draws on them points UP. The mask itself is not
+              // masked.
+              masked={!child.isMask && ordered.slice(panelIndex + 1).some((sibling) => sibling.isMask === true)}
             />
           ))
         : null}
@@ -228,7 +251,7 @@ export function LayersPanel() {
           Nothing on this page yet — draw a frame with F.
         </p>
       ) : null}
-      {[...page.children].reverse().map((child) => (
+      {[...page.children].reverse().map((child, panelIndex, ordered) => (
         <LayerRow
           key={child.id}
           node={child}
@@ -244,6 +267,7 @@ export function LayersPanel() {
           }
           renamingId={renamingId}
           onStartRename={setRenamingId}
+          masked={!child.isMask && ordered.slice(panelIndex + 1).some((sibling) => sibling.isMask === true)}
         />
       ))}
       </div>

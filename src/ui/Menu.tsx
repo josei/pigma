@@ -37,6 +37,9 @@ const ITEMS: MenuItem[] = [
   { label: 'Zoom to fit', icon: 'fit', shortcut: '⇧1', run: () => useEditor.getState().zoomToFit() },
   { label: 'Zoom to 100%', icon: 'fit', shortcut: '⇧0', run: () => useEditor.getState().zoomTo(1) },
   { label: 'Show rulers', icon: 'line', shortcut: '⇧R', run: () => useEditor.getState().toggleRulers() },
+  // Figma puts mask outlines under View with the other view options; ours sit in
+  // the same list as the rulers and the grid for the same reason.
+  { label: 'Mask outlines', icon: 'mask', run: () => useEditor.getState().toggleMaskOutlines() },
   { label: 'Show pixel grid', icon: 'rect', shortcut: '⇧G', run: () => useEditor.getState().toggleGrid() },
   { label: 'Snap to pixel grid', icon: 'rect', shortcut: '⇧X', run: () => useEditor.getState().toggleSnapToGrid() },
   { label: 'Present', icon: 'play', shortcut: '⌘\\', run: () => useEditor.getState().setPresentation(true) },
