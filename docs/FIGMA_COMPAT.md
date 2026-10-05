@@ -76,6 +76,16 @@ appears because it is **still** written under a name the schema lacks.
 cannot carry `px`/`fr`) and `SCROLL_TO` is a **SEMANTICS** gap (the shape is fine) -
 neither is our divergence, and neither should be "changed" to satisfy the rule.
 
+### KNOWN LIMITATION of the shape audit (the tool, not the exporter)
+
+**The shape audit OVER-REPORTS on a real file**: **1830 mismatches, all `empty`**, on
+real nodes. The cause is that its matching **falls back to NAME**, and a real file's
+**3712 nodes share repeated names** - so it pairs the wrong nodes and calls
+everything empty.
+
+**The round trip itself is fine.** This is recorded as a **KNOWN LIMITATION OF THE
+TOOL**, being fixed this round - **not** as a finding about the exporter.
+
 ### The inventory, measured
 
 `scripts/divergence-inventory.ts` reads the real schema and diffs what we **write**
@@ -98,7 +108,7 @@ the count for the enriched document, not a proof the exporter is clean.**
 
 | Our shape | Figma's shape | Verdict |
 | --- | --- | --- |
-| styles as a **file-level table** | **Figma stores a style as a NODE ENTRY in `nodeChanges`, distinguished by `styleType`, parented to the Internal Only Canvas** | **CHANGE IT** - model styles as entries on that canvas, with the table as the **in-memory index**. **IMPORT half DONE** (one filter at the import boundary, proven on `open-peeps.fig` and `hellomate.fig` with **zero leaks** into the tree). **EXPORT half IN PROGRESS - not done** |
+| styles as a **file-level table** | **Figma stores a style as a NODE ENTRY in `nodeChanges`, distinguished by `styleType`, parented to the Internal Only Canvas** | **CHANGE IT** - model styles as entries on that canvas, with the table as the **in-memory index**. **IMPORT half DONE** and **EXPORT half DONE** (this round) |
 | `NodeStyleBinding` keyed by **id** | keyed by **GUID** | **CHANGE IT** - queued |
 | `StyleType` with **3** members | the wire has **7** | **CHANGE IT** - queued |
 | `boundVariables` as `Record<field, id>` | the wire's **per-field `VariableData`** | **CHANGE IT** - queued |
@@ -146,6 +156,30 @@ conclusions in a row were wrong, and observation settled it in one step.**
 
 **So the rule now reads: when the shape is UNOBSERVABLE, GET A FILE.**
 
+### The export half, and WHICH proof proves WHAT
+
+The export half landed. Style entries go into the **same `nodeChanges` message** -
+there is **no second message**, because a style **is** a node entry, so the round-109
+"second message" concern was **moot**. Each carries `styleType`, a **normal node
+kind**, the payload in the **normal fields** (`fillPaints` for `FILL`, `layoutGrids`
+for `GRID`), plus `guid`, `phase: CREATED`, `sortPosition` and `parentIndex`.
+
+**The canvas choice:** **reuse the document's "Internal Only Canvas" if it has one,
+otherwise emit a synthetic `CANVAS` node change - and the MODEL IS NOT MUTATED.**
+The round-109 **no-dangling mitigation is REMOVED**, with its test replaced: the
+definition now crosses the wire, so the binding no longer dangles.
+
+**Two proofs, and they are not interchangeable:**
+
+| Proof | What it actually proves |
+| --- | --- |
+| `open-peeps.fig` import -> export -> re-import | the **STYLES**: 4 styles survive with their **names, types, guids and paints** |
+| a **CONSTRUCTED** document | the **BINDING**: a rect bound to a table style comes back bound as `{"fill": "0:4"}` and **resolves** |
+
+**One observation worth recording: the table KEY changes across the round trip**
+(`style:1` -> `1:42`), because the imported table is keyed by the **wire guid**. What
+must hold is that the binding **RESOLVES** - not that the literal local id is stable.
+
 ### The style cost estimate was wrong in the opposite direction
 
 **The import filter is ONE place.** `adaptNativeTree` diverts **any** entry with
@@ -158,6 +192,37 @@ wrong the **other** way: the real change is **smaller**, not larger.
 **And a parser finding from the same probe:** `parseFigBinary` reads **only
 `rawChunks[1]`**, so a file carrying a **second message** would be **silently
 truncated**. That is being guarded this round.
+
+### Corroborated by an independent implementation
+
+The shape is **CORROBORATED** - not just measured by us - by an independent working
+`.fig` implementation (**open-pencil**). It confirms:
+
+- the **FIVE** binding fields: `styleIdForFill`, `styleIdForStrokeFill`,
+  `styleIdForText`, `styleIdForEffect`, `styleIdForGrid`. **Our model has three**, so
+  **two remain a reported gap**;
+- **`styleType` per kind**: fill and stroke -> `FILL`, text -> `TEXT`, effect ->
+  `EFFECT`, grid -> `GRID`;
+- that a **`TEXT` style's node kind is `TEXT`**;
+- the **TEXT payload fields**: `fontSize`, `fontName`, `lineHeight`, `letterSpacing`,
+  `textDecoration`, `textCase`.
+
+**Limit: the `EFFECT` style's node kind is INFERRED, not observed.** Everything else
+above is observed; that one is a derivation, and it is labelled as such.
+
+### The real-file proof is DEFENDED, but not REPRODUCIBLE
+
+A distinction that matters, stated exactly:
+
+- **The behaviour is PINNED synthetically** (`tests/figma/nativeStyleFilter.test.ts`),
+  so **the contract is DEFENDED** - a regression fails a test.
+- **The observation itself is NOT reproducible from this checkout.**
+  `open-peeps.fig` and `hellomate.fig` are **not in the repository**; they were
+  obtained externally for the observation.
+
+**That is the difference between a defended contract and a re-runnable proof.** The
+reference files are staged, **gitignored, under `.fig-refs/`** for local use - they
+are **not redistributed**, so a reader of this repo cannot re-run the real-file step.
 
 ### What this rule does NOT fix
 
