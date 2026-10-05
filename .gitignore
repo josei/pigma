@@ -13,3 +13,6 @@ src-tauri/gen/
 
 # external .fig references used to OBSERVE the wire shape (not redistributed)
 .fig-refs/
+
+# Vite writes a config-timestamp file beside the config while it loads it.
+vite.config.ts.timestamp-*

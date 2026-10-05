@@ -5,6 +5,7 @@ import { Canvas } from './ui/Canvas';
 import { PropertiesPanel } from './ui/PropertiesPanel';
 import { Toolbar } from './ui/Toolbar';
 import { Menu } from './ui/Menu';
+import { ContextMenu } from './ui/ContextMenu';
 import { Toasts } from './ui/Toasts';
 import { ExportPngDialog } from './ui/ExportPngDialog';
 import { ShareLinkDialog } from './ui/ShareLinkDialog';
@@ -56,6 +57,7 @@ export function App() {
       <PropertiesPanel />
       <Toolbar />
       <Menu />
+      <ContextMenu />
       <Toasts />
       <ExportPngDialog />
       <ShareLinkDialog />
