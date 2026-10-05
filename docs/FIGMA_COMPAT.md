@@ -207,6 +207,20 @@ wrong the **other** way: the real change is **smaller**, not larger.
 `rawChunks[1]`**, so a file carrying a **second message** would be **silently
 truncated**. That is being guarded this round.
 
+### The style row, confirmed
+
+**The style row reads `IMPORT half DONE` and `EXPORT half DONE`** - both halves, as of
+the previous round. Nothing about it is in progress.
+
+**And the three labels stay distinct - this is the most valuable distinction in the
+document:**
+
+| Style kind | Its node kind | Evidence label |
+| --- | --- | --- |
+| `FILL` | `ROUNDED_RECTANGLE` | **OBSERVED** |
+| `TEXT` | `TEXT` | **CORROBORATED** |
+| `EFFECT` | - | **INFERRED** |
+
 ### The three evidence labels for style node kinds - keep them distinct
 
 - **`FILL` -> `ROUNDED_RECTANGLE`: OBSERVED** (seen in the real payload).
@@ -344,7 +358,10 @@ the decoded schema. These names are the **plan**, not a result:
 | `textAutoResize` | `textAutoResize` |
 
 **No wire name exists for two of the fifteen** - so no rename can fix them:
-`overflowDirection` is **not in the schema at all**, and no wire name has been
+The **name** `overflowDirection` is **not in the schema at all** - but the wire does
+carry overflow-ish fields (`scrollDirection`, `scrollOffset`, `scrollBehavior`,
+`scrollContractedState`, `transitionPreserveScroll`), and **which of those is
+ours is not established** (see the kind-1 section above). No wire name has been
 found for `componentPropertyReferences`.
 
 **9 probed fields SURVIVE** - recorded because a probe that clears nine
@@ -492,6 +509,50 @@ swap *does* carry a transition in the model and the exporter writes it, but
 **playback does not apply one** (`swapInstanceState` changes the component in
 place, with no animation). Offering the row for a swap would therefore **promise an
 animation that does not play** - so it is withheld, on purpose.
+
+### Kind-1 divergences: the count is 0, and the NAME CLASS is CLOSED
+
+**Measured, not claimed: `NOT in the schema: []`.** The inventory now reports **zero**
+kind-1 divergences, and the category is **CLOSED for the name class**. Three things
+closed it, and each is named:
+
+| Closed by | Now written as |
+| --- | --- |
+| `componentPropertyDefinitions` | **`componentPropDefs`** (round 103) |
+| `variableBindings` | **`variableConsumptionMap`** (round 113) |
+| `overflowDirection` | **`scrollDirection`** (round 114) |
+
+**How `overflowDirection` closed - established by evidence, not assumed.** The
+schema's `scrollDirection => ScrollDirection` has exactly the scrolling directions as
+its members - **`NONE`, `HORIZONTAL`, `VERTICAL`, `BOTH`** - while **`scrollBehavior`**
+(`SCROLLS` / `FIXED_WHEN_CHILD_OF_SCROLLING_FRAME` / `STICKY_SCROLLS`) is a
+**different concept** and was **NOT** collapsed into it.
+
+**The values differ too** - the `BOOLEAN` / `BOOL` class again: the model keeps the
+**REST** vocabulary and the wire uses the **short** forms
+(`VERTICAL_SCROLLING` -> `VERTICAL`, `HORIZONTAL_AND_VERTICAL_SCROLLING` -> `BOTH`),
+translated **both ways**.
+
+Earlier rounds recorded this count as 3, then 1. **Both were right when written**;
+the honest record is that it is now **0**.
+
+
+Measured, not claimed:
+
+| Was a kind-1 divergence | State |
+| --- | --- |
+| `variableBindings` | **GONE** - now written as **`variableConsumptionMap`**, the real field (this round) |
+| `componentPropertyDefinitions` | **GONE** - now written as **`componentPropDefs`** (round 103) |
+| **`overflowDirection`** | **REMAINS - the last one** |
+
+**ONE REMAINS, and it is named: `overflowDirection`** - a model-side name the schema
+does not define. The wire's overflow-ish fields are **`scrollDirection`**,
+**`scrollOffset`**, **`scrollBehavior`**, **`scrollContractedState`** and
+**`transitionPreserveScroll`** - and **WHICH ONE IS OURS IS NOT ESTABLISHED**. It is
+being established this round.
+
+**The count is 1.** It is **not** rounded down to 0, and the category is **not
+closed** - a single named, still-open divergence is the honest state.
 
 ### The last KIND-1 divergence: `variableConsumptionMap`
 
