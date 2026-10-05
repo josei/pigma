@@ -407,12 +407,25 @@ command, and `DesktopInfo` in `src-tauri/src/main.rs` carries
 through to `hosted` with no error — so it is pinned on both sides: the Rust test
 `desktop_info_serializes_camel_case` asserts the exact wire keys, and
 `src/config/mcpAvailability.test.ts` feeds that payload through
-`readDesktopInfo`. `tests/browser/b34-mcp-gating.spec.ts` **B34d** drives the
-real panel in Chromium with the shell's payload injected through
-`window.__TAURI__.core.invoke`, so the desktop state is exercised end to end from
-a browser spec. What is **not** exercised headlessly is the webview IPC hop
-itself: it needs a display server and the shell, so the payload is supplied at
-the exact seam the shell writes to.
+`readDesktopInfo`.
+
+The panel also needs the shell to inject the Tauri global it reads, so
+`tauri.conf.json` sets `app.withGlobalTauri: true` (Tauri's default is `false`,
+and with it false `window.__TAURI__` does not exist at all — the desktop state
+is then unreachable no matter what the payload says).
+
+Two tests cover the two halves, and they are different claims:
+
+| Claim | Test |
+| --- | --- |
+| The panel's state handling is right, given the shell's report | `tests/browser/b34-mcp-gating.spec.ts` **B34d** injects `window.__TAURI__` with that payload and drives the real panel in Chromium |
+| The **real** shell exposes the bridge, and `desktop_info` answers through it | `tests/desktop/ipc-hop.mjs` launches the built shell under a virtual display and drives it over WebDriver (`tauri-driver` → `WebKitWebDriver`), then requires the panel to reach `data-mcp-state="desktop"` |
+
+The second one is what closes the hop: it asserts the webview's
+`window.__TAURI__` is an object, invokes `desktop_info` over the genuine IPC and
+reads the resulting state from the real panel. It is a standalone script, not
+part of the browser suite — it needs `Xvfb`, `WebKitWebDriver` and `tauri-driver`,
+which are not dependencies of this package.
 
 #### Deploying the hosted endpoint
 

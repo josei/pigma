@@ -25,10 +25,43 @@ does in every other build.
 ```
 src-tauri/
   tauri.conf.json     window, bundle, CSP (allows loopback HTTP + the relay)
-  Cargo.toml          tauri 2 shell, no other dependencies
+  Cargo.toml          tauri 2 shell, tauri-build, reqwest (rustls) + sha2
+  build.rs            `tauri_build::build()` — without it `OUT_DIR` is unset and
+                      `generate_context!()` cannot run
   src/main.rs         exposes `desktop_info`; starts nothing else
-  icons/icon.svg      the same mark the web build ships
+  src/assets.rs       the asset cache (below), with its own `cargo test` suite
+  icons/              `icon.svg` (the mark) + the platform set derived from it
+
+## The frontend bridge (`window.__TAURI__`)
+
+The panel reaches the shell through the Tauri **global**: `readDesktopInfo`
+(`src/config/mcpAvailability.ts`) reads `window.__TAURI__.core.invoke`. Tauri
+injects that global only when `app.withGlobalTauri` is `true` — its default is
+`false` — so `tauri.conf.json` sets it. With it false the webview has no
+`window.__TAURI__` at all, `readDesktopInfo` returns null, and the panel silently
+falls through to the advertised/hosted state: the desktop state is unreachable.
+That was a real defect, not a hypothetical one — the real-hop script below found
+it (before the flag, the webview reported `typeof window.__TAURI__ ===
+"undefined"` and the panel showed `self-hosted`).
+
+Two tests cover two different claims:
+
+| Claim | Test |
+| --- | --- |
+| The panel's state handling is right, given the shell's report | `tests/browser/b34-mcp-gating.spec.ts` **B34d** — injects `window.__TAURI__` carrying the shell's payload |
+| The real shell exposes the bridge, and `desktop_info` answers through it | `tests/desktop/ipc-hop.mjs` — launches the built shell under a virtual display and drives it over WebDriver |
+
+```sh
+cargo build --manifest-path src-tauri/Cargo.toml
+xvfb-run -a node tests/desktop/ipc-hop.mjs
 ```
+
+The script asserts that the webview's `window.__TAURI__` is an object, invokes
+`desktop_info` over the real IPC (the payload arrives camelCase, per
+`#[serde(rename_all = "camelCase")]`), opens the Tools rail and requires the
+panel to reach `data-mcp-state="desktop"`. It needs `Xvfb`, `WebKitWebDriver`
+(`webkit2gtk-driver`) and `tauri-driver` (`cargo install tauri-driver --locked`);
+none of them are dependencies of this package, so install them only to run it.
 
 ## Running it
 
@@ -53,6 +86,29 @@ It serves the same tool set as every other transport (see `docs/MCP.md`), writes
 to the same documents, and needs no token on loopback. Hosted deployments add a
 minted, short-lived, revocable token — that is a deployment choice, not a
 different product.
+
+## Building and bundling
+
+`npm run build` produces `dist/`, which the shell embeds. Bundling is the Tauri
+CLI's job (`npx @tauri-apps/cli@2 build`), and the bundle needs **real platform
+icons**: `bundle.icon` must list PNG/ICO/ICNS files. An SVG-only list is accepted
+and then silently produces a bundle with **no icons at all** and a `.desktop`
+entry whose `Icon=` resolves to nothing — verified with
+`tauri build --debug --bundles deb`: the deb installed only `usr/bin/pigma-desktop`
+and `usr/share/applications/Pigma.desktop`, with no `usr/share/icons` tree.
+
+The set in `icons/` is derived from the project's own mark, never drawn by hand:
+
+```sh
+npx @tauri-apps/cli@2 icon src-tauri/icons/icon.svg --output src-tauri/icons
+```
+
+That writes `32x32.png`, `128x128.png`, `128x128@2x.png`, `icon.icns` (macOS),
+`icon.ico` (Windows) and `icon.png` (the window icon `generate_context!`
+embeds), plus mobile and Windows Store assets that this desktop build does not
+list. With the list in `tauri.conf.json`, `--bundles deb` installs
+`usr/share/icons/hicolor/{32x32,128x128,256x256@2}/apps/pigma-desktop.png`, so
+the desktop entry's `Icon=` resolves.
 
 ## Asset auto-update (the shell stays on par with the web)
 
