@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1069 unit tests / 117 files**, **267 browser tests passing / 0 failing**,
+Last verified: **1069 unit tests / 117 files**, **271 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -107,38 +107,33 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 - **Layer EFFECTS are not part of the mask alpha.** What a mask masks by is its
   fills and strokes — a shadow or blur on the mask layer does not contribute to
   its alpha, so it does not widen or soften the masked region.
-- **Right-click context menu - NOT BUILT, STOPPED FOR A REASON.** The app has had
-  **no right-click context menu anywhere**, so "Use as mask" is reachable only from
-  the layer-row action and the Cmd/Ctrl+Alt+M shortcut. **It was not built this
-  round, and that is the rule working**: the editor established Figma's menu
-  **ACTIONS** from shortcut references, but **could not establish the menu's
-  STRUCTURE or its per-selection-case ITEM SETS from a primary source** - the help
-  article it fetched was the **keyboard** one, and the help **search page is
-  JS-rendered**. So it **STOPPED rather than inventing** the grouping and the
-  selection cases, **which is exactly the divergence the rule forbids**.
+- **Right-click context menu - BUILT, and it is a DIVERGENCE RECORD.** The rule
+  **applied**, not bent.
 
-  **Recorded as a STOP WITH ITS REASON, not as a failure** - and it is the **fourth
-  time this run** an agent has refused to invent a shape.
+  **The DOCUMENTED fragments are Figma's shape, used as documented, with their source
+  URLs beside them in the code** (`src/ui/ContextMenu.tsx`): *Create component*,
+  *Copy/Paste as properties*, *Plugins*, the *Select layer* submenu, and the
+  copy-as-code items.
 
-  **What makes the next round SMALL, because it is grounded:** the actions **already
-  exist** as store/model functions (`groupNodes`, `ungroupNodes`, `booleanNodes`,
-  `duplicateSelection`, `deleteSelection`, `copySelection`, `toggleMask`, `selectAll`,
-  `frameSelection`), and **`src/ui/Menu.tsx` is a 106-line label/icon/action list** -
-  so the context menu is a **POSITIONED INSTANCE of an existing surface**, not a
-  second implementation.
+  **The FOUR CASES no primary source documents are OUR design**, each with a recorded
+  reason: **nothing selected**, **several nodes**, **inside a frame**, **a text node**.
+  For the last two the reason is a **design judgement, not a gap**: **the available
+  actions do not differ by parent or kind, and a menu that changed shape without
+  changing capability would be a difference the user cannot act on.**
 
-  **It is now being BUILT AS A RECORDED DIVERGENCE - the rule working, not circumvented.**
-  The primary sources are **exhausted**: the fragments are documented, and **the four
-  cases we most need - nothing selected, several nodes, inside a frame, a text node -
-  are absent from every one of them**, established as **"we could not find it" rather
-  than "it does not exist"**. So **the documented fragments are Figma's shape and are
-  used as documented**, and the **undocumented cases are OUR design, with the reason
-  recorded per case.** **Room is left for that divergence record; nothing is
-  pre-empted.**
+  **What was deliberately NOT added, with its reason:**
 
-  **And the same distinction the mask work established: THIS GAP WAS BLOCKED ON A
-  MISSING SOURCE** - which is why it **stopped twice** - **and it is now buildable
-  because the DIVERGENCE PATH is legitimate, not because the source appeared.**
+  | Not added | Why |
+  | --- | --- |
+  | the *Select layer* submenu | it needs **hit-testing under the cursor** |
+  | *Copy/Paste properties*, *Go to main component / Restore* | **documented but have NO ACTION** - so they are **REPORTED rather than rendered as dead entries** |
+  | the copy-as-code items and *Plugins* | already in the **main menu** - a second route to the same action is **not new capability** |
+
+  **The proof:** clicking **Group selection** changes the document in **EXACTLY ONE
+  UNDO ENTRY**; the **empty menu shows Select all and NOT Use as mask**; a right-click
+  **over a panel opens no canvas menu**; and **a plain left click opens nothing**.
+
+
 - **The mask INDICATOR - NARROWED, not closed. Which parts:**
 
   **Built and proven - the Layers-panel BADGE beside the layer name.** It is **always
@@ -494,6 +489,40 @@ and **not one says "verified against Figma"**, because none is.
 brought into the repo as **committed fixtures** and diffed against the `DOCUMENTED`
 values - which turns those literals from memory into evidence. Until then, this
 row is a statement about our own consistency, not about Figma.
+
+### The signature defect class, swept SYSTEMATICALLY for the first time
+
+**About 300 UI affordances enumerated with `file:line` citations, about 296 wired, and
+SIX HOLLOW.** The method is the point: **the question asked was "does it DO something
+observable", not "does it render"** - which is the only question that finds this class.
+
+**The six, and what makes each hollow:**
+
+| Hollow | Why |
+| --- | --- |
+| **Frame selection** in the **empty** menu | a **GUARANTEED no-op**: `frameSelection` returns immediately when the selection is empty - **the very condition that renders that menu** |
+| **Group selection** with one node | a **CONDITIONAL no-op with the item ENABLED** |
+| **Ungroup** on a non-container | idem |
+| **Paste** with an empty clipboard | idem |
+| the **`pigma:open-menu` listener** | **ZERO DISPATCHERS**, while its own comment claims the left File section dispatches it |
+| the **Comment tool's shortcut `C`** | it **advertises `C`** while the key table **has no `c`** |
+
+**These are an OPEN list.** The editor is fixing them this round and **nothing is claimed
+fixed until it reports.**
+
+**And the MCP half, stated honestly: `22` of `35` tools were CALLED for real and NONE
+was hollow** - with the eight the heuristic flagged verified by **printing the
+response**. The other **`13` were left on the parity table's word**, which is **an
+INFERENCE** and is being closed this round by calling them. **The honest state is "no
+hollow tool FOUND among those checked", NOT "all 35 verified".**
+
+**The method note - the same lesson as the retraction: a heuristic is a FILTER FOR WHERE
+TO LOOK, not a verdict.** The first heuristic was **too narrow**: creating tools return
+**new ids** and search/library tools return **their own records**, so each flagged
+response was **verified** rather than the heuristic reported.
+
+*Note: the sweep's enumeration is not committed to this repository - it is reported
+here, and a reader cannot re-run it from this checkout.*
 
 ### The pattern this project keeps finding: a feature that is present and does nothing
 
