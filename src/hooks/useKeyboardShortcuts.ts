@@ -15,6 +15,8 @@ const TOOL_KEYS: Record<string, Tool> = {
   l: 'line',
   t: 'text',
   p: 'pen',
+  // Figma uses C for Comment; the toolbar advertised it and nothing bound it.
+  c: 'comment',
 };
 
 const NUDGE: Record<string, [number, number]> = {
