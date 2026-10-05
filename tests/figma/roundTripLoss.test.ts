@@ -463,11 +463,18 @@ describe('style bindings survive through the style table', () => {
     const page = file.document.children[0]!;
     const rect = createRectNode(file.document, 10, 10, 80, 40);
     rect.name = 'Subject';
-    rect.styles = { fill: 'style:1' };
+    rect.styles = { fill: 'style:1', stroke: 'style:2' };
     page.children = [rect];
     const withStyles = {
       ...file,
       styles: {
+        'style:2': {
+          key: 'key-2',
+          name: 'Border/01',
+          type: 'FILL' as const,
+          guid: '0:5',
+          paints: [{ type: 'SOLID' as const, color: { r: 0, g: 0, b: 0, a: 1 }, opacity: 1, visible: true, blendMode: 'NORMAL' as const }],
+        },
         'style:1': {
           key: 'key-1',
           name: 'Brand/01',
@@ -487,6 +494,10 @@ describe('style bindings survive through the style table', () => {
     const back = byName(reimported, 'Subject')!;
     expect(back.styles?.fill, 'the binding did not survive').toBe('0:4');
     expect(reimported.styles?.[back.styles!.fill!]?.name).toBe('Brand/01');
+    // A STROKE binding is `styleIdForStrokeFill` on the wire and reuses a FILL
+    // style (there is no STROKE styleType), so the model now carries it.
+    expect(back.styles?.stroke, 'the stroke binding did not survive').toBe('0:5');
+    expect(reimported.styles?.[back.styles!.stroke!]?.name).toBe('Border/01');
   });
 });
 

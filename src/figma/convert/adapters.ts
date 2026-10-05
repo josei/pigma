@@ -746,7 +746,12 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
   // `styleID` (legacy single style) and the `inherit*StyleID` family are NOT
   // read: they are different concepts, not the node's per-property bindings.
   const styleBindings: Record<string, string> = {};
-  for (const [field, property] of [['styleIdForFill', 'fill'], ['styleIdForText', 'text'], ['styleIdForEffect', 'effect']] as const) {
+  for (const [field, property] of [
+    ['styleIdForFill', 'fill'],
+    ['styleIdForStrokeFill', 'stroke'],
+    ['styleIdForText', 'text'],
+    ['styleIdForEffect', 'effect'],
+  ] as const) {
     const id = idOfGuid(isRecord(node[field]) ? (node[field] as Record<string, unknown>).guid : null);
     if (id) styleBindings[property] = id;
   }
@@ -882,6 +887,8 @@ const VARIABLE_FIELD_PROPERTIES: Record<string, string> = {
   OPACITY: 'opacity',
   CORNER_RADIUS: 'cornerRadius',
   VISIBLE: 'visible',
+  // `characters` has no member spelled that way; the wire calls it TEXT_DATA.
+  TEXT_DATA: 'characters',
 };
 
 /**

@@ -613,9 +613,18 @@ export interface StyleDefinition {
   effects?: Effect[];
 }
 
-/** Node -> style bindings, keyed by the property the style drives. */
+/**
+ * Node -> style bindings, keyed by the property the style drives.
+ *
+ * `stroke` is on the wire as `styleIdForStrokeFill`, and a STROKE binding reuses
+ * a FILL style — the wire has no STROKE styleType (CORROBORATED). `grid` is NOT
+ * modelled: the wire has `styleIdForGrid`, but the model's StyleType vocabulary
+ * has no GRID, so a grid binding would point at a style type the model cannot
+ * hold. The wire's two extra fields are therefore one modelled and one reported.
+ */
 export interface NodeStyleBinding {
   fill?: string;
+  stroke?: string;
   text?: string;
   effect?: string;
 }

@@ -605,8 +605,11 @@ function nodeChange(
     };
     const fill = bind(node.styles.fill);
     if (fill) change.styleIdForFill = { guid: fill };
-    // `styleIdForStrokeFill` and `styleIdForGrid` have no model source field — a
-    // MODEL GAP, reported rather than invented.
+    // A STROKE binding is `styleIdForStrokeFill` and reuses a FILL style — the
+    // wire has no STROKE styleType. `styleIdForGrid` is NOT written: the model's
+    // StyleType has no GRID, so there is nothing a grid binding could resolve to.
+    const stroke = bind(node.styles.stroke);
+    if (stroke) change.styleIdForStrokeFill = { guid: stroke };
     const text = bind(node.styles.text);
     if (text) change.styleIdForText = { guid: text };
     const effect = bind(node.styles.effect);
@@ -745,6 +748,10 @@ const BINDING_VARIABLE_FIELDS: Record<string, string> = {
   opacity: 'OPACITY',
   cornerRadius: 'CORNER_RADIUS',
   visible: 'VISIBLE',
+  // All 55 members enumerated: there is no FILL/PAINT member, but `characters` IS
+  // there under another name — TEXT_DATA. (The vocabulary class again, found by
+  // enumerating rather than by assuming.) fill/stroke have NO member at all.
+  characters: 'TEXT_DATA',
 };
 
 /**
