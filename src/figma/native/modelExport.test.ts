@@ -56,12 +56,15 @@ describe('native export of prototype/variable metadata', () => {
     // carries `variableField` — the field association — and the reference is
     // `variableData.value.alias`.
     const map = byName('Bound rect').variableConsumptionMap as { entries: Array<Record<string, unknown>> };
-    expect(map.entries.map((entry) => entry.variableField)).toEqual(['CORNER_RADIUS']);
-    expect(map.entries[0]?.variableData).toMatchObject({ dataType: 'ALIAS', resolvedDataType: 'FLOAT' });
+    // A paint binding is NOT a `VariableField` member: it is `variableField: MISSING`
+    // plus the paint INDEX in `nodeField` (the wire keys a paint binding as
+    // `fills/<i>/color`). The numeric binding is a real member.
+    expect(map.entries.map((entry) => [entry.variableField, entry.nodeField])).toEqual([
+      ['MISSING', 0],
+      ['CORNER_RADIUS', 0],
+    ]);
     expect(byName('Bound rect').variableBindings).toBeUndefined();
-    // `fills` has NO `VariableField` member (the enum has 55 and none is fills), so
-    // that binding is reported rather than guessed.
-    expect(warnings.some((line) => line.includes('variable binding on "fill"'))).toBe(true);
+    expect(warnings.filter((line) => line.includes('variable binding'))).toEqual([]);
   });
 
   it('omits the fields when the model has nothing to say', () => {
