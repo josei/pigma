@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1069 unit tests / 117 files**, **285 browser tests passing / 0 failing**, **15 Rust tests passing**,
+Last verified: **1072 unit tests / 118 files**, **285 browser tests passing / 0 failing**, **15 Rust tests passing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -311,9 +311,9 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 
 ## Open QA items
 
-**No failing specs.** The suite is green: `CI=true npm run test:browser` = **262
+**No failing specs.** The suite is green: `CI=true npm run test:browser` = **285
 passed / 0 failed**, measured twice back-to-back, with **0 orphan processes**;
-`npx vitest run` = **1069 passing / 117 files**, deterministic whether or not
+`npx vitest run` = **1072 passing / 118 files**, deterministic whether or not
 `dist/` has been built. Every item previously listed here
 (B29c, B29d, B31b, B31c, B33a, B33b, B28b) now passes and has been removed.
 
@@ -620,10 +620,8 @@ walks **no-bundle -> good -> corrupt-active** and asserts **the served version a
 equals the pointer version**. *(`src-tauri/src/assets.rs`; `cargo test` = **15 passing**,
 measured.)*
 
-**AND THE HONEST LIMIT, stated rather than left implicit: THE WINDOW-LEVEL PROOF IS NOT
-DELIVERED - and it still is not.** The **layer-level** tests prove the serving path
-returns the cached version, the fallback, and the rejection; **the WINDOW actually
-loading a marker bundle has not been observed.**
+**AND THE WINDOW-LEVEL PROOF IS NOW DELIVERED** (see *CLOSED: the desktop thread* below)
+- the honest limit stated above **through three rounds** is finally satisfied.
 
 **THE BISECT IS IN, AND IT NAMES A CULPRIT.** *The method is what makes it credible:*
 **ONE RUNNER - the committed `tests/desktop/ipc-hop.mjs` UNMODIFIED** - bounded at **150s**,
@@ -660,11 +658,54 @@ DEADLOCK*). **With it fixed, the post-change binary is DRIVABLE**: *reproduced h
 `xvfb-run -a node tests/desktop/ipc-hop.mjs` -> **PASS** in seconds, with `assetOrigin:
 null` in the no-bundle state.*
 
-**THE REMAINING GAP IS NARROWER AND PRECISE: the WINDOW has not been observed SERVING A
-MARKER BUNDLE from `pigma://localhost`.** The **layer-level** tests prove the serving
-path returns the cached version, the fallback, and the rejection; the **capture** proved
-the window **RENDERS**; **the window actually loading the cached bundle is still
-unobserved**, and the docs keep saying so.
+**THE REMAINING GAP AT THAT POINT was narrow and precise: the WINDOW had not been
+observed SERVING A MARKER BUNDLE from `pigma://localhost`.** **It has been since - the
+thread is closed below.**
+
+### CLOSED: the desktop thread - every piece now has evidence
+
+**Recorded as CLOSED.** Each of the three links in the chain - *fetch/verify/install*,
+*serve*, *report* - now has evidence at the level it can be tested at.
+
+**1. THE GUARD IS STRUCTURAL, NOT A DISCIPLINE.** `active_bundle_locked(app, config:
+&Config)` takes the config **BY REFERENCE**, so **a caller already holding the lock has NO
+WAY to reach the mutex**: *"it takes `&Config`, so it cannot reach the mutex at all."*
+**THE DEADLOCK IS A TYPE ERROR RATHER THAN A DISCIPLINE** - which is the right shape,
+because **a deadlock is not an error anything can catch.**
+
+**2. THE LOCK-ORDERING SWEEP - a verdict per call site, which is what makes it a sweep
+rather than an anecdote.** Exactly **ONE re-locker** exists across the config-lock call
+sites, and it is now reachable only from a caller that does **not** hold the lock:
+
+| Site (`src-tauri/src/main.rs`) | Holds the config lock? | Reaches the resolver? | Verdict |
+| --- | --- | --- | --- |
+| `:104` | yes | only via `active_bundle_locked(&Config)` | **SAFE** - cannot reach the mutex |
+| `:129` | yes | idem | **SAFE** |
+| `:140` | yes | idem | **SAFE** |
+| `:234` | yes | idem | **SAFE** |
+| `:322` | no (the one re-locker) | takes the lock itself | **SAFE** - the caller never holds it |
+
+**3. THE WINDOW-LEVEL PROOF IS DELIVERED, IN BOTH STATES - and the two AGREE**, which is
+the property the pointer work existed for:
+
+| State | Page reports | `assetOrigin` |
+| --- | --- | --- |
+| **verified marker bundle installed** | **protocol `pigma:`**, href **`pigma://localhost/index.html`**, and the **marker itself** | **agrees** - the scheme origin |
+| **no bundle** | **`tauri://localhost`** | **`null`** |
+
+**Every state carries a DISPLAY CAPTURE and its statistics, with a BLACK control so an
+empty display can never be mistaken for a blank frame.** *(Reproduced: the marker capture
+measures **4687 colours**; the blank-window capture measured **1**.)*
+
+**AND THE PROOF FOUND ONE MORE REAL HOLE:** the **reload condition compared `after` to
+`before`**, so **a bundle ALREADY ACTIVE AT LAUNCH was never navigated to** - *precisely
+the case the feature exists for.* **Fixed by comparing against the WINDOW'S OWN URL.**
+
+**AND THE HONEST NOTE, the document's strongest argument for the guard: WHAT WOULD HAVE
+SHIPPED WAS EVERY DESKTOP USER GETTING A WHITE WINDOW ON LAUNCH** - silently, **empty
+stderr, no crash report** - in the app whose whole purpose is to be used. **And the asset
+fallback would NOT have helped, because the failure was in the command that REPORTS the
+bundle state, not in the bundle path.**
 
 ### THE BLANK-WINDOW DEADLOCK - what it was, what it would have shipped, and the guard
 
@@ -976,6 +1017,33 @@ section exists to expose.
   `test-backed:`/`documented-from-code:` evidence entry.
 
 ### The evidence convention: measure the count, carry the measurement
+
+### The docs must be checked for staleness in BOTH directions
+
+**A doc can go stale by UNDERSTATING as well as by overstating** - and this habit is now
+demonstrated **twice**. The evidence convention above catches the *quoted count*; this
+catches the *quoted STATUS*.
+
+- **Demonstration 1 (overstating): `docs/DESKTOP.md` claimed a behaviour the code did not
+  have** - *"the window loads the active bundle through the `pigma://localhost`"* - and a
+  reader ACTS on a claim like that.
+- **Demonstration 2 (understating): the bridge-timeout QA entry still read "observed once;
+  not yet pursued" AFTER it had been fixed.** Corrected to carry the **DIAGNOSIS** rather
+  than just the fix: **a liveness intent implemented as a work budget** - the timeout was
+  policing *how long work takes* when it was meant to police *whether the peer is alive*.
+
+**Both directions are the same class: a doc that disagrees with the code, in a way a
+reader acts on.**
+
+**THE STANDING RULE: when a round fixes something an entry describes as OPEN, THE ENTRY IS
+PART OF THE FIX.** An open entry left in place after its fix is not caution - it is a
+stale claim in the direction of understating.
+
+**And the editor is now doing the proper separation for that timeout this round** -
+**progress per command id**, so **liveness and work duration finally agree** - which means
+**that diagnosis may need updating again when it reports. Room is left for it.**
+
+
 
 **EVERY COUNT THAT MATTERS IS MEASURED, AND THE DOCS CARRY THE MEASUREMENT rather than
 the claim.** This is now the project's strongest evidence habit, and it has teeth:
