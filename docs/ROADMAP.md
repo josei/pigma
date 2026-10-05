@@ -610,10 +610,52 @@ DELIVERED - and it still is not.** The **layer-level** tests prove the serving p
 returns the cached version, the fallback, and the rejection; **the WINDOW actually
 loading a marker bundle has not been observed.**
 
-**A BISECT IS IN FLIGHT AND ITS RESULT IS NOT PRE-EMPTED.** The shell is being rebuilt
-**at the commit BEFORE the serving change** to establish whether **that change caused the
-harness stall**, or whether **round 125's success was luck**. **Until it reports, the
-window-level gap above stays stated as a gap.**
+**THE BISECT IS IN, AND IT NAMES A CULPRIT.** *The method is what makes it credible:*
+**ONE RUNNER - the committed `tests/desktop/ipc-hop.mjs` UNMODIFIED** - bounded at **150s**,
+**ONE VARIABLE PER ROW**, binaries built with the **Tauri CLI into SEPARATE TARGET DIRS
+via worktrees SO NOTHING WAS OVERWRITTEN**, and **all three preserved** (`/tmp/bisect/`:
+`pre-62128cd.bin`, `serve-20fac76.bin`, `HEAD.bin`). **The previous round COULD NOT bisect
+because the pre-fix binary had been overwritten** - hence the preservation rule.
+
+| Commit | Configuration | Result |
+| --- | --- | --- |
+| **`62128cd`** (parent of the serving change; round 125's state) | marker manifest | **WORKS** - 4 assertions, PASS, 4s |
+| **`62128cd`** | no manifest | **WORKS** - 4 assertions, PASS, 3s |
+| **`20fac76`** (*"the shell now serves the bundle it installs"*) | marker manifest | **STALLS** - 0 assertions, killed at 150s |
+| **`20fac76`** | no manifest | **STALLS** |
+| **HEAD** at the time | both | **STALLS** |
+
+**So the regression is in `20fac76`, and the later shell commits are INNOCENT.**
+
+**AND IT IS NOT THE CACHE PATH.** The **no-bundle configuration stalls IDENTICALLY**,
+which **REFUTED the agent's own hypothesis** that the redirect to a `pigma://` page blocks
+the driver - and the default cache was **verified EMPTY**, so the redirect cannot be
+firing there at all. **A bisect that also kills its own hypothesis is stronger than one
+that merely finds a commit.**
+
+**WHAT IS STILL UNKNOWN, PRECISELY: WHICH PART of `20fac76`.** Its page-affecting code is
+**bundle-gated**, so the cause is **not visible in the diff**. **The honest statement is:
+THE COMMIT IS THE CULPRIT, THE PART IS NOT ISOLATED - labelled INFERRED.**
+
+**AND THE WINDOW-LEVEL PROOF IS STILL NOT DELIVERED - now for a NAMED reason:** the binary
+that **carries** the feature is **exactly the one the driver CANNOT drive**, while the
+binary it **can** drive **PREDATES the feature**. So **the desktop feature is unverified at
+the window and cannot become verified until this is understood.**
+
+### The question that now decides the next round
+
+**THE BISECT PROVED THE POST-CHANGE BINARY CANNOT BE DRIVEN. IT DID NOT PROVE THE WINDOW
+DOES NOT RENDER.** Those are **different failures with different severities**: one is a
+**test-harness problem** and one is a **SHIPPED REGRESSION** - and **nobody knows which
+this is yet.**
+
+**The test that decides it does NOT use WebDriver**: launching the shell under **Xvfb**,
+capturing the **X display**, and reading the shell's **stderr**. **The result is not
+pre-empted here**, and the two outcomes are not symmetric:
+
+- **If the window RENDERS**, the feature works and **the driver lost something
+  incidental** - a much better place to be;
+- **if it is BLANK**, **the priority flips entirely.**
 
 **And the documentation currently CLAIMS the wired behaviour**: `docs/DESKTOP.md` says
 *"the window loads the active bundle through the `pigma://localhost`"*. **A documented
