@@ -396,7 +396,9 @@ export function figmaRestToPigmaFile(source: FigmaRestFile, options: ConvertOpti
 /** Convert a decoded native `.fig` document into a Pigma file. */
 export function figDocumentToPigmaFile(source: FigDocument, options: ConvertOptions = {}): FigmaImportResult {
   const report = new ReportBuilder();
-  const roots = adaptNativeTree(source, report);
+  const adapted = adaptNativeTree(source, report);
+  const roots = adapted.roots;
+  const nativeStyles = adapted.styles;
   const now = (options.now ?? Date.now)();
   const metaName = source.meta && typeof source.meta.file_name === 'string' ? source.meta.file_name : 'Untitled';
   return buildFile(
@@ -405,6 +407,9 @@ export function figDocumentToPigmaFile(source: FigDocument, options: ConvertOpti
       name: metaName,
       lastModified: now,
       sourceKind: 'native',
+      // Styles on the wire are NODE ENTRIES with `styleType` set; the adapter
+      // pulls them out of the tree and hands them here instead.
+      styles: Object.keys(nativeStyles).length > 0 ? nativeStyles : undefined,
       // Native .fig documents carry their own variable tables in the message.
       variables: mapVariableTables(options.variables ?? source.message, report),
       meta: {

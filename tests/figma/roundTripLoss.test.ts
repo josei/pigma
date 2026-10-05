@@ -445,10 +445,9 @@ describe('style bindings survive through the style table', () => {
 
     const reimported = await roundTrip(withStyles, 'circle.fig');
     const back = byName(reimported, 'Subject')!;
-    // MEASURED: the EXPORT writes the binding (as the style's wire guid), but the
-    // IMPORT does not carry it into the model yet — the guid must be matched
-    // against the file's style table, which is built after the nodes are
-    // converted. Pinned here so the gap is a fact, not an assumption.
+    // MEASURED: neither half carries the binding. The EXPORT does not write it
+    // (no style definition is written, so a binding would dangle — see the test
+    // below), and the IMPORT could not resolve it either. Pinned as a fact.
     expect(back.styles?.fill, 'the binding does not survive yet').toBeUndefined();
     // The style TABLE does not cross the wire either: the native envelope has no
     // style table, so the guids the binding would match against are gone too.
@@ -456,20 +455,25 @@ describe('style bindings survive through the style table', () => {
     expect(reimported.styles?.['style:1']?.guid, 'the style table does not survive yet').toBeUndefined();
   });
 
-  it('reports a binding to a style with no wire guid, rather than writing it', () => {
-    const file = emptyFile('No guid');
+  it('never writes a binding it cannot back with a definition, and reports the drop', () => {
+    const file = emptyFile('Dangling style');
     const page = file.document.children[0]!;
     const rect = createRectNode(file.document, 0, 0, 100, 50);
     rect.name = 'Subject';
     rect.styles = { fill: 'style:1' };
     page.children = [rect];
-    const withStyles = { ...file, styles: { 'style:1': { key: 'key-1', name: 'Local fill', type: 'FILL' as const } } };
+    // A style WITH a wire guid: this is the case that used to dangle, because the
+    // binding was written while the definition is written NOWHERE.
+    const withStyles = { ...file, styles: { 'style:1': { key: 'key-1', name: 'Brand fill', type: 'FILL' as const, guid: '1:42' } } };
     const { message, warnings } = pigmaToFigMessage(withStyles, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors });
     const change = (message.nodeChanges as Array<Record<string, unknown>>).find((entry) => entry.name === 'Subject')!;
-    // No guid, so nothing is written and nothing is reported: the field is simply
-    // absent, which is honest (there is no value to carry).
-    expect(change.styleIdForFill).toBeUndefined();
-    expect(warnings.filter((line) => line.includes('is not defined by this .fig schema'))).toEqual([]);
+    // NO DANGLING REFERENCE: no definition is written, so no binding is written.
+    expect(change.styleIdForFill, 'a binding to an unwritten definition would dangle').toBeUndefined();
+    // And the drop is REPORTED, naming the node and the style.
+    const reported = warnings.filter((line) => line.includes('style binding'));
+    expect(reported.length, JSON.stringify(warnings)).toBeGreaterThan(0);
+    expect(reported[0]).toContain('Subject');
+    expect(reported[0]).toContain('Brand fill');
   });
 });
 

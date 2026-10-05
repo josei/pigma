@@ -585,20 +585,25 @@ function nodeChange(
   // a style created in Pigma has none, and the write is skipped so the pre-encode
   // check reports it rather than writing something the schema cannot encode.
   if (node.styles) {
-    const styleGuid = (id: string | undefined): Guid | null => {
-      if (!id) return null;
+    // A style binding is a REFERENCE to a style definition. We write no style
+    // definitions at all (`styles` is in the omit list below), so writing a
+    // binding would produce a file whose reference DANGLES — and a dangling
+    // reference is worse than a loud drop: Figma either drops the binding or
+    // errors, and nothing in our output says so.
+    //
+    // So: NO DEFINITION, NO BINDING. Every dropped binding is reported here,
+    // naming the node and the style, so the loss is documented rather than
+    // silent. The wire fields (`styleIdForFill`/`styleIdForStrokeFill`/
+    // `styleIdForText`/`styleIdForEffect`/`styleIdForGrid`) are ready for the day
+    // a style DEFINITION can be written — see the STYLE message work.
+    for (const [property, id] of Object.entries(node.styles)) {
+      if (!id) continue;
       const definition = ctx.file.styles?.[id];
-      return definition?.guid ? guidFor(definition.guid, ctx.sessionID) : null;
-    };
-    const fill = styleGuid(node.styles.fill);
-    if (fill) change.styleIdForFill = { guid: fill };
-    // The wire also has `styleIdForStrokeFill` and `styleIdForGrid`; the model's
-    // NodeStyleBinding has only fill/text/effect, so those two have no source
-    // field — a MODEL GAP, reported rather than invented.
-    const text = styleGuid(node.styles.text);
-    if (text) change.styleIdForText = { guid: text };
-    const effect = styleGuid(node.styles.effect);
-    if (effect) change.styleIdForEffect = { guid: effect };
+      ctx.warnings.push(
+        `style binding on "${node.name}" (${property} -> ${definition?.name ?? id}) was dropped: ` +
+          'no style definition is written to the file, so a binding would dangle',
+      );
+    }
   }
   if ('boundVariables' in node && node.boundVariables && Object.keys(node.boundVariables).length > 0) {
     change.variableBindings = toNativeBindings(node.boundVariables as Record<string, string>);

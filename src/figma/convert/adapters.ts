@@ -17,6 +17,8 @@ import type {
   Constraints,
   Effect,
   Paint,
+  StyleDefinition,
+  StyleType,
   PrototypeAction,
   PrototypeInteraction,
   RGBA,
@@ -826,7 +828,45 @@ function sortedNativeChildren(doc: FigDocument, parentId: string): FigNode[] {
 }
 
 /** Normalize a decoded native document, rooted at its DOCUMENT node. */
-export function adaptNativeTree(doc: FigDocument, report: ReportBuilder): NormalizedNode[] {
+/**
+ * A style entry's payload IS the normal node fields: `fillPaints` for a FILL
+ * style, `layoutGrids` for a GRID style, `effects` for an EFFECT style. The model
+ * carries paints/text/effects; a GRID style's `layoutGrids` has no model field, so
+ * it is reported rather than dropped in silence.
+ */
+function nativeStyleDefinition(node: FigNode, path: string, report: ReportBuilder): StyleDefinition | null {
+  const raw = node as Record<string, unknown>;
+  const type = typeof raw.styleType === 'string' ? (raw.styleType as StyleType) : null;
+  if (!type) return null;
+  const id = figNodeId(node);
+  const name = typeof raw.name === 'string' ? raw.name : (id ?? 'Style');
+  const definition: StyleDefinition = {
+    key: id ?? name,
+    name,
+    type,
+    guid: id ?? undefined,
+  };
+  const fills = raw.fillPaints;
+  if (Array.isArray(fills) && fills.length > 0) definition.paints = fills as Paint[];
+  const effects = raw.effects;
+  if (Array.isArray(effects) && effects.length > 0) definition.effects = effects as Effect[];
+  const text = raw.textStyle ?? raw.style;
+  if (text && typeof text === 'object') definition.text = text as TextStyle;
+  if (Array.isArray(raw.layoutGrids) && raw.layoutGrids.length > 0) {
+    report.addUnsupported({
+      nodeId: id ?? name,
+      path,
+      feature: 'style:layoutGrids',
+      detail: 'a GRID style carries layoutGrids, which the model style table has no field for',
+    });
+  }
+  return definition;
+}
+
+export function adaptNativeTree(
+  doc: FigDocument,
+  report: ReportBuilder,
+): { roots: NormalizedNode[]; styles: Record<string, StyleDefinition> } {
   const root = doc.nodes.find((node) => node.type === 'DOCUMENT' && node.phase !== 'REMOVED');
   if (!root) {
     throw new FigmaImportError('INVALID_DOCUMENT', 'Native document has no DOCUMENT root node');
@@ -839,6 +879,13 @@ export function adaptNativeTree(doc: FigDocument, report: ReportBuilder): Normal
   const byId = new Map<string, NormalizedNode>();
   const stack: Array<{ node: FigNode; path: string }> = [{ node: root, path: 'document' }];
   let removed = 0;
+  // THE ONE STYLE FILTER. A style on the wire is a NODE ENTRY with `styleType` set
+  // (FILL entries are ROUNDED_RECTANGLE swatches, GRID entries are FRAMEs, and
+  // they live on the hidden "Internal Only Canvas"). Recognising them HERE means a
+  // style never enters the tree at all: no layers panel, no hit testing, no
+  // z-order, no MCP enumeration, no export — one filter at the boundary instead of
+  // six places downstream.
+  const styles: Record<string, StyleDefinition> = {};
   while (stack.length > 0) {
     const frame = stack.pop();
     if (!frame) break;
@@ -847,6 +894,11 @@ export function adaptNativeTree(doc: FigDocument, report: ReportBuilder): Normal
     if (!id || byId.has(id)) continue;
     if (node.phase === 'REMOVED') {
       removed += 1;
+      continue;
+    }
+    if (typeof node.styleType === 'string' && node.styleType !== 'NONE') {
+      const style = nativeStyleDefinition(node, path, report);
+      if (style) styles[id] = style;
       continue;
     }
     byId.set(id, adaptNativeNode(doc, node, path, report));
@@ -868,7 +920,7 @@ export function adaptNativeTree(doc: FigDocument, report: ReportBuilder): Normal
   }
 
   const normalizedRoot = byId.get(rootId);
-  return normalizedRoot ? [normalizedRoot] : [];
+  return { roots: normalizedRoot ? [normalizedRoot] : [], styles };
 }
 
 export type { BaseNode };
