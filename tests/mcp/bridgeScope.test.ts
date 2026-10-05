@@ -17,10 +17,16 @@ interface Fake {
 }
 
 /** Drive the relay's request handler with a bare request object. */
-function probe(handle: (req: IncomingMessage, res: ServerResponse) => boolean, url: string, host: string): Fake & { claimed: boolean } {
+function probe(
+  handle: (req: IncomingMessage, res: ServerResponse) => boolean,
+  url: string,
+  host: string,
+  origin?: string,
+): Fake & { claimed: boolean } {
   const result: Fake = { status: null, body: '' };
   // The SSE route registers a close listener; a bare object needs the stub.
-  const request = { url, method: 'GET', headers: { host }, on: () => request } as unknown as IncomingMessage;
+  const headers: Record<string, string> = { host, ...(origin ? { origin } : {}) };
+  const request = { url, method: 'GET', headers, on: () => request } as unknown as IncomingMessage;
   const response = {
     writeHead(status: number) {
       result.status = status;
@@ -42,6 +48,20 @@ function probe(handle: (req: IncomingMessage, res: ServerResponse) => boolean, u
 }
 
 describe('the bridge scopes its host/origin check to /bridge', () => {
+  it('defaults to loopback origins when no allowlist is given', async () => {
+    // The DEFAULT, with no --public-url: a foreign origin must not be accepted just
+    // because the option exists.
+    const relay = await startRelayServer({ token: 'default-origins' });
+    try {
+      const foreign = probe(relay.handle, '/bridge/result', '127.0.0.1:8788', 'https://evil.example');
+      expect(foreign.status, 'a foreign origin was accepted by default').toBe(403);
+      const publicHost = probe(relay.handle, '/bridge/events', 'knives.trycloudflare.com');
+      expect(publicHost.status, 'a public host was accepted by default').toBe(403);
+    } finally {
+      await relay.close();
+    }
+  });
+
   it('falls through for the app root on a public Host, and still refuses its own path', async () => {
     const relay = await startRelayServer({ token: 'scope-token' });
     try {
@@ -56,6 +76,12 @@ describe('the bridge scopes its host/origin check to /bridge', () => {
       expect(bridge.claimed).toBe(true);
       expect(bridge.status).toBe(403);
       expect(bridge.body).toContain('host/origin not allowed');
+
+      // A foreign ORIGIN on the bridge's own path: still refused, so the origin
+      // gate is not loosened — only its SCOPE is parameterised.
+      const foreign = probe(relay.handle, '/bridge/result', '127.0.0.1:8788', 'https://evil.example');
+      expect(foreign.claimed).toBe(true);
+      expect(foreign.status).toBe(403);
 
       // Loopback on the bridge's own path: accepted, so the editor is unaffected.
       const loopback = probe(relay.handle, '/bridge/events?token=scope-token&client=p&cid=p1', '127.0.0.1:8788');
