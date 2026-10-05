@@ -96,7 +96,7 @@ defect**, and has not reproduced since.
 
 Current state: **285 browser tests passing / 0 failing**, measured twice
 back-to-back (exit 0 both runs) with **0 orphan processes**. `npx vitest run` =
-1069 passing across 117 files.
+1072 passing across 118 files.
 
 ### Round 12 - what is and is not covered
 
@@ -544,3 +544,13 @@ passing count. Example: `b16-mcp-bridge`'s *B16c* (a wrong token rejected with a
 error) flaked once during a 2026-10-05 pass - **282 passed + 1 flaky** - and the next run
 passed **285 / 0 flaky**. A count that moved because another track added specs is
 attributed the same way.
+
+## A transient failure is reported the same way
+
+During the 2026-10-05 round-132 pass a **single unit failure** appeared in the *before*
+measurement (`1 failed | 1068 passed`) while the tree was being edited - the same pass
+gained a test file and three tests. **It did not reproduce: two subsequent full runs were
+clean at 118 files / 1072 passing.** It is recorded rather than dropped, and it is
+consistent with the documented concurrent-writer condition: a source file written **while
+vite transforms it** fails to collect. The failing test's name was not captured by the
+pass script, so this entry states what was measured and not more.
