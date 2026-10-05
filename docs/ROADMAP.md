@@ -35,7 +35,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 | M10 | Layout systems — auto layout, wrap, sizing, constraints | **Shipped** | Row/Column: `b13-autolayout`, `b23-round9` (wrap packs lines, line gap, counter align), `b22-round8` (min/max + persistence), `b25-round11` (constraint icons, no overflow). **Grid auto layout — shipped for a SUBSET**: `LayoutMode` gains `GRID`, with Figma's own field names (`gridColumns`/`gridRows`/`GridTrackSize`, per-child `gridColumnAnchorIndex`/`gridColumnSpan`/...), FIXED tracks taking their pixels and the remainder shared by FLEX weights, row-major placement that skips manually anchored cells, honoured spans and a bounded scan; it is reached through `reflowTree`, the same choke point as the row/column flows, so every write path reflows a grid. Evidence: unit `src/model/gridLayout.test.ts`, browser `b57-grid-autolayout` (a 300-wide frame places three children at x 16 / 156 / 16 with the third wrapping to row 2; a column switched to FIXED 1px reflows to widths 1 / 255 / 1; resizing the frame resizes the fractional track). **Gaps, named: NOT full grid parity.** `gridRowSizing` is not implemented (the row count is derived); implicit tracks repeat the **last** declared track; **negative anchors** (Figma's -1) are unsupported; there is **no dense packing**; the track list **cannot be reordered** in the UI. Source: https://help.figma.com/hc/en-us/articles/31289469907863-Use-the-grid-auto-layout-flow |
 | M11 | Components & design systems | **Shipped** | Components, instances and override isolation: `b12-components`. **Component slots / instance swap - shipped for a SUBSET**: `NodeOverride.children` is the slot content and `materializeInstance` **merges**, so a component edit re-materialises the subtree **without wiping what the instance put in the slot**; `ComponentPropertyType` gains `'SLOT'`; the importer accepts Figma's `SLOT` property instead of reporting it unsupported; `resolvePropertyReferences` now honours `INSTANCE_SWAP`, and the validator keeps `componentPropertyReferences` / `componentProperties` across a load. **Gaps, named - NOT full slot parity:** `preferredValues` exists but the INSTANCE_SWAP picker still offers **every** component rather than the property's preferred set; there is **no drag-to-rearrange** and **no panel slot row**; per-slot defaults beyond the component's own children, and **nested slots**, are not modelled. Sources, by name: the Figma Help Center guide on **component slots**, and the Plugin API's **`ComponentPropertyType` / `addComponentProperty` with `'SLOT'`** | Variant sets: `b12` (two components combine into a set). Styles, variable collections and binding: `b20-vector-styles-variables`. Library publish and instance insertion: `b31-libraries` (`B31a` publish status, `B31b` an `INSTANCE` node appears, `B31c` master edit + republish). Unit: `library.test.ts`, `instances.test.ts` |
 | M12 | Prototyping — interactions, flows, overlays, presentation | **Shipped** | Start frame + hotspot: `b14-presentation`. Triggers incl. ON_HOVER, flows, overlay stacking: `b21-prototype-inspect`. Frame **scrolling** in presentation and **smart-animate interpolation** (35 intermediate samples between the two endpoints, read from the animated layer's computed CSS transform): `b33-animate-scroll`. Unit: `animate.test.ts`, `overlay.test.ts`, `prototype.test.ts` |
-| M13 | Collaboration — presence, follow, conflict, E2E rooms | **Shipped** (local relay) | Presence, cursors, follow: `b28-rooms` 4/4 — two contexts join the same room with different nicknames, the remote cursor is a `<g>` carrying an arrow path and a `<text>` label with the peer nickname, remote edits reach the peer view, follow changes the viewBox and Esc stops it. Conflict resolution: `b32-conflict` — edits to different nodes both survive, edits to the same node converge to one value on both sides. Share links: `b35-share-link` 4/4. Unit: `merge.test.ts`, `presence.test.ts`, `e2e.test.ts`, `share.test.ts`. **Caveat: every spec here runs against a LOCAL relay started by the fixture; the hosted relay is not exercised - BECAUSE THE HOSTNAME DOES NOT EXIST** (`getpigma.com` is NXDOMAIN, measured 2026-10-05), **not because of authentication and not because QA did not try** (see Known limitations). |
+| M13 | Collaboration — presence, follow, conflict, E2E rooms | **Shipped** (local relay) | Presence, cursors, follow: `b28-rooms` 4/4 — two contexts join the same room with different nicknames, the remote cursor is a `<g>` carrying an arrow path and a `<text>` label with the peer nickname, remote edits reach the peer view, follow changes the viewBox and Esc stops it. Conflict resolution: `b32-conflict` — edits to different nodes both survive, edits to the same node converge to one value on both sides. Share links: `b35-share-link` 4/4. Unit: `merge.test.ts`, `presence.test.ts`, `e2e.test.ts`, `share.test.ts`. **Caveat: every spec here runs against a LOCAL relay started by the fixture. The hosted PATH is now VALIDATED over a public origin** (a Cloudflare quick tunnel: 35 tools over `tools/list`, a non-vendor identity, the app root, `/config.json` and the bridge refusal - see Known limitations), **while `getpigma.com` itself remains NXDOMAIN** (measured 2026-10-05) - the hostname does not exist, and that fact does not change. |
 | M14 | Developer handoff — inspect, redlines, codegen | **Shipped** | `b21-prototype-inspect` (Inspect tab renders measurements + CSS and React code; the Show CSS/React controls are clicked, not just present) |
 | M15 | Extensibility — in-app plugins | **Shipped** | `b24-plugins-theme` (run a built-in; the document changes in exactly one history entry). Unit-only: `plugin.test.ts`, `run.test.ts`, `engine.test.ts` |
 | M16 | Export — SVG, PNG, PDF, copy, selection scope | **Shipped** | `b8-interchange`, `b19-features` (PNG 1x/2x/3x really scale; PDF magic bytes), `b21-prototype-inspect` (Copy as SVG/CSS), `b23-round9` (Export selection as PNG/SVG, Copy as PNG) |
@@ -107,11 +107,16 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 - **Layer EFFECTS are not part of the mask alpha.** What a mask masks by is its
   fills and strokes — a shadow or blur on the mask layer does not contribute to
   its alpha, so it does not widen or soften the masked region.
-- **There is no right-click context menu anywhere in the app**, so "Use as mask"
-  is reachable only from the layer-row action and the Cmd/Ctrl+Alt+M shortcut.
+- **Right-click context menu - BEING CLOSED this round.** The app has had **no
+  right-click context menu anywhere**, so "Use as mask" was reachable only from the
+  layer-row action and the Cmd/Ctrl+Alt+M shortcut. It is being built **against
+  Figma's DOCUMENTED menu shape rather than invented**. **Nothing is claimed done**:
+  room is left for what it finds, **including any Figma menu items it reports as
+  unbackable** (a documented item with no way to confirm it is not a licence to
+  invent one).
 - **A mask has no visual marker of its own**: there is no mask badge beside the
   layer name and no dashed mask outline on the canvas, so a mask is identified by
-  its effect rather than by an indicator.
+  its effect rather than by an indicator. **A SEPARATE gap from the context menu above, and it stays OPEN** unless the editor says otherwise.
 - **Hosted MCP runs through the relay.** Decision (2026-10-03, reversing the
   earlier one): getpigma.com is **intended** to offer a fully working MCP endpoint
   served by the relay, so Claude/ChatGPT can drive Pigma with no download. **That is
@@ -122,8 +127,35 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
   same machine, so it is not a sandbox DNS block. `src/config/endpoints.ts` still
   points the panel's hosted state at `https://getpigma.com/mcp` and
   `wss://getpigma.com/relay`, so **the hosted state offers an endpoint that cannot
-  resolve today**. The hosted relay is therefore **unexercised because the hostname
-  does not exist — not because of auth, and not because QA did not try.** The server
+  resolve today**. **`getpigma.com` still returns NXDOMAIN and THAT DOES NOT CHANGE.**
+
+  **But the hosted path is no longer merely unexercised — it is VALIDATED, over a
+  real public origin, and THREE defects came out of exposing it.** The shape is the
+  lesson: **each defect HID the next**, and none was visible until the deployment was
+  actually exposed.
+
+  | # | Defect | Fixed by |
+  | --- | --- | --- |
+  | 1 | the MCP **host allowlist was loopback-only** and nothing passed one, so a public deployment refused **every** MCP request - **including the URL it advertised in `/config.json`** (observed: `403 'Host "<real host>" is not allowed'`, and `POST /mcp/token` returning an empty body) | `--public-url` / `PIGMA_PUBLIC_URL`: its **host joins the allowlist** beside the loopback defaults |
+  | 2 | the advertised URLs were derived from the **BIND** address, so it advertised `http://127.0.0.1:8788/mcp` - **unreachable for every remote harness** | `--public-url`: it normalises to an **origin** and the advertised MCP and relay URLs come from it (the relay upgrading to **`wss://`** for an https origin) |
+  | 3 | the **BRIDGE's** host/origin check ran **before any path check**, so it claimed **every** request and the app root got `403 {"error":"host/origin not allowed"}` instead of the app | **scope first (only `/bridge`), check second** - the check itself **unchanged and still strict**, because the bridge is the editor's private channel and its token is a deployment secret |
+
+  **The result, verified on the tunnel:** app root **200** serving the app HTML;
+  `/config.json` advertising the **public** origin; `POST /mcp/token` minting a
+  **70-character** token; `initialize` succeeding; `tools/list` returning **35 tools
+  from a NON-VENDOR identity**; and `/bridge/events` **still refusing a public Host
+  (403)** while loopback gets **401** (passes the host check, needs the token).
+
+  **Caveat, and it is the one that stops this being read as production:** a
+  **Cloudflare QUICK tunnel is account-less, has NO UPTIME GUARANTEE, and is for
+  VALIDATION, not production.** So the honest statement is that the hosted path is
+  **VALIDATED over a public origin** - **not** that the hosted service is
+  production-ready, and **not** that `getpigma.com` exists.
+
+  **And the mechanism that made defect 1 noticeable:** the **parity work had already
+  established that the MCP endpoint validates `Host` and `Origin`** - which is
+  **WHY** a public host was refused. A defect found by one round's evidence was
+  **explained by another's**. The server
   executes the tools over the bridge, so it necessarily **sees tool calls** — accepted,
   under a hard policy that the relay **logs nothing and stores nothing** of MCP
   traffic (aggregate counters only, never payloads). The desktop app (loopback
