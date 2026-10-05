@@ -55,6 +55,13 @@ export interface RelayHandle {
   url: string;
   token: string;
   session: DocumentSession;
+  /**
+   * The bridge's own request handler, for a deployment that mounts it beside
+   * other surfaces: returns true when it CLAIMED the request (answered it), false
+   * to let the caller's other handlers try. It claims only its own `/bridge`
+   * prefix.
+   */
+  handle(request: IncomingMessage, response: ServerResponse): boolean;
   status(): RelayStatus;
   close(): Promise<void>;
 }
@@ -73,6 +80,9 @@ export interface BridgeHandle {
   close(): Promise<void>;
 }
 
+/** The one place this number is defined; `bin.ts` imports it rather than repeating it. */
+export const DEFAULT_COMMAND_TIMEOUT_MS = 30_000;
+
 export interface RelayOptions {
   port?: number;
   host?: string;
@@ -83,6 +93,24 @@ export interface RelayOptions {
    * hosted site can connect without knowing the operator's secret.
    */
   sessionTokens?: TokenStore;
+  /**
+   * How long one bridge command may take before it is failed.
+   *
+   * THE INTENT IS LIVENESS — the comment on `failPending` says "their editor is
+   * gone or stalled" — but nothing in the protocol can tell "stalled" from "busy":
+   * the editor sends no progress while it runs a command, and the only heartbeat
+   * is server -> client. So this timer is the sole watcher, and at 10 s it killed
+   * healthy work under load (the browser suite's B11d: `setFile` timed out and the
+   * import never completed).
+   *
+   * The work is a whole document import plus a settle, so the budget is raised to
+   * what the harness already uses in practice (the tests pass 60 s). 30 s keeps it
+   * bounded while covering the real work.
+   *
+   * THE PROPER FIX, reported rather than done here: have the editor emit progress
+   * for a command id, and reset THAT command's timer on it. Then liveness and work
+   * duration are genuinely separate.
+   */
   commandTimeoutMs?: number;
   /** Browser origin allowed to connect. Defaults to loopback origins. */
   allowedOrigins?: string[];
@@ -124,7 +152,7 @@ export function createBridge(options: RelayOptions = {}): BridgeHandle {
     if (!sessionTokens || !value) return false;
     return sessionTokens.verify(value).ok;
   };
-  const timeoutMs = options.commandTimeoutMs ?? 10_000;
+  const timeoutMs = options.commandTimeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS;
   const allowedOrigins = options.allowedOrigins ?? DEFAULT_ORIGINS;
 
   const connections = new Set<Connection>();
@@ -231,6 +259,11 @@ export function createBridge(options: RelayOptions = {}): BridgeHandle {
 
   const handleRequest = (request: IncomingMessage, response: ServerResponse): boolean => {
     const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
+    // SCOPE FIRST, THEN CHECK. The bridge answers for ITS OWN PREFIX only; every
+    // other path falls through to the deployment's other handlers. Running the
+    // host/origin check before any path test claimed EVERY request, so a public
+    // deployment's app root got the bridge's 403 instead of the app.
+    if (!url.pathname.startsWith('/bridge')) return false;
     const origin = request.headers.origin ?? null;
     if (!loopbackHost(request.headers.host ?? null) || !originAllowed(origin, allowedOrigins)) {
       response.writeHead(403, { 'content-type': 'application/json' });
@@ -408,6 +441,7 @@ export async function startRelayServer(options: RelayOptions = {}): Promise<Rela
     url: `http://${host}:${port}`,
     token: bridge.token,
     session: bridge.session,
+    handle: bridge.handle,
     status: bridge.status,
     close: async () => {
       await bridge.close();
