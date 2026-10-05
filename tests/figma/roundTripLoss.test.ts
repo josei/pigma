@@ -141,20 +141,20 @@ describe('the export reports fields the schema cannot encode', () => {
     const page = file.document.children[0]!;
     const rect = createRectNode(file.document, 0, 0, 100, 50);
     rect.name = 'Subject';
-    // `overflowDirection` is WRITTEN by the exporter but the schema does not
-    // define it, which is exactly the class this check catches. A field the
-    // exporter never writes is a missing write, not a dropped one, so it cannot
-    // appear here.
+    // This test used to pin `overflowDirection` as a field we wrote and the schema
+    // did not define — the last kind-1 divergence. It is FIXED: the exporter now
+    // writes `scrollDirection`, the wire's real field, so NOTHING is unencodable
+    // here and the warning correctly stays silent.
     (rect as { type: string }).type = 'FRAME';
     (rect as { overflowDirection?: string }).overflowDirection = 'VERTICAL_SCROLLING';
     page.children = [rect];
 
-    const { warnings } = pigmaToFigMessage(file, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors });
+    const { message, warnings } = pigmaToFigMessage(file, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors });
     const dropped = warnings.filter((line) => line.includes('is not defined by this .fig schema'));
-    expect(dropped).toHaveLength(1);
-    expect(dropped[0]).toContain('"overflowDirection"');
-    // The change is named.
-    expect(dropped[0]).toMatch(/FRAME "Subject"/);
+    expect(dropped, JSON.stringify(dropped)).toEqual([]);
+    const change = (message.nodeChanges as Array<Record<string, unknown>>).find((entry) => entry.name === 'Subject')!;
+    expect(change.scrollDirection).toBe('VERTICAL');
+    expect(change.overflowDirection).toBeUndefined();
   });
 
   it('does not warn about fields the schema defines', () => {

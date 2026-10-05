@@ -315,6 +315,11 @@ describe('browser relay bridge', () => {
     browsers.push(second);
     await second.waitUntil(() => relay.status().connected);
     await second.waitUntil(() => relay.status().revision === 0);
+    // The revision resets BEFORE the reconnecting editor's file is re-established,
+    // so waiting on the revision alone leaves a window where the session has no
+    // file yet. That window is the flake (seen at rounds 97, 101, 110, 111 and
+    // reproduced here): wait for the file the assertion is about.
+    await second.waitUntil(() => relay.session.getFile() !== null);
 
     const file = relay.session.getFile();
     expect(file).not.toBeNull();

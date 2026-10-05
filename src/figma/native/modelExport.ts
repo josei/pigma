@@ -574,7 +574,14 @@ function nodeChange(
   }
   if ('clipsContent' in node && node.clipsContent !== undefined) change.frameMaskDisabled = !node.clipsContent;
   if ('overflowDirection' in node && node.overflowDirection && node.overflowDirection !== 'NONE') {
-    change.overflowDirection = node.overflowDirection;
+    // `overflowDirection` is the REST name; the WIRE field is `scrollDirection`,
+    // whose enum is NONE/HORIZONTAL/VERTICAL/BOTH — the scrolling directions,
+    // which is what this field carries. (Not `scrollBehavior`, whose enum is
+    // SCROLLS/FIXED_WHEN_CHILD_OF_SCROLLING_FRAME/STICKY_SCROLLS: a different
+    // concept — how a frame scrolls in a prototype, not an axis.) The VALUES also
+    // differ, the same class as BOOLEAN vs BOOL.
+    const direction = WIRE_SCROLL_DIRECTIONS[node.overflowDirection];
+    if (direction) change.scrollDirection = direction;
   }
   if ('booleanOperation' in node && node.booleanOperation) change.booleanOperation = node.booleanOperation;
   // Style bindings, under the schema's PER-PROPERTY names.
@@ -722,6 +729,13 @@ function toNativeInteractions(node: AnyNode, ctx: ExportContext): Array<Record<s
 }
 
 /** Model binding keys → Figma's `boundVariables` property names (alias objects). */
+/** The model's scrolling direction -> the wire's `ScrollDirection` member. */
+const WIRE_SCROLL_DIRECTIONS: Record<string, string> = {
+  HORIZONTAL_SCROLLING: 'HORIZONTAL',
+  VERTICAL_SCROLLING: 'VERTICAL',
+  HORIZONTAL_AND_VERTICAL_SCROLLING: 'BOTH',
+};
+
 /**
  * The model's binding property -> the wire's `VariableField` member. Only the
  * three that EXIST in the enum are mapped; the enum has 55 members and none of
