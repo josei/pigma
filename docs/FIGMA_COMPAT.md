@@ -295,7 +295,11 @@ It is **not a cure-all**, and it should not be read as one. It does not touch:
 - **wire-shape limits** - where the wire genuinely cannot express what we hold;
 - **unknown semantics** - `SCROLL_TO` is withdrawn for meaning, not for form;
 - the **memory-sourced parity numbers** - a shape cannot make an unverified value
-  verified;
+  verified. **Nothing in this document should be read as external parity evidence:
+  `scripts/parity-spec.mjs` compares the app against an UNCITED `DOCUMENTED`
+  constant table and four of its checks are Pigma-at-DPR-2 vs Pigma-at-DPR-1, so
+  no Figma rendering is measured and 11/11 is a contract check on our own
+  constants** (see the M9 row in the ROADMAP);
 - the **environment blockers** - hosted infrastructure, the Tauri **system
   libraries**, and the **unit transient**.
 
