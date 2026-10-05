@@ -44,8 +44,19 @@ struct DesktopInfo {
     local_relay_url: String,
     /// Hosted endpoints need no token; a self-hosted one may.
     mcp_token_required: bool,
-    /// Custom scheme the cached asset bundle is served from, when one is active.
+    /// Custom scheme the cached asset bundle is served from, WHEN ONE IS ACTIVE.
+    /// `None` means the window is on the bundle baked into the binary.
     asset_origin: Option<String>,
+}
+
+/// The origin the cached bundle is served from. The handler below registers it.
+const ASSET_ORIGIN: &str = "pigma://localhost";
+
+/// Where the window should be pointed: the ACTIVE CACHED BUNDLE when one is
+/// installed and verified, otherwise `None` so it stays on the shipped bundle.
+fn asset_entry_url(app: &tauri::AppHandle) -> Option<String> {
+    let (_version, entry, _dir) = active_bundle(app)?;
+    Some(format!("{}/{}", ASSET_ORIGIN, entry.trim_start_matches('/')))
 }
 
 struct Config {
@@ -89,7 +100,7 @@ fn cache_root(app: &tauri::AppHandle, config: &Config) -> Result<PathBuf, String
 }
 
 #[tauri::command]
-fn desktop_info(config: tauri::State<'_, Mutex<Config>>) -> DesktopInfo {
+fn desktop_info(app: tauri::AppHandle, config: tauri::State<'_, Mutex<Config>>) -> DesktopInfo {
     let config = config.lock().expect("config lock");
     DesktopInfo {
         // MCP is not offered on the hosted site, so the desktop build reports the
@@ -100,7 +111,10 @@ fn desktop_info(config: tauri::State<'_, Mutex<Config>>) -> DesktopInfo {
         local_mcp_endpoint: format!("http://127.0.0.1:{}/mcp", config.mcp_port),
         local_relay_url: format!("ws://127.0.0.1:{}/relay", config.relay_port),
         mcp_token_required: false,
-        asset_origin: None,
+        // REAL now, not a constant: the origin when a cached bundle is active, and
+        // `None` when the window is on the shipped bundle. That is what the field's
+        // own doc has always claimed.
+        asset_origin: active_bundle(&app).map(|_| ASSET_ORIGIN.to_string()),
     }
 }
 
@@ -291,11 +305,41 @@ fn main() {
                 let config = config.lock().expect("config lock");
                 (cache_root(&handle, &config).ok(), config.manifest_url.clone())
             };
-            // On launch: a check that never blocks the window. The window starts
-            // on the shipped bundle; an update reloads it onto the new one.
+            // THE WINDOW ACTUALLY LOADS THE CACHE. Before this, the shell fetched,
+            // verified and installed a bundle and then kept loading the one baked
+            // into the binary — the whole point of the feature (ship a fix without
+            // rebuilding the app) never happened, and `assetOrigin` was a constant.
+            //
+            // 1. If a bundle is ALREADY active, start on it.
+            // 2. Otherwise start on the shipped bundle (the window's own default),
+            //    and reload onto the cached one if a check installs one.
+            if let Some(entry) = asset_entry_url(&handle) {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.eval(&format!(
+                        "window.location.replace({})",
+                        serde_json::to_string(&entry).unwrap_or_else(|_| "\"pigma://localhost/\"".to_string()),
+                    ));
+                }
+            }
             if let Some(root) = root {
+                let reload = handle.clone();
                 std::thread::spawn(move || {
+                    let before = assets::resolve_active_bundle(&root).map(|(version, _, _)| version);
                     let _ = check_for_assets(&root, &url);
+                    let after = assets::resolve_active_bundle(&root).map(|(version, _, _)| version);
+                    // Reload ONLY when the check changed what is active, so a no-op
+                    // check never interrupts the user.
+                    if after.is_some() && after != before {
+                        if let Some(entry) = asset_entry_url(&reload) {
+                            if let Some(window) = reload.get_webview_window("main") {
+                                let _ = window.eval(&format!(
+                                    "window.location.replace({})",
+                                    serde_json::to_string(&entry)
+                                        .unwrap_or_else(|_| "\"pigma://localhost/\"".to_string()),
+                                ));
+                            }
+                        }
+                    }
                 });
             }
             Ok(())
