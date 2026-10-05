@@ -54,6 +54,10 @@ the MCP panel can enable itself instead of the operator pasting URLs:
   loopback and server deployments run one implementation. `--mcp-token <secret>`
   makes that value the required token (revocable; never advertised), and
   `POST /mcp/token` still mints per-session tokens.
+  If users reach the deployment through a proxy or a tunnel, pass
+  `--public-url` as well, so the advertised URL and the host allowlist both name
+  the address they actually use — see
+  [Exposing a deployment](#exposing-a-deployment-proxy-or-tunnel).
 - **stdio stays optional.** The same binary still speaks stdio when started
   without `--http`/`--mcp`; `stdioAvailable` reports that.
 
@@ -89,6 +93,81 @@ npm run relay -- --host 0.0.0.0 --port 8080 --hosted --token-ttl 1800000
   `/metrics` are aggregate-only. See
   [`MCP.md`](./MCP.md#hosted-deployment-getpigmacom) for the full policy and the
   tests that assert it.
+
+### Exposing a deployment (proxy or tunnel)
+
+`--public-url <url>` (or `PIGMA_PUBLIC_URL`) is what a deployment behind a proxy
+or a tunnel needs. Without it everything advertised *and* everything allowed is
+derived from the **bind** address — correct on loopback, wrong in public in two
+ways at once: the advertised endpoint is unreachable, and the MCP endpoint's host
+allowlist (loopback by default: `localhost`, `127.0.0.1`, `::1`) refuses the real
+`Host` with a 403 that names the host it refused.
+
+The origin you pass does three things:
+
+| Effect | Detail |
+| --- | --- |
+| Advertised MCP URL | `mcp.url` in `/config.json` becomes `<origin>/mcp` |
+| Advertised relay URL | `<origin>` with the scheme swapped: `http` → `ws`, `https` → `wss` |
+| Host allowlist | the origin's host is **added** to the MCP endpoint's allowlist (the loopback entries stay) |
+
+The value is normalised to an origin — absolute `http`/`https` only, any path,
+query or trailing slash stripped. `--help` lists the flag; the environment
+variable is the same option.
+
+#### Validating a public deployment without owning a domain
+
+A Cloudflare **quick tunnel** is account-less and enough to exercise the flow.
+Start the tunnel first (it prints the hostname it was given):
+
+```sh
+cloudflared tunnel --url http://127.0.0.1:8788
+# → https://<name>.trycloudflare.com
+```
+
+then run the deployment with that hostname:
+
+```sh
+npm run build
+npm run relay -- --host 127.0.0.1 --port 8788 --hosted \
+  --public-url https://<name>.trycloudflare.com
+```
+
+What a working deployment answers — this is the checklist:
+
+```sh
+curl https://<name>.trycloudflare.com/                  # 200, the app HTML
+curl https://<name>.trycloudflare.com/config.json       # mcp.url is the PUBLIC origin; relay is wss://
+curl https://<name>.trycloudflare.com/mcp/status        # {"mode":"hosted","state":"hosted","toolCount":35,…}
+curl -X POST https://<name>.trycloudflare.com/mcp/token # 201, a per-session token
+```
+
+**Caveats, honestly.** A quick tunnel is account-less and ephemeral: the hostname
+is random per run, there is no uptime guarantee, and it is for validation rather
+than production — a real deployment wants a stable host behind a proxy you
+control. And because the tunnel terminates on `127.0.0.1`, **every peer looks
+loopback to the server**, so `POST /mcp/token` is open to anyone who knows the
+URL: the mint rule is "loopback peer, or `X-Pigma-Mint`", and a tunnel makes
+everyone the former. Treat a tunnel URL as public and short-lived.
+
+**What `--public-url` does NOT cover (measured 2026-10-05).** It extends the
+advertised URLs and the MCP endpoint's **host** allowlist. Two checks stay
+loopback-scoped, and the app itself hits both when the page is served from the
+public origin:
+
+| Leg | Symptom | Why |
+| --- | --- | --- |
+| The panel's own mint (`POST /mcp/token` from the page) | **403** `Origin "https://<name>.trycloudflare.com" is not allowed` | the MCP endpoint's **origin** allowlist is still `DEFAULT_ORIGINS` (loopback); `server/deployment.ts` passes `allowedHosts` only |
+| The editor connecting the bridge (`/bridge/events`) | **403** `host/origin not allowed` | the bridge's host check (`loopbackHost` in `src/mcp/relay.ts`) is a fixed loopback list with no option |
+
+So over a tunnel today: the app is served, `/config.json` advertises the public
+origin, and a headless client can mint, `initialize` and list all 35 tools — but a
+**browser** on that origin can neither mint a token nor connect the bridge, so a
+document-touching tool call answers *"No editor is connected to the Pigma
+bridge"*. Closing the public browser→bridge loop means extending those two
+allowlists; the bridge already has the session-token path for it
+(`RelayOptions.sessionTokens` — "so an editor on the hosted site can connect
+without knowing the operator's secret").
 
 ### Running a local relay (editor, QA, browser tests)
 
