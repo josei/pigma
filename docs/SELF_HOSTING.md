@@ -127,6 +127,20 @@ cloudflared tunnel --url http://127.0.0.1:8788
 
 then run the deployment with that hostname:
 
+**A quick tunnel gets a NEW hostname every start, and the deployment must advertise the
+address users actually reach it on.** `--public-url` sets **both** the advertised MCP and
+relay URLs **and** the MCP and bridge host allowlists - so a **restarted tunnel without a
+restarted deployment advertises a DEAD host and 403s the LIVE one.**
+
+`scripts/preview-url.sh` makes that mechanical: it **reuses a healthy tunnel or starts
+one**, checks **what the deployment advertises and re-points it when it does not match**,
+and **prints ONE line - the current origin** (everything else goes to the log).
+
+> **A bug it had, and it is the same shape as the flake: the spawned children inherited
+> the caller's stdout, so a script whose entire job is to RETURN a URL HUNG instead of
+> returning** - the caller waited on a URL that was already printed. **Fixed with
+> `setsid` and all three fds redirected.**
+
 ```sh
 npm run build
 npm run relay -- --host 127.0.0.1 --port 8788 --hosted \

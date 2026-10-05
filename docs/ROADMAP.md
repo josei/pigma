@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1069 unit tests / 117 files**, **264 browser tests passing / 0 failing**,
+Last verified: **1069 unit tests / 117 files**, **267 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -354,7 +354,32 @@ is test-scoped). **Fixed with a fixture-scoped timeout**, so the process start h
 its own budget instead of the assertion's, and **verified under deliberate load**
 (b18 run concurrently with a four-worker suite: 2/2 passing).
 
-**2. A COLLECTION failure - SEPARATE, still OPEN, and now ATTEMPTED UNDER LOAD.**
+**2b. THE INTERMITTENT IS NAMED - and it is NOT test logic.** What looked like two
+unknown symptoms is **ONE CAUSE SEEN AT TWO MAGNITUDES.** It was reproduced
+deliberately: **writing a source file WHILE VITE TRANSFORMS IT** produces a
+**Pre-transform error (`Unexpected end of file`)** - **42 to 46 failures at a 1.5 s
+write window, and 64 at 5 seconds**. That matches **Shape 1 exactly**
+(`1 failed | 1067 passed`). **One mechanism:** a **mid-transform write fails FILES TO
+COLLECT**, and the count **scales with the write window and the files' fan-in** -
+which is how Shape 1 and Shape 2 (24 files uncollected, 832 of 1057) are the **SAME
+CAUSE** at different magnitudes.
+
+**Ruled out with 24 clean runs across five conditions:** load, worker count, shuffle,
+cache contention between concurrent instances, memory (min 1284 MB) and fds (max 24).
+
+**THE CAUSE IS CONCURRENT WRITERS: this repo has three agents editing it while suites
+run.**
+
+**The honest implication, which is the point of the record:**
+- it is **NOT fixable by a test change**;
+- `scripts/flake-hunt.sh` now **captures the next sighting**;
+- **A FUTURE READER WHO SEES THAT SUMMARY SHOULD KNOW IT MEANS THE TREE MOVED, NOT
+  THAT THE CODE IS BROKEN.** The state to avoid is a reader hunting a ghost.
+
+**Each sighting above was real - the history stands - but they are not two mysteries:
+that is what they turned out to be.**
+
+**2. A COLLECTION failure - the same cause as 2b, at its larger magnitude.**
 On the pass's first run: `24 test files failed | 89 passed` with only **832 of 1057
 tests collected**. That is a different shape from an assertion failure: it fails to
 **collect**, in the transform phase - it is **not** the same defect as (1).
