@@ -7,7 +7,7 @@ Shipped line below cites its evidence.
 - **Browser specs** — `tests/browser/bN-*.spec.ts` (Chromium, `CI=true npm run test:browser`)
 - **Unit tests** — `npx vitest run`
 
-Last verified: **1068 unit tests / 117 files**, **262 browser tests passing / 0 failing**,
+Last verified: **1068 unit tests / 117 files**, **264 browser tests passing / 0 failing**,
 0 orphan processes.
 
 The repository has a **git baseline** - commit `697d88b`, the verified-green state.
@@ -35,7 +35,7 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
 | M10 | Layout systems — auto layout, wrap, sizing, constraints | **Shipped** | Row/Column: `b13-autolayout`, `b23-round9` (wrap packs lines, line gap, counter align), `b22-round8` (min/max + persistence), `b25-round11` (constraint icons, no overflow). **Grid auto layout — shipped for a SUBSET**: `LayoutMode` gains `GRID`, with Figma's own field names (`gridColumns`/`gridRows`/`GridTrackSize`, per-child `gridColumnAnchorIndex`/`gridColumnSpan`/...), FIXED tracks taking their pixels and the remainder shared by FLEX weights, row-major placement that skips manually anchored cells, honoured spans and a bounded scan; it is reached through `reflowTree`, the same choke point as the row/column flows, so every write path reflows a grid. Evidence: unit `src/model/gridLayout.test.ts`, browser `b57-grid-autolayout` (a 300-wide frame places three children at x 16 / 156 / 16 with the third wrapping to row 2; a column switched to FIXED 1px reflows to widths 1 / 255 / 1; resizing the frame resizes the fractional track). **Gaps, named: NOT full grid parity.** `gridRowSizing` is not implemented (the row count is derived); implicit tracks repeat the **last** declared track; **negative anchors** (Figma's -1) are unsupported; there is **no dense packing**; the track list **cannot be reordered** in the UI. Source: https://help.figma.com/hc/en-us/articles/31289469907863-Use-the-grid-auto-layout-flow |
 | M11 | Components & design systems | **Shipped** | Components, instances and override isolation: `b12-components`. **Component slots / instance swap - shipped for a SUBSET**: `NodeOverride.children` is the slot content and `materializeInstance` **merges**, so a component edit re-materialises the subtree **without wiping what the instance put in the slot**; `ComponentPropertyType` gains `'SLOT'`; the importer accepts Figma's `SLOT` property instead of reporting it unsupported; `resolvePropertyReferences` now honours `INSTANCE_SWAP`, and the validator keeps `componentPropertyReferences` / `componentProperties` across a load. **Gaps, named - NOT full slot parity:** `preferredValues` exists but the INSTANCE_SWAP picker still offers **every** component rather than the property's preferred set; there is **no drag-to-rearrange** and **no panel slot row**; per-slot defaults beyond the component's own children, and **nested slots**, are not modelled. Sources, by name: the Figma Help Center guide on **component slots**, and the Plugin API's **`ComponentPropertyType` / `addComponentProperty` with `'SLOT'`** | Variant sets: `b12` (two components combine into a set). Styles, variable collections and binding: `b20-vector-styles-variables`. Library publish and instance insertion: `b31-libraries` (`B31a` publish status, `B31b` an `INSTANCE` node appears, `B31c` master edit + republish). Unit: `library.test.ts`, `instances.test.ts` |
 | M12 | Prototyping — interactions, flows, overlays, presentation | **Shipped** | Start frame + hotspot: `b14-presentation`. Triggers incl. ON_HOVER, flows, overlay stacking: `b21-prototype-inspect`. Frame **scrolling** in presentation and **smart-animate interpolation** (35 intermediate samples between the two endpoints, read from the animated layer's computed CSS transform): `b33-animate-scroll`. Unit: `animate.test.ts`, `overlay.test.ts`, `prototype.test.ts` |
-| M13 | Collaboration — presence, follow, conflict, E2E rooms | **Shipped** (local relay) | Presence, cursors, follow: `b28-rooms` 4/4 — two contexts join the same room with different nicknames, the remote cursor is a `<g>` carrying an arrow path and a `<text>` label with the peer nickname, remote edits reach the peer view, follow changes the viewBox and Esc stops it. Conflict resolution: `b32-conflict` — edits to different nodes both survive, edits to the same node converge to one value on both sides. Share links: `b35-share-link` 4/4. Unit: `merge.test.ts`, `presence.test.ts`, `e2e.test.ts`, `share.test.ts`. **Caveat: every spec here runs against a LOCAL relay started by the fixture. The hosted path is VALIDATED FOR HEADLESS CLIENTS ONLY** (a quick tunnel: `curl` gets mint + `initialize` + 35 tools) - **a BROWSER passes only 4 of 8 steps, and the hosted LOOP does not work yet** (two allowlists: the MCP ORIGIN list keeps loopback defaults, and the BRIDGE HOST check is hardcoded to loopback - see Known limitations). **`getpigma.com` itself remains NXDOMAIN** (measured 2026-10-05). |
+| M13 | Collaboration — presence, follow, conflict, E2E rooms | **Shipped** (local relay) | Presence, cursors, follow: `b28-rooms` 4/4 — two contexts join the same room with different nicknames, the remote cursor is a `<g>` carrying an arrow path and a `<text>` label with the peer nickname, remote edits reach the peer view, follow changes the viewBox and Esc stops it. Conflict resolution: `b32-conflict` — edits to different nodes both survive, edits to the same node converge to one value on both sides. Share links: `b35-share-link` 4/4. Unit: `merge.test.ts`, `presence.test.ts`, `e2e.test.ts`, `share.test.ts`. **Caveat: every spec here runs against a LOCAL relay started by the fixture. The hosted path is VALIDATED FOR HEADLESS CLIENTS ONLY** (a quick tunnel: `curl` gets mint + `initialize` + 35 tools). **The browser rig improved from 4/8 to 6/8** once the two allowlists were fixed (the panel mints its own token; the editor connects the public bridge) and **the security negatives held 6/6** - but **the remaining blocker is the TUNNEL, which does not stream SSE** (proven against a third-party SSE server), so **the hosted LOOP is not claimed to work** (see Known limitations). **`getpigma.com` itself remains NXDOMAIN** (measured 2026-10-05). |
 | M14 | Developer handoff — inspect, redlines, codegen | **Shipped** | `b21-prototype-inspect` (Inspect tab renders measurements + CSS and React code; the Show CSS/React controls are clicked, not just present) |
 | M15 | Extensibility — in-app plugins | **Shipped** | `b24-plugins-theme` (run a built-in; the document changes in exactly one history entry). Unit-only: `plugin.test.ts`, `run.test.ts`, `engine.test.ts` |
 | M16 | Export — SVG, PNG, PDF, copy, selection scope | **Shipped** | `b8-interchange`, `b19-features` (PNG 1x/2x/3x really scale; PDF magic bytes), `b21-prototype-inspect` (Copy as SVG/CSS), `b23-round9` (Export selection as PNG/SVG, Copy as PNG) |
@@ -132,9 +132,20 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
   screenshots are NOT in this repository** - they live in **`/tmp/pigma-ref`**
   (ephemeral, uncommitted). A context-menu screenshot would need adding **there** (or
   committed as a fixture) to unblock the work.
-- **A mask has no visual marker of its own**: there is no mask badge beside the
-  layer name and no dashed mask outline on the canvas, so a mask is identified by
-  its effect rather than by an indicator. **A SEPARATE gap from the context menu above, and it stays OPEN** unless the editor says otherwise.
+- **The mask INDICATOR - being built this round.** A mask has had no visual marker of
+  its own: no badge beside the layer name and no mask outline on the canvas, so a mask
+  was identified only by its effect. It is being built **against Figma's DOCUMENTED
+  indicator**, and **the negative that matters is that the mask outline must be
+  DISTINGUISHABLE FROM THE SELECTION OUTLINE** - two overlays that say different things
+  must not look alike. **Not claimed done.** (A **SEPARATE** gap from the context menu
+  above.)
+
+  **WHY THIS ONE GOT BUILT AND THE CONTEXT MENU DID NOT - the difference is worth
+  stating: the mask indicator was NOT blocked on a missing source.** Figma's documented
+  indicator was available to build against, so the shape could be **established**
+  rather than invented. The context menu **stopped** because its structure and
+  per-selection cases could not be established from any primary source. **The rule did
+  not block work; a missing source did.**
 - **Hosted MCP runs through the relay.** Decision (2026-10-03, reversing the
   earlier one): getpigma.com is **intended** to offer a fully working MCP endpoint
   served by the relay, so Claude/ChatGPT can drive Pigma with no download. **That is
@@ -147,21 +158,30 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
   `wss://getpigma.com/relay`, so **the hosted state offers an endpoint that cannot
   resolve today**. **`getpigma.com` still returns NXDOMAIN and THAT DOES NOT CHANGE.**
 
-  **But the hosted path is no longer merely unexercised — and the honest statement
-  of what is validated has TWO HALVES.** It is **VALIDATED FOR HEADLESS CLI CLIENTS,
-  NOT FOR A BROWSER, and the hosted LOOP does not work yet.** `curl` gets through -
-  mint, `initialize`, 35 tools - but a **browser against the public origin passes only
-  `4` of `8` steps**, and the two failures are **two allowlists**:
+  **But the hosted path is no longer merely unexercised — and the honest statement of
+  what is validated has TWO HALVES.** It is **VALIDATED FOR HEADLESS CLI CLIENTS, NOT
+  FOR A BROWSER** (a `curl` client gets mint + `initialize` + 35 tools).
 
-  | Failing allowlist | Why |
-  | --- | --- |
-  | the **MCP ORIGIN** allowlist | `server/deployment.ts` passes **`allowedHosts` only**, so the handler keeps **`DEFAULT_ORIGINS`** (loopback). Measured: `POST /mcp/token` is **201 WITHOUT an `Origin` header** and **403 WITH the public one** - which is exactly **why `curl` passed and the panel cannot mint its own token** |
-  | the **BRIDGE HOST** check | **`loopbackHost()` is hardcoded with no option**, so the **editor cannot connect the bridge over a tunnel** |
+  **Two allowlists were the earlier blockers, and both were fixed:** the **MCP ORIGIN**
+  list kept `DEFAULT_ORIGINS` (loopback) while `server/deployment.ts` passed
+  `allowedHosts` only, and the **BRIDGE HOST** check was `loopbackHost()` hardcoded with
+  no option. **Measured after the fix: the identical 8-step browser rig went `4/8` to
+  `6/8`** - the **panel now mints its own session token**, and the **editor connects the
+  public bridge** (`connected=true`).
 
-  **The consequence, observed:** with no editor able to connect, **every
-  document-touching tool answers "No editor is connected to the Pigma bridge"** - so
-  the **hosted loop (public MCP reaching the LIVE DOCUMENT) does not work over a
-  public origin yet.** **Both are being closed this round; neither is claimed fixed.**
+  **And the security negatives HELD 6/6** - a public host with no token is **401**, a
+  wrong token is **401**, a foreign `Origin` is **403**, and `/mcp` with no token is
+  **401**. **Neither gate became a pass-through.**
+
+  **THE REMAINING BLOCKER IS THE TUNNEL, and that is PROVEN - not inferred:**
+  `GET /bridge/events` through a Cloudflare **quick tunnel returns nothing in 8 s**,
+  while the **same request on loopback returns `event: hello` immediately**; and a
+  **controlled experiment with a third-party SSE server carrying NO Pigma code** also
+  returned nothing, even with `x-accel-buffering: no`. So **the tunnel does not stream
+  SSE**, and the relay's own headers are **REFUTED as the cause**.
+
+  **The editor is establishing this round whether the LOOP works on loopback**, which
+  would isolate the tunnel as the ONLY blocker. **The loop is NOT claimed to work.**
 
   **And THREE defects came out of exposing it.** The shape is the
   lesson: **each defect HID the next**, and none was visible until the deployment was
@@ -179,10 +199,12 @@ Legend: **Shipped** verified · **In progress** built but not fully verified ·
   from a NON-VENDOR identity**; and `/bridge/events` **still refusing a public Host
   (403)** while loopback gets **401** (passes the host check, needs the token).
 
-  **Caveat, now LOAD-BEARING and measured: behind a QUICK TUNNEL, EVERY PEER LOOKS
-  LOOPBACK** - so **`POST /mcp/token` is open to anyone who knows the URL** - and a
-  Cloudflare **quick tunnel is account-less, EPHEMERAL, has NO UPTIME GUARANTEE, and
-  is for VALIDATION, not production.** So the honest statement is that the hosted path is
+  **Caveat, LOAD-BEARING and measured: behind a QUICK TUNNEL, EVERY PEER LOOKS
+  LOOPBACK** - so **`POST /mcp/token` is open to anyone who knows the URL**. That is
+  **a property of exposing a loopback service through a tunnel, NOT of the
+  allowlists** - the allowlists are behaving correctly, as the 6/6 negatives show.
+  And a quick tunnel remains **account-less, EPHEMERAL, no uptime guarantee, and for
+  VALIDATION, not production**. So the honest statement is that the hosted path is
   **VALIDATED for HEADLESS CLIENTS over a public origin** - **a browser gets 4 of 8
   steps and the loop does not work yet** - **not** that the hosted service is
   production-ready, and **not** that `getpigma.com` exists.
