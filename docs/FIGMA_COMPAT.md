@@ -98,7 +98,7 @@ the count for the enriched document, not a proof the exporter is clean.**
 
 | Our shape | Figma's shape | Verdict |
 | --- | --- | --- |
-| styles as a **file-level table** | styles travel as their **OWN MESSAGES** (`MessageType` carries `STYLE` / `STYLE_SET`, and `Message` carries `styleSetName` / `styleSetType` / `styleSetContentType`) - **NOT nodes** | **CHANGE IT** - to a **second message on the wire**, not to a node kind. **Not started: the payload has not been opened yet** |
+| styles as a **file-level table** | **Figma stores a style as a NODE ENTRY in `nodeChanges`, distinguished by `styleType`, parented to the Internal Only Canvas** | **CHANGE IT** - model styles as entries on that canvas, with the table as the **in-memory index**. **IMPORT half DONE** (one filter at the import boundary, proven on `open-peeps.fig` and `hellomate.fig` with **zero leaks** into the tree). **EXPORT half IN PROGRESS - not done** |
 | `NodeStyleBinding` keyed by **id** | keyed by **GUID** | **CHANGE IT** - queued |
 | `StyleType` with **3** members | the wire has **7** | **CHANGE IT** - queued |
 | `boundVariables` as `Record<field, id>` | the wire's **per-field `VariableData`** | **CHANGE IT** - queued |
@@ -108,27 +108,56 @@ the count for the enriched document, not a proof the exporter is clean.**
 **One row is in progress, three are queued, and two are deliberate keeps.** None is
 claimed done until a round trip proves it.
 
-### The styles row was WRONG - and the reason is the lesson
+### The styles row was WRONG TWICE - and OBSERVATION settled it
 
-This table first said styles should become **NODES**. **That was wrong**, and it was
-found by **opening the schema**: `NodeType` has **61 members and not one is a
-STYLE**. A style **node cannot be written** - a file containing one is a file Figma
-cannot read. Styles travel as their **own messages**.
+This table has now been wrong **twice** about the same row, and the direction of the
+corrections is the point.
 
-**The reason the row was wrong is the point.** We inferred *"Figma's styles are
-nodes"* from **`sharedStyleMasterData` being a node field** - and it **is** one - but
-the node **KIND** does not exist, so a node cannot be a style. **A field's presence
-is not evidence of the shape that carries it.**
+- **First:** "styles are NODES" - inferred from `sharedStyleMasterData` being a node
+  field.
+- **Round 107:** "styles are their **own messages**, NOT nodes" - inferred from the
+  schema: `MessageType` carries `STYLE`/`STYLE_SET`, and `NodeType` has **no** style
+  member.
+- **Round 109: both were wrong, and the payload settled it.** Real `.fig` files were
+  obtained and **observed**: `open-peeps.fig` (3712 nodes) contains **four** style
+  definitions, and **each one IS an entry in the message's `nodeChanges` array**:
 
-That is the **third partial-read conclusion of this run** (round 98, round 102, and
-this one), and **each time opening the source killed it** - which is the strongest
-argument for the rule this section states.
+```
+{"guid":{...},"phase":"CREATED","parentIndex":{"guid":{...}},
+ "type":"ROUNDED_RECTANGLE","name":"Skin/05","styleType":"FILL", ...
+ "fillPaints":[{"type":"SOLID",...}], "strokePaints":[...], "fillGeometry":[...]}
+```
 
-**And the consequence: the exclusions I called the real work DO NOT EXIST.** With no
-style nodes there is nothing to filter in `walk`, the layers panel, hit testing,
-marquee, `settleDocument`'s passes, the MCP enumeration, or export. The change is a
-**second message on the wire** - contained in the exporter and the parser - which is
-**smaller** than the node change the table promised.
+**A style IS a node entry.** `styleType` is the distinguishing field; `type` is a
+**normal node kind** - `FILL` -> `ROUNDED_RECTANGLE` (the swatch), `GRID` -> `FRAME`
+(confirmed in `hellomate.fig`, whose single style is `{name: Grid, type: FRAME,
+styleType: GRID, isPublishable: true, layoutGrids}`). The payload is the **normal
+node fields**: `fillPaints` for `FILL`, `layoutGrids` for `GRID`. They live on the
+canvas named **"Internal Only Canvas"** (decoded through each entry's
+`parentIndex.guid`; the canvases are *Introduction | Symbols | Internal Only
+Canvas*). `sharedStyleMasterData` / `styleID` appeared on **none** of them - those
+belong to library/published styles, so they are **optional**.
+
+**THE LESSON, and it is sharper than the last one: a field's presence is not
+evidence of the shape - AND AN ENUM'S ABSENCE IS NOT EVIDENCE EITHER.** `NodeType`
+having no style member did **not** mean styles are not nodes; it meant the type is a
+**normal node kind** and `styleType` carries the distinction. **Two schema-based
+conclusions in a row were wrong, and observation settled it in one step.**
+
+**So the rule now reads: when the shape is UNOBSERVABLE, GET A FILE.**
+
+### The style cost estimate was wrong in the opposite direction
+
+**The import filter is ONE place.** `adaptNativeTree` diverts **any** entry with
+`styleType` set into the table and continues, so a style is **never** a tree node.
+That means the **"six tree-consumer exclusions"** earlier rounds enumerated - `walk`,
+the layers panel, hit testing, marquee, `settleDocument`'s passes, the MCP
+enumeration, export - **DO NOT EXIST as work**. The estimate was mine and it was
+wrong the **other** way: the real change is **smaller**, not larger.
+
+**And a parser finding from the same probe:** `parseFigBinary` reads **only
+`rawChunks[1]`**, so a file carrying a **second message** would be **silently
+truncated**. That is being guarded this round.
 
 ### What this rule does NOT fix
 
