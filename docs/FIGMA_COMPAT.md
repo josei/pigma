@@ -296,10 +296,13 @@ It is **not a cure-all**, and it should not be read as one. It does not touch:
 - **unknown semantics** - `SCROLL_TO` is withdrawn for meaning, not for form;
 - the **memory-sourced parity numbers** - a shape cannot make an unverified value
   verified. **Nothing in this document should be read as external parity evidence:
-  `scripts/parity-spec.mjs` compares the app against an UNCITED `DOCUMENTED`
-  constant table and four of its checks are Pigma-at-DPR-2 vs Pigma-at-DPR-1, so
-  no Figma rendering is measured and 11/11 is a contract check on our own
-  constants** (see the M9 row in the ROADMAP);
+  `scripts/parity-spec.mjs` now splits its evidence and prints **INTERNAL 11 passed
+  / 11** against **EXTERNAL 0 passed / 1** (1 structure, 0 pixel), and
+  **VISUAL PARITY: UNSUPPORTED** - exiting **non-zero by design**. The INTERNAL rows
+  are contracts on **our own** constants (four of them are Pigma-at-DPR-2 vs
+  Pigma-at-DPR-1, so **no Figma rendering is measured**); the one EXTERNAL row is a
+  cited outside source and **currently fails**.** See the Open QA parity entry and
+  the M9 row in the ROADMAP;
 - the **environment blockers** - hosted infrastructure, the Tauri **system
   libraries**, and the **unit transient**.
 

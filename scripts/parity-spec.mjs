@@ -72,6 +72,35 @@ const REQUIRED_PROVENANCE = [
 ];
 
 /**
+ * ATTEMPTED — Figma's own shipped CSS, as a numeric external reference
+ * (2026-10-05). Recorded so the next attempt starts from a fact, not a hope.
+ *
+ * Fetched unauthenticated, gzip-decoded, 15 files / 10.6 MB:
+ *   https://www.figma.com/login     200 → auth-0e31c81d2228de23.min.css (700 KB decoded)
+ *   https://www.figma.com/community 200 → community-a415beea3c92941d.min.css (1.07 MB decoded)
+ *   https://www.figma.com/community/file/1380235722331273046/simple-design-system 200 (HTML only)
+ *
+ * Searched all of it for: e5e5e5 · 56px · 240px · 24px · 14px · railWidth ·
+ * panelWidth · toolbarRadius · --figma-color* · navRail · rightPanel · canvasBg ·
+ * toolbarHeight · canvasColor · left_panel · properties-panel.
+ *
+ * RESULT — no editor-shell geometry. The 56/240/24/14 px hits are generic CSS
+ * (height, font-size, line-height, padding, margin; the two stylesheets' only
+ * width values are 16/24/32/8/40/48 px), and the promising identifiers are not
+ * geometry at all: `toolbarHeightAndMargin` is a context-menu metric,
+ * `canvasColorProfile` is a colour-profile enum, and `properties-panel` /
+ * `left_panel` are i18n keys and route ids.
+ *
+ * ONE value match: `#e5e5e5` as a `background` in the community stylesheet — the
+ * community preview container, a DIFFERENT surface from the editor canvas, so it
+ * is not editor-shell evidence and is deliberately NOT admitted as a reference.
+ *
+ * The editor's own chunks are gated: `/files` → 302 `/login`; `/embed` → HTTP 202
+ * (AWS WAF challenge, empty body); Playwright's Chromium → 403 / WAF challenge;
+ * and no unauthenticated bundle references an editor CSS chunk or chunk manifest.
+ */
+
+/**
  * EXTERNAL references — values taken from outside this repository.
  *
  * `kind` says what the reference can support:
