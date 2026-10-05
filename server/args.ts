@@ -11,6 +11,16 @@ export interface RelayOptions {
   /** TCP port; `0` asks the OS for a free one (useful for tests). */
   port: number;
   host: string;
+  /**
+   * The address users actually reach this deployment on, when it is behind a
+   * proxy or tunnel (`https://pigma.example`). Without it the advertised URLs
+   * are derived from the BIND address — correct on loopback, useless in public:
+   * a tunnelled deployment would advertise `http://127.0.0.1:8080/mcp` and then
+   * reject the real Host, because the MCP endpoint's allowlist is loopback-only.
+   * Setting it fixes both: the advertised MCP/relay URLs use this origin, and
+   * its host is added to the allowlist.
+   */
+  publicUrl?: string;
   /** Optional room token required on the WebSocket URL. */
   token?: string;
   /** Snapshot directory; omitted keeps snapshots in memory only. */
@@ -46,6 +56,11 @@ export const RELAY_USAGE = `Usage: vite-node server/index.ts [options]
 Options:
   -p, --port <n>          listen port (default 8080; 0 picks a free port)
       --host <addr>       bind address (default 0.0.0.0; use 127.0.0.1 locally)
+      --public-url <url>  the address users reach this deployment on when it is
+                          behind a proxy or tunnel (e.g. https://pigma.example).
+                          Advertised MCP/relay URLs use it, and its host is
+                          allowed; without it both are derived from the bind
+                          address, which is loopback-only.
       --token <secret>    require this room token on the WebSocket URL
       --data-dir <path>   one snapshot file per room (default ./data)
       --no-data           keep snapshots in memory only
@@ -116,6 +131,7 @@ export function parseRelayArgs(argv: string[], env: Env = {}): RelayOptions {
   const options: RelayOptions = {
     port: port(env.PORT) ?? 8080,
     host: env.HOST?.trim() || '0.0.0.0',
+    ...(env.PIGMA_PUBLIC_URL?.trim() ? { publicUrl: env.PIGMA_PUBLIC_URL.trim() } : {}),
     ...(env.PIGMA_ROOM_TOKEN?.trim() ? { token: env.PIGMA_ROOM_TOKEN.trim() } : {}),
     dataDir: env.DATA_DIR ?? 'data',
     staticDir: env.STATIC_DIR ?? 'dist',
@@ -145,6 +161,9 @@ export function parseRelayArgs(argv: string[], env: Env = {}): RelayOptions {
       }
       case '--host':
         options.host = value()?.trim() || options.host;
+        break;
+      case '--public-url':
+        options.publicUrl = value()?.trim() || options.publicUrl;
         break;
       case '--token':
         options.token = value();
