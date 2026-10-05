@@ -307,19 +307,32 @@ satisfies. Both now require a **toast** - the app's own error surface.
 ## Parity evidence
 
 `scripts/parity-spec.mjs` measures the running app at a known scale (viewport 1440x900,
-`deviceScaleFactor` 1, plus a 2x pass) and diffs the measurements against Figma's
-documented UI3 values, with tolerances. Latest result: **11/11 pass, every
-geometry delta 0**.
+`deviceScaleFactor` 1, plus a 2x pass). It separates the two kinds of check it runs
+and counts them separately, because they mean different things:
 
-| Property | Measured | Documented | Delta | Tol |
-| --- | --- | --- | --- | --- |
-| nav rail width | 56px | 56px | 0 | 1px |
-| left / right panel width | 240px / 240px | 240px | 0 | 1px |
-| control height | 24px | 24px | 0 | 1px |
-| toolbar radius | 14px | 14px | 0 | 1px |
-| canvas background | `[229,229,229]` | `#e5e5e5` | 0 | 4 rgb |
-| toolbar background | `[255,255,255]` | white | 0 | 4 rgb |
-| rail/panel/control @2x device scale | same px | same px | 0 | 0.5px |
+- **INTERNAL** — contracts on **Pigma's own values** (`INTERNAL_VALUES` in the
+  script). A pass says the shell still has the geometry we chose. It is **not**
+  evidence about Figma.
+- **EXTERNAL** — comparisons against a reference outside this repo, each carrying a
+  full provenance record (source URL, capture date, access role, node type, theme,
+  viewport, zoom, DPR). A reference missing any field is refused, not used.
+
+Latest result: **INTERNAL 11/11 pass, every delta 0**; **EXTERNAL 0/1** — one cited
+structural reference (Figma documents **two** properties-panel tabs with edit
+access; Pigma renders **three**), delta 1; **0 pixel references**. The 1:1
+visual-parity claim is therefore **UNSUPPORTED**: nothing outside this repo has been
+measured at the pixel level.
+
+| Property | Scope | Measured | Expected | Delta | Tol |
+| --- | --- | --- | --- | --- | --- |
+| nav rail width | INTERNAL | 56px | 56px | 0 | 1px |
+| left / right panel width | INTERNAL | 240px / 240px | 240px | 0 | 1px |
+| control height | INTERNAL | 24px | 24px | 0 | 1px |
+| toolbar radius | INTERNAL | 14px | 14px | 0 | 1px |
+| canvas background | INTERNAL | `[229,229,229]` | `#e5e5e5` | 0 | 4 rgb |
+| toolbar background | INTERNAL | `[255,255,255]` | white | 0 | 4 rgb |
+| rail/panel/control @2x device scale | INTERNAL | same px | same px | 0 | 0.5px |
+| properties panel tab count (edit access) | EXTERNAL:structure | 3 | 2 (cited) | 1 | 0 |
 
 Geometry comes from DOM rects, colours from screenshot PIXELS (not computed
 style), and the 2x pass proves the values are scale independent.
@@ -520,5 +533,6 @@ by `vite preview`), `b38-figma-lossiness` (exercises the real export path and
 pins two documented losses), `b39-pixel-diff` (screenshot-vs-committed-baseline
 with a stated tolerance, plus a self-check that the diff is not blind).
 
-The pixel diff is a REGRESSION harness; Figma parity is still
-`scripts/parity-spec.mjs` against Figma's documented numbers.
+The pixel diff is a REGRESSION harness; the parity claim rests on
+`scripts/parity-spec.mjs`, whose EXTERNAL section currently measures one cited
+structural fact and **no pixels** — see "Parity evidence" above.
