@@ -169,7 +169,7 @@ function paintShape(
   if (paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL') {
     const shading = shadingName(builder, paint, node, index, kind);
     if (!shading) {
-      const [r, g, b] = midStop(paint as never);
+      const [r, g, b] = midStop(paint);
       builder.content.push(`${num(r)} ${num(g)} ${num(b)} ${kind === 'fill' ? 'rg' : 'RG'}`);
       builder.content.push(pdfPath);
       builder.content.push(kind === 'fill' ? 'f' : 'S');
@@ -188,7 +188,7 @@ function paintShape(
       builder.content.push('Q');
     } else {
       warnOnce(builder, 'gradient-stroke', 'Gradient strokes are exported as a flat colour');
-      const [r, g, b] = midStop(paint as never);
+      const [r, g, b] = midStop(paint);
       builder.content.push(`${num(r)} ${num(g)} ${num(b)} RG`);
       builder.content.push(pdfPath);
       builder.content.push('S');
@@ -201,11 +201,22 @@ function paintShape(
     return;
   }
 
-  warnOnce(builder, `gradient:${paint.type}`, `${paint.type} gradients are exported as a flat colour`);
-  const [r, g, b] = midStop(paint as never);
-  builder.content.push(`${num(r)} ${num(g)} ${num(b)} ${kind === 'fill' ? 'rg' : 'RG'}`);
-  builder.content.push(pdfPath);
-  builder.content.push(kind === 'fill' ? 'f' : 'S');
+  if (paint.type === 'GRADIENT_ANGULAR' || paint.type === 'GRADIENT_DIAMOND') {
+    // These cannot be shaded by this writer: fall back to a flat mid-stop colour
+    // so nothing disappears.
+    warnOnce(builder, `gradient:${paint.type}`, `${paint.type} gradients are exported as a flat colour`);
+    const [r, g, b] = midStop(paint);
+    builder.content.push(`${num(r)} ${num(g)} ${num(b)} ${kind === 'fill' ? 'rg' : 'RG'}`);
+    builder.content.push(pdfPath);
+    builder.content.push(kind === 'fill' ? 'f' : 'S');
+    return;
+  }
+
+  // `UnsupportedPaint` (VIDEO, PATTERN, and whatever Figma adds next) has no
+  // shape a vector PDF can draw. It used to fall through to the gradient
+  // fallback above and read `gradientStops` off undefined, crashing the whole
+  // export; inexpressible content is reported, never fatal (see the module doc).
+  warnOnce(builder, `unsupported:${paint.type}`, `${paint.type} fills are not exported to the vector PDF`);
 }
 
 /** Register an axial (2) or radial (3) shading with its stops as a function. */
