@@ -637,30 +637,101 @@ that merely finds a commit.**
 **bundle-gated**, so the cause is **not visible in the diff**. **The honest statement is:
 THE COMMIT IS THE CULPRIT, THE PART IS NOT ISOLATED - labelled INFERRED.**
 
-**AND THE WINDOW-LEVEL PROOF IS STILL NOT DELIVERED - now for a NAMED reason:** the binary
-that **carries** the feature is **exactly the one the driver CANNOT drive**, while the
-binary it **can** drive **PREDATES the feature**. So **the desktop feature is unverified at
-the window and cannot become verified until this is understood.**
+**AND THE WINDOW-LEVEL PROOF WAS NOT DELIVERED - and the reason it could not be has since
+been CLEARED.** At bisect time the binary that **carried** the feature was **exactly the
+one the driver COULD NOT drive**, while the binary it **could** drive **predated** the
+feature - and **that same deadlock is what made the window blank** (see *THE BLANK-WINDOW
+DEADLOCK*). **With it fixed, the post-change binary is DRIVABLE**: *reproduced here -
+`xvfb-run -a node tests/desktop/ipc-hop.mjs` -> **PASS** in seconds, with `assetOrigin:
+null` in the no-bundle state.*
+
+**THE REMAINING GAP IS NARROWER AND PRECISE: the WINDOW has not been observed SERVING A
+MARKER BUNDLE from `pigma://localhost`.** The **layer-level** tests prove the serving
+path returns the cached version, the fallback, and the rejection; the **capture** proved
+the window **RENDERS**; **the window actually loading the cached bundle is still
+unobserved**, and the docs keep saying so.
+
+### THE BLANK-WINDOW DEADLOCK - what it was, what it would have shipped, and the guard
+
+**This is the most important entry in this roadmap.** Recorded as **FOUND, FIXED**.
+
+**The shape, because the shape is the lesson.** The bisect proved the post-change binary
+could not be **DRIVEN** - which is **not the same as proving the window did not RENDER**.
+The second question was answered by **a method with no WebDriver in it at all**: a **KNOWN
+DISPLAY**, each binary launched against it, captured with a **window grab**, and scored by
+**statistics rather than an impression**.
+
+| Instrument reading | Result |
+| --- | --- |
+| the **BARE DISPLAY** | captured **BLACK** - the control that makes the rest readable |
+| the **PRE-change** binary | rendered **4687 COLOURS** |
+| **BOTH POST-change** binaries | **PURE WHITE** - **1 colour** - with **stderr EMPTY IN EVERY RUN** |
+
+**A SILENT blank window. TWO INDEPENDENT METHODS NAMED THE SAME COMMIT.**
+*(Reproduced with `convert -format %k`: **4687** vs **1**.)*
+
+**THE CAUSE**, found by bisecting the **commit's PARTS** rather than reading the diff:
+**`desktop_info` HELD THE CONFIG LOCK and then called a function that TAKES THE SAME
+NON-REENTRANT MUTEX** - **a deadlock** - and because the panel calls that command **ON
+MOUNT**, **THE APP NEVER PAINTED. Nothing reported it, because a deadlock is not a
+panic.**
+
+**THE FIX: one line moved** - `asset_origin` is now computed **BEFORE the lock is
+taken** (`src-tauri/src/main.rs`) - **plus the removal of a setup-time navigation that
+evaluated `location.replace` on a webview with NO DOCUMENT YET**, a **second real defect
+found on the same path while bisecting.**
+
+**AND WHAT WOULD HAVE SHIPPED - the argument for the guard being written now:**
+
+- **THE WINDOW NEVER PAINTED.** A single flat colour, **no error anywhere**, in the app
+  whose whole purpose is to be used.
+- The asset **fallback never got a chance**, because **the failure was not in the bundle
+  path at all but in the command that REPORTS it.**
+- It was **INVISIBLE FOR THREE ROUNDS** - through the **sweep** that found the feature
+  unreachable, through the **wiring** that found the manifest hole, and through the
+  **bisect** that named the commit but not the part.
+- **No unit test, no browser spec and no Rust test could see it - because a deadlock is
+  not an error.**
+
+**PROOF OF THE FIX, with the same instruments:** the capture shows **4687 colours again**,
+and the harness **passes in seconds** where it had **stalled at 150 with zero
+assertions** *(reproduced here: `xvfb-run -a node tests/desktop/ipc-hop.mjs` -> PASS, and
+`assetOrigin: null` in the no-bundle state, exactly as the doc sentence says).*
 
 ### The question that now decides the next round
 
 **THE BISECT PROVED THE POST-CHANGE BINARY CANNOT BE DRIVEN. IT DID NOT PROVE THE WINDOW
 DOES NOT RENDER.** Those are **different failures with different severities**: one is a
-**test-harness problem** and one is a **SHIPPED REGRESSION** - and **nobody knows which
-this is yet.**
+**test-harness problem** and one is a **SHIPPED REGRESSION** - and **nobody knew which
+this was.**
 
-**The test that decides it does NOT use WebDriver**: launching the shell under **Xvfb**,
-capturing the **X display**, and reading the shell's **stderr**. **The result is not
-pre-empted here**, and the two outcomes are not symmetric:
+**The test that decided it does NOT use WebDriver**: launching the shell under **Xvfb**,
+capturing the **X display**, and reading the shell's **stderr**.
 
-- **If the window RENDERS**, the feature works and **the driver lost something
-  incidental** - a much better place to be;
-- **if it is BLANK**, **the priority flips entirely.**
+**ANSWERED, AND IT WAS THE WORSE BRANCH: the window was BLANK.** (See *THE
+BLANK-WINDOW DEADLOCK* above.) **But the distinction that made it findable is the one the
+docs must keep:**
 
-**And the documentation currently CLAIMS the wired behaviour**: `docs/DESKTOP.md` says
-*"the window loads the active bundle through the `pigma://localhost`"*. **A documented
-feature that does not exist is worse than no feature** - the same lesson as the earlier
-claim defects: a reader ACTS on it.
+> **THE BISECT PROVED A BINARY COULD NOT BE DRIVEN; THE CAPTURE PROVED THE WINDOW DID NOT
+> RENDER.** Those are **different claims with different severities** - one about the
+> **instrument**, one about the **product** - and the second was **only available because
+> someone refused to accept the first as an answer.**
+
+**The general form, worth carrying beyond this bug: when an instrument CANNOT OBSERVE
+something, that is NOT evidence about the thing - it is evidence about the INSTRUMENT.
+The next step is a DIFFERENT INSTRUMENT, not a stronger assertion.**
+
+*This round supplied a small live example: a naive pixel-word count over the `.xwd`
+captures put the readings the wrong way round, and only a proper decoder
+(`convert -format %k`) produced the real **4687 vs 1**. The bad instrument was the story,
+not the data.*
+
+**And the documentation CLAIMED the wired behaviour before it was true**:
+`docs/DESKTOP.md` said *"the window loads the active bundle through the
+`pigma://localhost`"* while nothing loaded it. **A documented feature that does not exist
+is worse than no feature** - the same lesson as the earlier claim defects: a reader ACTS
+on it. *(The claim is now TRUE, by the closure above - which is the right way round to
+land it.)*
 
 **The proof standard it was given, and it is the point:**
 - show the window **LOADING the marker bundle**;
