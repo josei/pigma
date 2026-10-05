@@ -45,7 +45,11 @@ describe('the bridge command timeout', () => {
       const browser = new FakeBrowser(relay.url, relay.token, initialFile());
       await browser.waitUntil(() => relay.status().connected);
       // `setFile` is the command B11d died on: it does the whole document write.
-      await expect(relay.session.setFile(initialFile())).rejects.toThrow(/timed out after 1 ms/);
+      // The message reports the ELAPSED time now, which is what a reader wants to
+      // know; asserting an exact millisecond was never the point.
+      await expect(relay.session.setFile(initialFile())).rejects.toThrow(
+        /Bridge command "setFile" timed out after \d+ ms/,
+      );
     } finally {
       await relay.close();
     }
