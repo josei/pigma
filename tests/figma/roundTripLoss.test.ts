@@ -538,3 +538,48 @@ describe('component property definitions round-trip through the wire mapper', ()
     expect(change.componentPropDefs).toBeUndefined();
   });
 });
+
+describe('a GRID style and its layout grids', () => {
+  it('round-trips all three patterns, with count and alignment', async () => {
+    const file = emptyFile('Grids');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(file.document, 0, 0, 80, 40);
+    rect.name = 'Subject';
+    rect.styles = { grid: 'style:g' };
+    page.children = [rect];
+    const grid = (pattern: string, count: number, alignment: string) => ({
+      pattern: pattern as 'COLUMNS',
+      sectionSize: 10,
+      count,
+      gutterSize: 4,
+      offset: 2,
+      alignment: alignment as 'STRETCH',
+      visible: true,
+      color: { r: 1, g: 0, b: 0, a: 0.1 },
+    });
+    const withStyles = {
+      ...file,
+      styles: {
+        'style:g': {
+          key: 'g',
+          name: 'Grid/12',
+          type: 'GRID' as const,
+          guid: '0:9',
+          layoutGrids: [grid('COLUMNS', 12, 'STRETCH'), grid('ROWS', 6, 'MIN'), grid('GRID', 5, 'CENTER')],
+        },
+      },
+    };
+    const back = await roundTrip(withStyles, 'circle.fig');
+    const style = Object.values(back.styles ?? {})[0]!;
+    expect(style.type).toBe('GRID');
+    // The schema SPLITS what the model FOLDS: STRIPES+axis X is COLUMNS, STRIPES+axis Y is ROWS,
+    // and numSections is the model's count.
+    expect(style.layoutGrids?.map((entry) => entry.pattern)).toEqual(['COLUMNS', 'ROWS', 'GRID']);
+    expect(style.layoutGrids?.map((entry) => entry.count)).toEqual([12, 6, 5]);
+    expect(style.layoutGrids?.map((entry) => entry.alignment)).toEqual(['STRETCH', 'MIN', 'CENTER']);
+    // And the binding resolves to it.
+    const bound = byName(back, 'Subject')!;
+    expect(bound.styles?.grid).toBe('0:9');
+    expect(back.styles?.[bound.styles!.grid!]?.name).toBe('Grid/12');
+  });
+});
