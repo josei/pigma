@@ -44,20 +44,20 @@ const ITEMS: MenuItem[] = [
   { label: 'Plugins…', icon: 'instance', run: () => useEditor.getState().setLeftTab('plugins') },
 ];
 
-/** Main menu, opened from the toolbar or the left panel's File section. */
+/** Main menu, opened from the toolbar's menu button (`pigma:toggle-menu`). */
 export function Menu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // ONE event, and it has a dispatcher: the toolbar's menu button. There used to
+    // be a second listener (`pigma:open-menu`) with ZERO dispatchers in the repo,
+    // and a comment claiming the left panel's File section opened the menu — which
+    // it does not. A listener nothing fires and a comment describing behaviour that
+    // does not exist are both defects; both are gone.
     const toggle = () => setOpen((value) => !value);
-    const openIt = () => setOpen(true);
     window.addEventListener('pigma:toggle-menu', toggle);
-    window.addEventListener('pigma:open-menu', openIt);
-    return () => {
-      window.removeEventListener('pigma:toggle-menu', toggle);
-      window.removeEventListener('pigma:open-menu', openIt);
-    };
+    return () => window.removeEventListener('pigma:toggle-menu', toggle);
   }, []);
 
   useEffect(() => {

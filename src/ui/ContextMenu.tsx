@@ -34,6 +34,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon, type IconName } from './icons';
 import { useEditor } from '../store/editorStore';
+import { findNode } from '../model/tree';
 
 interface ContextItem {
   label: string;
@@ -42,6 +43,8 @@ interface ContextItem {
   run: () => void;
   /** Set for items whose placement is our design, not Figma's. */
   divergence?: string;
+  /** Why the item cannot run right now; when set the item is DISABLED and says so. */
+  disabledReason?: string;
 }
 
 interface ContextMenuState {
@@ -52,9 +55,18 @@ interface ContextMenuState {
 /** The node menu: shown when the selection is not empty. */
 function nodeItems(): ContextItem[] {
   const store = () => useEditor.getState();
+  const selection = store().selection;
+  const nodes = selection.map((id) => findNode(store().file.document, id)).filter(Boolean);
+  const anyContainer = nodes.some((node) => node && (node.type === 'FRAME' || node.type === 'GROUP' || node.type === 'COMPONENT'));
   const items: ContextItem[] = [
     { label: 'Copy', icon: 'copy', shortcut: '⌘C', run: () => store().copySelection() },
-    { label: 'Paste', icon: 'duplicate', shortcut: '⌘V', run: () => store().pasteClipboard() },
+    {
+      label: 'Paste',
+      icon: 'duplicate',
+      shortcut: '⌘V',
+      run: () => store().pasteClipboard(),
+      ...((store().clipboard?.length ?? 0) === 0 ? { disabledReason: 'the clipboard is empty' } : {}),
+    },
     { label: 'Duplicate', icon: 'duplicate', shortcut: '⌘D', run: () => store().duplicateSelection() },
     {
       label: 'Group selection',
@@ -62,8 +74,15 @@ function nodeItems(): ContextItem[] {
       shortcut: '⌘G',
       run: () => store().groupSelection(),
       divergence: 'multi-selection set is undocumented; every item here is backed by an action',
+      ...(selection.length < 2 ? { disabledReason: 'grouping needs more than one layer' } : {}),
     },
-    { label: 'Ungroup', icon: 'ungroup', shortcut: '⇧⌘G', run: () => store().ungroupSelection() },
+    {
+      label: 'Ungroup',
+      icon: 'ungroup',
+      shortcut: '⇧⌘G',
+      run: () => store().ungroupSelection(),
+      ...(anyContainer ? {} : { disabledReason: 'nothing in the selection is a group or frame' }),
+    },
     { label: 'Union selection', icon: 'group', run: () => store().booleanOp('UNION') },
     { label: 'Subtract selection', icon: 'group', run: () => store().booleanOp('SUBTRACT') },
     { label: 'Intersect selection', icon: 'group', run: () => store().booleanOp('INTERSECT') },
@@ -85,9 +104,11 @@ function nodeItems(): ContextItem[] {
 function emptyItems(): ContextItem[] {
   const store = () => useEditor.getState();
   return [
+    // `Frame selection` used to be here and was a no-op BY CONSTRUCTION:
+    // `frameSelection` returns early when `selection.length === 0`, which is exactly
+    // the condition that renders this menu. Removed — there is nothing to frame.
     { label: 'Paste', icon: 'duplicate', shortcut: '⌘V', run: () => store().pasteClipboard(), divergence: 'empty-selection set is undocumented' },
     { label: 'Select all', icon: 'copy', shortcut: '⌘A', run: () => store().selectAll(), divergence: 'empty-selection set is undocumented' },
-    { label: 'Frame selection', icon: 'frame', run: () => store().frameSelection(), divergence: 'empty-selection set is undocumented' },
   ];
 }
 
@@ -142,12 +163,16 @@ export function ContextMenu() {
         <button
           key={item.label}
           type="button"
-          className="menu__item"
+          className={`menu__item${item.disabledReason ? ' menu__item--disabled' : ''}`}
           role="menuitem"
           data-testid="context-menu-item"
           data-divergence={item.divergence}
+          data-disabled-reason={item.disabledReason}
+          disabled={item.disabledReason !== undefined}
+          title={item.disabledReason ?? undefined}
           onClick={() => {
             setState(null);
+            if (item.disabledReason) return;
             item.run();
           }}
         >
