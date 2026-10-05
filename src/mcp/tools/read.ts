@@ -9,9 +9,10 @@
  */
 import { bytesToBase64 } from '../../figma/internal/base64';
 import { renderSvgDocument } from '../../render/svgExport';
+import { renderVectorPdf } from '../../render/pdfVector';
 import type { ContainerNode, PigmaFile, SceneNode } from '../../model/types';
 import { hasChildren } from '../../model/types';
-import { absoluteBounds, descendants } from '../../model/tree';
+import { absoluteBounds, boundsOfNodes, descendants } from '../../model/tree';
 import { stylesOf, styleBindingOf } from '../../model/styles';
 import { activeModeOf, bindingsOf, collectionsOf, resolveVariable, variablesOf } from '../../model/variables';
 import { McpToolError } from '../errors';
@@ -142,6 +143,15 @@ function collectVariables(file: PigmaFile, nodes: SceneNode[]): { variables: Col
   };
 }
 
+/** The asset formats this server can genuinely produce, and their MIME types. */
+const ASSET_FORMATS = ['svg', 'png', 'pdf'] as const;
+type AssetFormat = (typeof ASSET_FORMATS)[number];
+const ASSET_MIME: Record<AssetFormat, string> = {
+  svg: 'image/svg+xml',
+  png: 'image/png',
+  pdf: 'application/pdf',
+};
+
 export const readTools: RegisteredTool[] = [
   {
     definition: {
@@ -253,19 +263,22 @@ export const readTools: RegisteredTool[] = [
       };
     },
   },
+
   {
     definition: {
       name: 'download_assets',
       title: 'Download assets',
       description:
-        'Exports up to 20 nodes as SVG. Returns inline data URLs; Figma\'s hosted server returns temporary URLs, ' +
-        'and Pigma has no asset host. Raw uploaded source images are returned for native imports that embedded them.',
+        'Exports up to 20 nodes as SVG, PNG or PDF (`defaultFormat`), each returned as an inline data URL. ' +
+        "Figma's hosted server returns temporary URLs; Pigma has no asset host, so the bytes travel in the response. " +
+        'PNG honours `defaultScale` (0.01-4); SVG and PDF are resolution independent. PDF reports anything it cannot ' +
+        'express in the asset\'s `warnings`. Raw uploaded source images are returned for native imports that embedded them.',
       inputSchema: {
         type: 'object',
         properties: {
           nodeIds: { type: 'array', items: { type: 'string' }, description: 'Node ids to export (max 20).' },
-          defaultFormat: { type: 'string', enum: ['svg'], description: 'Only "svg" is supported.' },
-          defaultScale: { type: 'number', description: 'Accepted for compatibility; SVG is resolution independent.' },
+          defaultFormat: { type: 'string', enum: [...ASSET_FORMATS], description: 'Output format (default "svg").' },
+          defaultScale: { type: 'number', description: 'PNG pixel scale, 0.01-4 (default 1). Ignored for svg and pdf.' },
         },
       },
     },
@@ -274,18 +287,48 @@ export const readTools: RegisteredTool[] = [
       const nodeIds = stringArray(args, 'nodeIds');
       if (nodeIds.length === 0) throw new McpToolError('`nodeIds` must contain at least one node id');
       if (nodeIds.length > 20) throw new McpToolError('At most 20 nodes can be exported per call');
-      const format = optionalString(args, 'defaultFormat') ?? 'svg';
-      if (format !== 'svg') throw new McpToolError(`Unsupported asset format "${format}": Pigma exports SVG.`);
+      const requested = optionalString(args, 'defaultFormat') ?? 'svg';
+      if (!(ASSET_FORMATS as readonly string[]).includes(requested)) {
+        throw new McpToolError(`Unsupported asset format "${requested}": Pigma exports ${ASSET_FORMATS.join(', ')}.`);
+      }
+      const format = requested as AssetFormat;
+      if (format === 'png' && !ctx.rasterizer) {
+        throw new McpToolError(
+          'PNG export needs a rasterizer, which this server does not have. Available formats: svg, pdf.',
+        );
+      }
+      const scale = Math.min(4, Math.max(0.01, optionalNumber(args, 'defaultScale') ?? 1));
 
       const assets: Array<Record<string, unknown>> = [];
       const rawImages: Array<Record<string, unknown>> = [];
       for (const nodeId of nodeIds) {
         const nodes = resolveTargets(file, nodeId, []);
         const svg = renderSvgDocument(file, nodes);
+        let bytes: Uint8Array;
+        let warnings: string[] = [];
+        if (format === 'png') {
+          bytes = ctx.rasterizer!.svgToPng(svg, { scale });
+        } else if (format === 'pdf') {
+          // The same framing the SVG path uses, so a node exports identically in
+          // every format.
+          const bounds = boundsOfNodes(file.document, nodes.map((node) => node.id)) ?? { x: 0, y: 0, width: 1, height: 1 };
+          const pdf = renderVectorPdf(file, nodes, {
+            width: Math.max(1, bounds.width),
+            height: Math.max(1, bounds.height),
+            offsetX: bounds.x,
+            offsetY: bounds.y,
+            title: nodes.length === 1 ? nodes[0]!.name : nodeId,
+          });
+          bytes = pdf.bytes;
+          warnings = pdf.warnings;
+        } else {
+          bytes = new TextEncoder().encode(svg);
+        }
         assets.push({
           nodeId,
-          format: 'svg',
-          dataUrl: `data:image/svg+xml;base64,${bytesToBase64(new TextEncoder().encode(svg))}`,
+          format,
+          dataUrl: `data:${ASSET_MIME[format]};base64,${bytesToBase64(bytes)}`,
+          ...(warnings.length > 0 ? { warnings } : {}),
         });
         for (const node of nodes) {
           for (const fill of node.fills) {

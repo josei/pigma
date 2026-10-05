@@ -125,16 +125,6 @@ describe('the tool names are Pigma\'s (after the rename off the Figma brand)', (
       expect((tool.definition.title ?? '').length).toBeGreaterThan(0);
     }
   });
-
-  it('keeps every title brand-neutral or Pigma-branded, never Figma-branded', () => {
-    for (const tool of allTools) {
-      expect(
-        tool.definition.title,
-        `${tool.definition.name}: titles are identity, not dialect — name Pigma or stay neutral`,
-      ).not.toMatch(/figma/i);
-      expect((tool.definition.title ?? '').length).toBeGreaterThan(0);
-    }
-  });
 });
 
 /**

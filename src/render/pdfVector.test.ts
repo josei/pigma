@@ -152,6 +152,18 @@ describe('vector PDF', () => {
     expect(warnings.some((warning) => warning.includes('Shadows'))).toBe(true);
   });
 
+  it('reports an unsupported paint instead of crashing on it', () => {
+    // `UnsupportedPaint` (VIDEO, PATTERN) carries no `gradientStops`, and it used
+    // to fall through to the gradient fallback and read them off undefined —
+    // throwing out of the whole export. Inexpressible content is reported.
+    const video = createRectNode(null, 0, 0, 40, 30);
+    video.fills = [{ type: 'VIDEO' } as unknown as Paint];
+    const { file, nodes } = page([video]);
+    const { bytes, warnings } = renderVectorPdf(file, nodes, { width: 40, height: 30 });
+    expect(isPdf(bytes)).toBe(true);
+    expect(warnings.some((warning) => warning.includes('VIDEO fills'))).toBe(true);
+  });
+
   it('applies node transforms and nested frames', () => {
     const frame = createFrameNode(null, 50, 20, 100, 100, { name: 'Frame' });
     const child = createRectNode(null, 10, 10, 30, 30);
