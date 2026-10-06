@@ -22,7 +22,8 @@ async function scriptedEditor(relay: { url: string; token: string }) {
   const commandIds: number[] = [];
   void (async () => {
     for (;;) {
-      const { done, value } = await reader.read();
+      // close() aborts the fetch, which rejects the pending read - that is the end of the stream.
+      const { done, value } = await reader.read().catch(() => ({ done: true, value: undefined }));
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       for (const line of buffer.split('\n')) {
