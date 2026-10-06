@@ -376,23 +376,24 @@ between hosts is the endpoint URL:
 
 | Deployment | Endpoint | Token |
 | --- | --- | --- |
-| Hosted (getpigma.com) | `https://getpigma.com/mcp` - **does not resolve today, see below** | **per session**, minted by `POST /mcp/token` |
+| Hosted (pigma.design) | `https://pigma.design/mcp` - **does not resolve today, see below** | **per session**, minted by `POST /mcp/token` |
 | Desktop app / `pigma mcp --http` | `http://127.0.0.1:<port>/mcp` | none |
 | Docker / self-host | `http://<server>:<port>/mcp` | none by default; `--mcp-token <secret>`, or `--hosted` to mint per-session tokens |
 | Self-host at a public address | `https://<your-host>/mcp` | recommended (`--mcp-token` or `--hosted`) |
 
 **The hosted endpoint is a design decision, not a measured deployment.**
-Decision 2026-10-03 (docs/ROADMAP.md): getpigma.com serves MCP through the relay,
+Decision 2026-10-03 (docs/ROADMAP.md): pigma.design serves MCP through the relay,
 so Claude/ChatGPT can drive Pigma with no download. The relay executes the tools
 over the bridge, so it necessarily sees tool calls — accepted, under a hard policy
 that it **logs nothing and stores nothing** of MCP traffic (aggregate counters
 only, never payloads).
 
-**Measured status (2026-10-05):** the host does not resolve — `getpigma.com`
-returns NXDOMAIN from the system resolver and from two independent public
-resolvers (Google and Cloudflare DoH), and `www.`/`relay.`/`app.` are the same,
-so the hosted endpoint could not be exercised from this machine. The blocker is
-not authentication and not QA: the deployment is not published in DNS. The
+**Status (2026-10-06):** the domain is `pigma.design` (renamed from the earlier
+placeholder). It is registered but nothing is deployed behind it yet - the name
+resolves to a registrar address, not to a relay - so the hosted endpoint cannot be
+exercised from this machine. The blocker is neither authentication nor QA: the
+deployment is not published. Development does not need it (local relay,
+self-host, or a Cloudflare tunnel all work). The
 desktop app and self-hosting remain available for users who want the endpoint on
 their own machine. A controllable deployment advertises its endpoint at
 `GET /config.json` — see
@@ -455,7 +456,7 @@ a token is required (`data-mcp-state` on the panel;
 
 | State | Decided by | Endpoint | Token |
 | --- | --- | --- | --- |
-| `hosted` | nothing local or advertised | `https://getpigma.com/mcp` | per session, minted by the panel |
+| `hosted` | nothing local or advertised | `https://pigma.design/mcp` | per session, minted by the panel |
 | `desktop` | the shell's `desktop_info` report | `http://127.0.0.1:<port>/mcp` | none |
 | `self-hosted` | `GET /config.json`, or an endpoint the user typed | that endpoint | if the deployment asks for one |
 

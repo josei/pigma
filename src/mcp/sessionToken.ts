@@ -1,7 +1,7 @@
 /**
  * Hosted MCP: the per-session token.
  *
- * getpigma.com's MCP endpoint requires a token, and the relay mints one for the
+ * pigma.design's MCP endpoint requires a token, and the relay mints one for the
  * session with `POST /mcp/token` (see src/mcp/transports/http.ts). The token is
  * short-lived, revocable, and exists only in this tab's memory: it is never
  * written to storage, never put in a URL, and never logged. The panel shows it

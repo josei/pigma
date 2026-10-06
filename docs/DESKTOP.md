@@ -9,8 +9,8 @@ two deployment facts.
 
 | Fact | Default (every build) | Alternative |
 | --- | --- | --- |
-| MCP endpoint | `http://127.0.0.1:3001/mcp` — served by the bundled Node server, for working fully offline (a web page cannot bind a port; the shell can). | The hosted endpoint (`https://getpigma.com/mcp`, per-session token) or a self-hosted server's advertised endpoint (`GET /config.json`). |
-| Rooms relay | `wss://getpigma.com/relay` | `ws://127.0.0.1:3002/relay` — the bundled relay, so two windows on one machine can share a room; or a self-hosted relay. |
+| MCP endpoint | `http://127.0.0.1:3001/mcp` — served by the bundled Node server, for working fully offline (a web page cannot bind a port; the shell can). | The hosted endpoint (`https://pigma.design/mcp`, per-session token) or a self-hosted server's advertised endpoint (`GET /config.json`). |
+| Rooms relay | `wss://pigma.design/relay` | `ws://127.0.0.1:3002/relay` — the bundled relay, so two windows on one machine can share a room; or a self-hosted relay. |
 
 The MCP field is pre-filled from `desktop_info` (loopback) or from the
 deployment's `GET /config.json` (self-host) and stays editable, remembered per
@@ -154,7 +154,7 @@ algorithm and its tests live there):
 The shell implements the same algorithm in Rust, with no dependency on the page:
 
 - **On launch**, and on demand, it fetches the manifest. The URL defaults to
-  `https://getpigma.com/desktop-assets.json` and is overridable with
+  `https://pigma.design/desktop-assets.json` and is overridable with
   `PIGMA_ASSET_MANIFEST_URL`; the cache root is `appDataDir` and is overridable
   with `PIGMA_ASSET_CACHE`.
 - **Compare, then download only what changed** into `assets/<version>.tmp/`.

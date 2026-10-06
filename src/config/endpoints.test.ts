@@ -35,10 +35,10 @@ describe('hosted endpoint defaults', () => {
   });
 
   it('defaults to the hosted relay and the hosted MCP endpoint', () => {
-    expect(HOSTED_RELAY_URL).toBe('wss://getpigma.com/relay');
+    expect(HOSTED_RELAY_URL).toBe('wss://pigma.design/relay');
     // The hosted site serves the editor, Rooms and a fully working MCP endpoint
     // through the relay (docs/ROADMAP.md, 2026-10-03).
-    expect(HOSTED_MCP_ENDPOINT).toBe('https://getpigma.com/mcp');
+    expect(HOSTED_MCP_ENDPOINT).toBe('https://pigma.design/mcp');
     expect(effectiveRelayUrl()).toBe(HOSTED_RELAY_URL);
     expect(effectiveMcpEndpoint()).toBe(HOSTED_MCP_ENDPOINT);
     expect(effectiveRelayUrl({})).toBe(HOSTED_RELAY_URL);
@@ -58,7 +58,7 @@ describe('hosted endpoint defaults', () => {
     expect(normalizeEndpoint(undefined, HOSTED_RELAY_URL)).toBe(HOSTED_RELAY_URL);
     expect(isLoopbackEndpoint('http://127.0.0.1:3001/mcp')).toBe(true);
     expect(isLoopbackEndpoint('http://localhost:8080/relay')).toBe(true);
-    expect(isLoopbackEndpoint('https://getpigma.com/mcp')).toBe(false);
+    expect(isLoopbackEndpoint('https://pigma.design/mcp')).toBe(false);
     expect(isLoopbackEndpoint('nonsense')).toBe(false);
   });
 

@@ -14,7 +14,7 @@ import { useEditor } from '../store/editorStore';
  * and shows the same connection surface in every case — status, endpoint, masked
  * token, ready-to-paste harness config, bridge controls:
  *
- *   hosted      getpigma.com's endpoint, with a per-session token minted by
+ *   hosted      pigma.design's endpoint, with a per-session token minted by
  *               `POST /mcp/token` — no download needed
  *   desktop     the shell's loopback endpoint, no token needed
  *   self-hosted the server's advertised endpoint (or the user's own), plus its

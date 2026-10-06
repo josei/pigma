@@ -1,7 +1,7 @@
 /**
  * Hosted endpoints (product decision in docs/ROADMAP.md).
  *
- * getpigma.com hosts the **relay** and, since the 2026-10-03 decision, a
+ * pigma.design hosts the **relay** and, since the 2026-10-03 decision, a
  * **fully working MCP endpoint** served by it: Claude/ChatGPT can drive Pigma
  * with no download. The relay necessarily sees tool calls — accepted, under a
  * hard policy that it logs nothing and stores nothing of MCP traffic. The
@@ -11,9 +11,9 @@
  * Nothing connects until the user joins a room or connects MCP.
  */
 
-export const HOSTED_RELAY_URL = 'wss://getpigma.com/relay';
+export const HOSTED_RELAY_URL = 'wss://pigma.design/relay';
 /** The hosted MCP endpoint: served by the relay, tokens minted per session. */
-export const HOSTED_MCP_ENDPOINT = 'https://getpigma.com/mcp';
+export const HOSTED_MCP_ENDPOINT = 'https://pigma.design/mcp';
 
 /** Where a user's overrides are remembered (per browser, no account). */
 export const ENDPOINT_OVERRIDE_KEY = 'pigma:endpoints:v1';

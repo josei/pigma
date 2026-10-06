@@ -154,7 +154,7 @@ Control surface, printed from the live app (`/tmp/rooms-discovery.mjs`):
     Room        input[aria-label="Room id"]      placeholder "studio"
     Token       input[aria-label="Room token"]   placeholder "optional"
     Key         (share-link key; encrypted rooms only)
-    Relay base  input[aria-label="Relay base"]   default wss://getpigma.com/relay
+    Relay base  input[aria-label="Relay base"]   default wss://pigma.design/relay
     Join        button[aria-label="Join room"]
     Join in plaintext  checkbox - required to enter a room without a share key
 

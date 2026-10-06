@@ -20,7 +20,7 @@ export interface RoomInvite {
 }
 
 export interface ShareLinkOptions {
-  /** App origin the link points at (e.g. `https://getpigma.com`). */
+  /** App origin the link points at (e.g. `https://pigma.design`). */
   base: string;
   roomId: string;
   key: Uint8Array;

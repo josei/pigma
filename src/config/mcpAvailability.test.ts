@@ -27,7 +27,7 @@ describe('MCP availability', () => {
     const availability = resolveMcpAvailability({ desktop: null, advertised: null });
     expect(availability).toEqual({
       kind: 'hosted',
-      endpoint: 'https://getpigma.com/mcp',
+      endpoint: 'https://pigma.design/mcp',
       token: null,
       tokenRequired: true,
     });
@@ -141,7 +141,7 @@ describe('the desktop shell’s report', () => {
     // disappears: the panel falls through to hosted with no error.
     const payload = {
       mcpEndpoint: 'http://127.0.0.1:3001/mcp',
-      relayUrl: 'wss://getpigma.com/relay',
+      relayUrl: 'wss://pigma.design/relay',
       localMcpEndpoint: 'http://127.0.0.1:3001/mcp',
       localRelayUrl: 'ws://127.0.0.1:3002/relay',
       mcpTokenRequired: false,

@@ -24,21 +24,21 @@ const responding = (body: string, init: { ok?: boolean; status?: number } = {}) 
 
 describe('document links', () => {
   it('builds `#open=<url>&name=<optional>` and reads it back', () => {
-    const link = buildDocumentLink({ base: 'https://getpigma.com', url: 'https://files.test/a.pigma', name: 'Homepage' });
-    expect(link).toBe('https://getpigma.com/#open=https%3A%2F%2Ffiles.test%2Fa.pigma&name=Homepage');
+    const link = buildDocumentLink({ base: 'https://pigma.design', url: 'https://files.test/a.pigma', name: 'Homepage' });
+    expect(link).toBe('https://pigma.design/#open=https%3A%2F%2Ffiles.test%2Fa.pigma&name=Homepage');
     expect(readDocumentLink(link)).toEqual({ url: 'https://files.test/a.pigma', name: 'Homepage' });
 
     // The name is optional, and an empty one is not invented.
-    const bare = buildDocumentLink({ base: 'https://getpigma.com', url: 'https://files.test/a.pigma', name: '  ' });
+    const bare = buildDocumentLink({ base: 'https://pigma.design', url: 'https://files.test/a.pigma', name: '  ' });
     expect(readDocumentLink(bare)).toEqual({ url: 'https://files.test/a.pigma', name: null });
     expect(readDocumentLink('#open=https://files.test/a.pigma')).toEqual({ url: 'https://files.test/a.pigma', name: null });
   });
 
   it('never carries the document itself', () => {
     // Embedding is deliberately unsupported: the fragment names a URL, nothing else.
-    const link = buildDocumentLink({ base: 'https://getpigma.com', url: '/documents/home.pigma' });
+    const link = buildDocumentLink({ base: 'https://pigma.design', url: '/documents/home.pigma' });
     // No payload, no schema, no nodes: just the URL (percent-encoded).
-    expect(link).toBe('https://getpigma.com/#open=%2Fdocuments%2Fhome.pigma');
+    expect(link).toBe('https://pigma.design/#open=%2Fdocuments%2Fhome.pigma');
     expect(link).not.toContain('schema');
     expect(link).not.toContain('{');
     expect(link.length).toBeLessThan(120);

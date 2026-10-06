@@ -3,7 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 /**
  * MCP panel states (product decision recorded in docs/ROADMAP.md).
  *
- * getpigma.com offers a fully working MCP endpoint through the relay (decision
+ * pigma.design offers a fully working MCP endpoint through the relay (decision
  * 2026-10-03, reversing the earlier one), so MCP needs no download. The panel
  * renders a stable state hook,
  * `[data-testid="mcp-panel"][data-mcp-state="hosted|desktop|self-hosted"]`, and
@@ -51,7 +51,7 @@ test('B34a with no advertisement the panel offers the hosted endpoint and a sess
 
   await expect(panel(page)).toHaveAttribute('data-mcp-state', 'hosted');
   // The hosted endpoint is offered, not a dead end: same panel as the others.
-  await expect(panel(page)).toContainText('https://getpigma.com/mcp');
+  await expect(panel(page)).toContainText('https://pigma.design/mcp');
   await expect(page.locator('input[aria-label="MCP endpoint"]')).toHaveCount(1);
   await expect(page.locator('[data-testid="mcp-bridge-panel"]')).toHaveCount(1);
   await expect(page.locator('button', { hasText: /connect mcp/i })).toHaveCount(1);
@@ -122,7 +122,7 @@ test('B34c an advertised loopback endpoint is self-hosted and labelled as this m
 test('B34d the desktop state is reached from the shell’s desktop_info report', async ({ page }) => {
   const info = {
     mcpEndpoint: 'http://127.0.0.1:3001/mcp',
-    relayUrl: 'wss://getpigma.com/relay',
+    relayUrl: 'wss://pigma.design/relay',
     localMcpEndpoint: 'http://127.0.0.1:3001/mcp',
     localRelayUrl: 'ws://127.0.0.1:3002/relay',
     mcpTokenRequired: false,

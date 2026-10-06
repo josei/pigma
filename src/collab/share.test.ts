@@ -4,20 +4,20 @@ import { decodeRoomKey, generateRoomKey } from './crypto';
 
 describe('room invites', () => {
   it('creates a link whose key lives in the fragment, never the query string', () => {
-    const { link, invite } = createInvite({ base: 'https://getpigma.com', roomId: 'studio' });
-    expect(link.startsWith('https://getpigma.com/#')).toBe(true);
+    const { link, invite } = createInvite({ base: 'https://pigma.design', roomId: 'studio' });
+    expect(link.startsWith('https://pigma.design/#')).toBe(true);
     expect(link).toContain('room=studio');
     expect(link).toContain('key=');
     // No query string at all: a server never sees the key.
     expect(link).not.toContain('?');
     const [beforeHash] = link.split('#');
-    expect(beforeHash).toBe('https://getpigma.com/');
+    expect(beforeHash).toBe('https://pigma.design/');
     expect(invite.key).toHaveLength(32);
   });
 
   it('round-trips an invite out of a link', () => {
     const key = generateRoomKey();
-    const link = buildShareLink({ base: 'https://getpigma.com', roomId: 'studio', key });
+    const link = buildShareLink({ base: 'https://pigma.design', roomId: 'studio', key });
     const invite = readRoomInvite(link)!;
     expect(invite.roomId).toBe('studio');
     expect(invite.key).toEqual(key);
@@ -39,7 +39,7 @@ describe('room invites', () => {
   });
 
   it('rejects anything that is not an invite', () => {
-    expect(readRoomInvite('https://getpigma.com/')).toBeNull();
+    expect(readRoomInvite('https://pigma.design/')).toBeNull();
     expect(readRoomInvite('#room=studio')).toBeNull();
     expect(readRoomInvite('#key=abc')).toBeNull();
     expect(readRoomInvite('#room=studio&key=not-a-key')).toBeNull();
@@ -49,7 +49,7 @@ describe('room invites', () => {
   });
 
   it('never leaks the key through the query string or a label', () => {
-    const { link, keyText } = createInvite({ base: 'https://getpigma.com', roomId: 'studio' });
+    const { link, keyText } = createInvite({ base: 'https://pigma.design', roomId: 'studio' });
     expect(link.split('#')[0]).not.toContain(keyText);
     expect(decodeRoomKey(keyText)).not.toBeNull();
     expect(modeLabel('e2e')).toContain('End-to-end');

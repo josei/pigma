@@ -49,7 +49,7 @@ describe('MCP panel states', () => {
   it('offers the hosted endpoint with a session token, not a dead end', () => {
     const html = render({});
     expect(html).toContain('data-mcp-state="hosted"');
-    expect(html).toContain('data-mcp-endpoint="https://getpigma.com/mcp"');
+    expect(html).toContain('data-mcp-endpoint="https://pigma.design/mcp"');
     // The same connection surface as the other states.
     expect(html).toContain('aria-label="MCP endpoint"');
     expect(html).toContain('aria-label="MCP token"');

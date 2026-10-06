@@ -1,0 +1,65 @@
+# Pigma UX review
+
+Goal: **a simple, open-source Figma.** This review judges the product as a tool a
+designer would pick up, from a hands-on pass through the running app on
+2026-10-06 (empty file, drawing, text, selection, every rail tab, the main menu,
+the context menu, the MCP and Rooms panels). It is a worklist, not a verdict:
+each item is either **Fixed** (with the commit), or **Open** (with why).
+
+What was **not** exercised in this pass: real-world `.fig` import fidelity,
+large-document performance, text editing edge cases, touch, and any browser
+other than Chromium. Nothing below should be read as a claim about those.
+
+## What already works as a Figma alternative
+
+- The core loop is familiar and fast: tools in a bottom toolbar, a layers
+  tree, a right-hand Design / Prototype / Inspect panel, rulers, zoom, context
+  menu, undo, components, auto layout, variables, export. A Figma user finds
+  every landmark where they expect it.
+- The properties panel is dense in the right way for a selected frame:
+  position, appearance, constraints, auto layout, alignment.
+- Empty states tell you what to do ("Nothing on this page yet - draw a frame
+  with F").
+- Everything is local-first and file-based, which is the real argument for an
+  open-source alternative.
+
+## Where it fell short of "simple"
+
+| # | Finding | Status |
+| --- | --- | --- |
+| 1 | The zoom/rulers readout sat on top of the top ruler | **Fixed** (`.canvas__hud--rulers`, spec B60a) |
+| 2 | The vertical ruler's labels were clipped ("00") | **Fixed** (labels rotated like Figma's) |
+| 3 | The main menu was 30 unstyled default buttons in one column | **Fixed**: grouped (File / Import / Open & save / Share / Export / View / Tools), styled, scrollable, anchored to the button (spec B60b) |
+| 4 | MCP: endpoint, token, harness, relay URL and relay token all visible, and tokens expired after 30 minutes | **Fixed**: one flow (pick tool -> Copy setup -> Connect, a token is fetched automatically), everything else under a collapsed **Advanced**; tokens now never expire and stay revocable (`DELETE /mcp/token`) |
+| 5 | Rooms: key, token, "join in plaintext", relay URL all visible | **Fixed**: nickname + room + Join/Share; the rest under **Advanced** |
+| 6 | The "Tools" rail tab repeated the bottom toolbar, and the File tab repeated the main menu | **Fixed**: the rail tab is now **AI agent**; the duplicates are gone |
+| 7 | "Opacity var / Fill var / Stroke var -> No variables" rows on every selection | **Fixed**: shown only when a variable exists or is bound |
+| 8 | Header read "1 nodes" and counted pages as nodes | **Fixed**: "N layers", pages excluded |
+| 9 | The Pages list was repeated at the top of every rail tab | **Fixed**: only on File and Layers |
+| 10 | The context menu stretched to a tall empty box (a regression from #3, caught by the tour, now pinned by B60c) | **Fixed** |
+| 11 | Comments used the same hamburger glyph as the main menu | **Fixed** (speech bubble) |
+| 12 | Auto layout "Column" clipped in its segmented control | **Fixed** |
+| 13 | Assets led with Libraries ("not published / Publish") rather than components | **Fixed**: components first, libraries last |
+
+## Open
+
+- **Export PNG 1x / 2x / 3x** duplicate **Export PNG...** in the main menu. They
+  exist because specs click them; collapse them into the dialog.
+- **Disabled controls with no selection**: the Alignment block and, on a
+  selection, Boolean / Effects rows show as dead controls. Hide until usable.
+- **Layout grid rows** (`Cols / Rows / Grid`) under Constraints have no heading
+  and read as stray text.
+- **Plaintext rooms need an opt-in** that is now in Advanced; if hosted rooms
+  become the default, revisit whether an encrypted room should simply be created
+  on first Share without any visible choice (it already is).
+- **MCP lives in the left rail** beside layers. A "Connect AI agent" item in the
+  main menu that opens it would make it findable without a dedicated tab.
+- **The shell has never been compared with Figma's rendering** (the parity
+  diff is against our own constants). Pixel parity is not claimed.
+- **Nobody outside the project has used it.** The strongest product risk is not
+  a missing feature; it is untested assumptions. The next useful artifact is one
+  designer completing a real task and a written list of where they stalled.
+- **Single engine**: every browser spec is Chromium. Firefox and Safari are
+  unverified.
+- **Hosted deployment**: the domain is `pigma.design`; nothing is deployed behind
+  it yet. Development does not need it.

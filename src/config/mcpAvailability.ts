@@ -4,7 +4,7 @@
  * MCP is offered in three places, and they differ only in the endpoint and in
  * whether a token is required:
  *
- *   hosted      getpigma.com's own MCP endpoint, reached through the relay, with
+ *   hosted      pigma.design's own MCP endpoint, reached through the relay, with
  *               a per-session token minted by `POST /mcp/token`
  *   desktop     the shell's `desktop_info` loopback endpoint — no token
  *   self-hosted a server's advertised endpoint (`/config.json`, see
