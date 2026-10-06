@@ -1,4 +1,4 @@
-import { test, expect, connectEditor, type RelayInfo } from './relay';
+import { test, expect, connectEditor, openMcpAdvanced, type RelayInfo } from './relay';
 import type { Page } from '@playwright/test';
 
 /**
@@ -24,9 +24,12 @@ test('B16a the bridge panel is mounted and starts disconnected', async ({ page }
   const panel = await openBridgePanel(page);
 
   await expect(status(page)).toHaveText(/disconnected/);
-  // Connecting requires a token, so the button is inert until one is entered.
+  // The relay fields live under Advanced; connecting needs a token, so the
+  // button is inert until one is entered.
   const connect = panel.locator('button', { hasText: 'Connect MCP' });
   await expect(connect).toBeDisabled();
+  await expect(page.locator('input[aria-label="Relay token"]')).toBeHidden();
+  await openMcpAdvanced(page);
   await page.locator('input[aria-label="Relay token"]').fill('x');
   await expect(connect).toBeEnabled();
 });
@@ -35,6 +38,7 @@ test('B16b an unreachable relay surfaces a user-visible error', async ({ page })
   const panel = await openBridgePanel(page);
 
   // Port 9 is the discard port: nothing will answer.
+  await openMcpAdvanced(page);
   await page.locator('input[aria-label="Relay URL"]').fill('http://127.0.0.1:9');
   await page.locator('input[aria-label="Relay token"]').fill('irrelevant');
   await panel.locator('button', { hasText: 'Connect MCP' }).click();
@@ -46,6 +50,7 @@ test('B16b an unreachable relay surfaces a user-visible error', async ({ page })
 
 test('B16c a wrong token is rejected with a visible error', async ({ page, relay }) => {
   const panel = await openBridgePanel(page);
+  await openMcpAdvanced(page);
   await page.locator('input[aria-label="Relay URL"]').fill(relay.url);
   await page.locator('input[aria-label="Relay token"]').fill('definitely-not-the-token');
   await panel.locator('button', { hasText: 'Connect MCP' }).click();

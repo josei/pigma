@@ -113,13 +113,12 @@ export function Rulers({ viewport, width, height, selection }: RulersProps) {
             stroke="rgba(0,0,0,0.35)"
             strokeWidth={1}
           />
-          {tick.major && tick.screen > STRIP + 12 ? (
+          {tick.major && tick.screen > STRIP + 4 ? (
             <text
-              x={STRIP - 11}
-              y={tick.screen - 3}
+              transform={`translate(10 ${tick.screen - 3}) rotate(-90)`}
               fontSize={9}
               fill="rgba(0,0,0,0.5)"
-              textAnchor="end"
+              textAnchor="start"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
               {label(tick.world)}

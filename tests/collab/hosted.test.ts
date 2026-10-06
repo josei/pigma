@@ -113,8 +113,10 @@ describe('hosted deployment: no log, no store', () => {
   async function mint(hosted: HostedRelay): Promise<string> {
     const response = await fetch(`${hosted.config.mcp?.url}/token`, { method: 'POST' });
     expect(response.status).toBe(201);
-    const body = (await response.json()) as { token: string; expiresAt: number; ttlMs: number };
-    expect(body.ttlMs).toBeGreaterThan(0);
+    const body = (await response.json()) as { token: string; expiresAt: number | null; ttlMs: number | null };
+    // Tokens do not expire by default: they live until revoked.
+    expect(body.ttlMs).toBeNull();
+    expect(body.expiresAt).toBeNull();
     return body.token;
   }
 

@@ -60,7 +60,7 @@ describe('MCP panel states', () => {
     expect(html).not.toContain('mcp-desktop-link');
     expect(html).not.toContain('mcp-hosted-note');
     expect(html).not.toContain('not offered');
-    expect(html).toContain('served by the relay');
+    expect(html).toContain('stores nothing of MCP traffic');
   });
 
   it('shows the loopback endpoint with no token in the desktop state', () => {
@@ -71,7 +71,7 @@ describe('MCP panel states', () => {
     expect(html).toContain('data-mcp-endpoint="http://127.0.0.1:3001/mcp"');
     expect(html).toContain('aria-label="MCP endpoint"');
     expect(html).toContain('none required');
-    expect(html).toContain('no token needed');
+    expect(html).toContain('No token needed on the desktop app');
     expect(html).toContain('mcp-bridge-panel');
     // No token to mint: the loopback endpoint needs none.
     expect(html).not.toContain('aria-label="Get a session token"');

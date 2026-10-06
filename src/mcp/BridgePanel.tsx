@@ -20,16 +20,22 @@ import {
 export interface BridgePanelProps {
   /** Relay base URL. Matches `bin.ts --bridge`'s `--relay-port`. */
   defaultUrl?: string;
+  /**
+   * Called before connecting, so the host can fetch a token the user does not
+   * have yet. Returns false to stop (the host reports why).
+   */
+  prepare?: () => Promise<boolean>;
+  /** Whether Connect is usable without a token already in the field. */
+  canPrepare?: boolean;
 }
 
-export function BridgePanel({ defaultUrl }: BridgePanelProps) {
+/** The two relay fields. Rarely needed by hand, so the host tucks them away. */
+export function BridgeFields({ defaultUrl }: Pick<BridgePanelProps, 'defaultUrl'>) {
   const state = useSyncExternalStore(subscribeBridge, getBridgeState, getBridgeState);
   const url = state.url || defaultUrl || 'http://127.0.0.1:3002';
-  const connected = state.status === 'connected';
-  const connecting = state.status === 'connecting';
-
+  const locked = state.status === 'connected' || state.status === 'connecting';
   return (
-    <div className="bridge" data-testid="mcp-bridge-panel">
+    <>
       <p className="bridge__row">
         <label className="bridge__label" htmlFor="bridge-url">
           Relay URL
@@ -40,7 +46,7 @@ export function BridgePanel({ defaultUrl }: BridgePanelProps) {
           aria-label="Relay URL"
           value={url}
           onChange={(event) => setBridgeTarget(event.target.value, state.token)}
-          disabled={connected || connecting}
+          disabled={locked}
           placeholder="http://127.0.0.1:3002"
         />
       </p>
@@ -55,10 +61,27 @@ export function BridgePanel({ defaultUrl }: BridgePanelProps) {
           aria-label="Relay token"
           value={state.token}
           onChange={(event) => setBridgeTarget(url, event.target.value)}
-          disabled={connected || connecting}
+          disabled={locked}
           placeholder="token"
         />
       </p>
+    </>
+  );
+}
+
+/** Status plus the one Connect / Disconnect button. */
+export function BridgePanel({ prepare, canPrepare = false }: BridgePanelProps) {
+  const state = useSyncExternalStore(subscribeBridge, getBridgeState, getBridgeState);
+  const connected = state.status === 'connected';
+  const connecting = state.status === 'connecting';
+
+  const connect = async () => {
+    if (prepare && !(await prepare())) return;
+    connectBridgeSession();
+  };
+
+  return (
+    <div className="bridge" data-testid="mcp-bridge-panel">
       <div className="bridge__actions">
         <span className="bridge__status" data-testid="mcp-bridge-status">
           MCP: {state.status}
@@ -71,8 +94,8 @@ export function BridgePanel({ defaultUrl }: BridgePanelProps) {
           <button
             className="button button--primary"
             type="button"
-            onClick={() => connectBridgeSession()}
-            disabled={state.token.length === 0}
+            onClick={() => void connect()}
+            disabled={state.token.length === 0 && !canPrepare}
           >
             Connect MCP
           </button>

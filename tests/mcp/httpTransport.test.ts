@@ -158,7 +158,7 @@ describe('session tokens', () => {
       headers: { 'x-pigma-peer': '203.0.113.7', 'x-pigma-mint': 'operator-secret' },
     });
     expect(allowed.status).toBe(201);
-    const minted = (await allowed.json()) as { token: string; expiresAt: number; ttlMs: number; harnessConfig: Array<{ id: string }> };
+    const minted = (await allowed.json()) as { token: string; expiresAt: number | null; ttlMs: number | null; harnessConfig: Array<{ id: string }> };
     expect(looksLikeToken(minted.token)).toBe(true);
     expect(minted.ttlMs).toBe(DEFAULT_TOKEN_TTL_MS);
     expect(minted.harnessConfig.map((entry) => entry.id)).toEqual(['claude', 'cursor', 'codex']);

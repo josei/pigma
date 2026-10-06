@@ -107,6 +107,12 @@ export async function mcpCall(relay: RelayInfo, method: string, params: unknown)
  * only registers the client a moment later, and a tool call in that window is
  * rejected with "No editor is connected". Wait for the relay itself.
  */
+/** The MCP panel keeps endpoint, token and relay fields under a collapsed "Advanced". */
+export async function openMcpAdvanced(page: Page): Promise<void> {
+  const details = page.locator('[data-testid="mcp-advanced"]');
+  if ((await details.getAttribute('open')) === null) await details.locator('summary').click();
+}
+
 export async function connectEditor(page: Page, relay: RelayInfo): Promise<void> {
   // Only navigate when the app is not already loaded. Navigating would reload
   // the document, discarding any local edits made before connecting.
@@ -115,6 +121,7 @@ export async function connectEditor(page: Page, relay: RelayInfo): Promise<void>
     await page.waitForSelector('.app');
   }
   await page.locator('.rail__button[aria-label="Tools"]').click();
+  await openMcpAdvanced(page);
   await page.locator('input[aria-label="Relay URL"]').fill(relay.url);
   await page.locator('input[aria-label="Relay token"]').fill(relay.token);
   await page.locator('button', { hasText: 'Connect MCP' }).click();

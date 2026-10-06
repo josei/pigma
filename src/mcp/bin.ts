@@ -261,7 +261,7 @@ export async function runCli(argv: string[], io: RunCliIo = {}): Promise<number>
     } else {
       log(
         `Hosted mode: mint a session token with POST ${handle.url}/token ` +
-          `(loopback or X-Pigma-Mint); TTL ${Math.round(tokens.lifetimeMs / 1000)}s; revoke with DELETE.`,
+          `(loopback or X-Pigma-Mint); ${tokens.lifetimeMs === null ? 'tokens do not expire' : `TTL ${Math.round(tokens.lifetimeMs / 1000)}s`}; revoke with DELETE.`,
       );
     }
     // Printed for the CLI; the panel reads the same snippets from the status surface.

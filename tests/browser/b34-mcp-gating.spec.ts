@@ -139,7 +139,7 @@ test('B34d the desktop state is reached from the shell’s desktop_info report',
   await expect(panel(page)).toHaveAttribute('data-mcp-state', 'desktop');
   await expect(panel(page)).toHaveAttribute('data-mcp-endpoint', info.mcpEndpoint);
   // The desktop state is the loopback endpoint and needs no token.
-  await expect(panel(page)).toContainText('served by the desktop app');
+  await expect(panel(page)).toContainText('No token needed on the desktop app');
   await expect(page.locator('input[aria-label="MCP token"]')).toHaveValue('none required');
   // A token is never offered for a state that needs none.
   await expect(page.locator('button[aria-label="Get a session token"]')).toHaveCount(0);

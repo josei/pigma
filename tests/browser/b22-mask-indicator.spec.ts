@@ -52,7 +52,7 @@ test('the outline appears on the mask, is GREEN, and the toggle toggles it', asy
   await expect(page.locator(outline), 'mask outlines were on by default').toHaveCount(0);
 
   await page.getByRole('button', { name: /menu/i }).first().click();
-  await page.getByRole('button', { name: 'Mask outlines' }).click();
+  await page.getByRole('menuitem', { name: 'Mask outlines' }).click();
   await expect.poll(async () => page.locator(outline).count(), { timeout: 5000 }).toBeGreaterThan(0);
 
   // GREEN, and DASHED — a different mark from the selection's solid purple.
@@ -67,6 +67,6 @@ test('the outline appears on the mask, is GREEN, and the toggle toggles it', asy
 
   // And the toggle TOGGLES: off again, gone.
   await page.getByRole('button', { name: /menu/i }).first().click();
-  await page.getByRole('button', { name: 'Mask outlines' }).click();
+  await page.getByRole('menuitem', { name: 'Mask outlines' }).click();
   await expect.poll(async () => page.locator(outline).count(), { timeout: 5000 }).toBe(0);
 });

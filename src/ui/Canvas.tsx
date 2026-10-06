@@ -1643,7 +1643,7 @@ export function Canvas() {
         </div>
       ) : null}
 
-      <div className="canvas__hud">
+      <div className={`canvas__hud${showRulers ? ' canvas__hud--rulers' : ''}`}>
         <button
           type="button"
           className={`icon-button${showRulers ? ' icon-button--active' : ''}`}

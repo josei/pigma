@@ -546,8 +546,9 @@ There is no user record, no account, and nothing to sign in to.
   `pigma_<64 hex>` token — the only response that ever contains the raw value.
   Minting is allowed from a loopback peer, or from anywhere with the operator's
   `X-Pigma-Mint` secret (`--mint-token`, `PIGMA_MCP_MINT_TOKEN`).
-- **Short-lived.** TTL defaults to 30 minutes (`--token-ttl <ms>`,
-  `PIGMA_MCP_TOKEN_TTL_MS`). An expired token is refused with `expired`.
+- **Long-lived.** A token does not expire; it works until it is revoked. An
+  operator who wants expiry opts in with `--token-ttl <ms>` /
+  `PIGMA_MCP_TOKEN_TTL_MS`, and an expired token is refused with `expired`.
 - **Revocable.** `DELETE /mcp/token` with the token revokes it immediately;
   shutdown revokes every live session.
 - **Presented as** `Authorization: Bearer <token>` or `X-Pigma-Token: <token>`.

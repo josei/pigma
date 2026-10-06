@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Icon, type IconName } from './icons';
 import { useEditor } from '../store/editorStore';
 import { runFileAction, type FileAction } from './FileActions';
 
 interface MenuItem {
+  /** Starts a new visual group, with this heading. */
+  group?: string;
   label: string;
   icon: IconName;
   shortcut?: string;
@@ -12,18 +14,18 @@ interface MenuItem {
 }
 
 const ITEMS: MenuItem[] = [
-  { label: 'New file', icon: 'file', run: () => useEditor.getState().newFile() },
+  { group: 'File', label: 'New file', icon: 'file', run: () => useEditor.getState().newFile() },
   { label: 'Open starter design', icon: 'frame', run: () => useEditor.getState().loadStarterDocument() },
-  { label: 'Import Pigma document…', icon: 'file', action: 'import-json' },
+  { group: 'Import', label: 'Import Pigma document…', icon: 'file', action: 'import-json' },
   { label: 'Import Figma JSON…', icon: 'file', action: 'import-figma-json' },
   { label: 'Import .fig…', icon: 'file', action: 'import-fig' },
   { label: 'Place image…', icon: 'rect', action: 'place-image' },
-  { label: 'Open file…', icon: 'file', action: 'open-file' },
+  { group: 'Open & save', label: 'Open file…', icon: 'file', action: 'open-file' },
   { label: 'Save to file', icon: 'check', action: 'save-file' },
   { label: 'Save to file as…', icon: 'duplicate', action: 'save-file-as' },
   { label: 'Export .pigma', icon: 'duplicate', action: 'export-json' },
-  { label: 'Copy link to this document…', icon: 'link', run: () => useEditor.getState().setShareLinkOpen(true) },
-  { label: 'Export SVG', icon: 'duplicate', action: 'export-svg' },
+  { group: 'Share', label: 'Copy link to this document…', icon: 'link', run: () => useEditor.getState().setShareLinkOpen(true) },
+  { group: 'Export', label: 'Export SVG', icon: 'duplicate', action: 'export-svg' },
   { label: 'Export selection as SVG', icon: 'duplicate', action: 'export-selection-svg' },
   { label: 'Export selection as PNG…', icon: 'duplicate', action: 'export-selection-png-options' },
   { label: 'Copy as PNG', icon: 'copy', action: 'copy-png' },
@@ -34,7 +36,7 @@ const ITEMS: MenuItem[] = [
   { label: 'Export PDF', icon: 'duplicate', action: 'export-pdf' },
   { label: 'Copy as SVG', icon: 'copy', action: 'copy-svg' },
   { label: 'Copy as CSS', icon: 'copy', action: 'copy-css' },
-  { label: 'Zoom to fit', icon: 'fit', shortcut: '⇧1', run: () => useEditor.getState().zoomToFit() },
+  { group: 'View', label: 'Zoom to fit', icon: 'fit', shortcut: '⇧1', run: () => useEditor.getState().zoomToFit() },
   { label: 'Zoom to 100%', icon: 'fit', shortcut: '⇧0', run: () => useEditor.getState().zoomTo(1) },
   { label: 'Show rulers', icon: 'line', shortcut: '⇧R', run: () => useEditor.getState().toggleRulers() },
   // Figma puts mask outlines under View with the other view options; ours sit in
@@ -42,7 +44,7 @@ const ITEMS: MenuItem[] = [
   { label: 'Mask outlines', icon: 'mask', run: () => useEditor.getState().toggleMaskOutlines() },
   { label: 'Show pixel grid', icon: 'rect', shortcut: '⇧G', run: () => useEditor.getState().toggleGrid() },
   { label: 'Snap to pixel grid', icon: 'rect', shortcut: '⇧X', run: () => useEditor.getState().toggleSnapToGrid() },
-  { label: 'Present', icon: 'play', shortcut: '⌘\\', run: () => useEditor.getState().setPresentation(true) },
+  { group: 'Tools', label: 'Present', icon: 'play', shortcut: '⌘\\', run: () => useEditor.getState().setPresentation(true) },
   { label: 'Toggle dark theme', icon: 'eye', shortcut: '⇧D', run: () => useEditor.getState().toggleTheme() },
   { label: 'Plugins…', icon: 'instance', run: () => useEditor.getState().setLeftTab('plugins') },
 ];
@@ -85,12 +87,15 @@ export function Menu() {
     <div
       className="menu"
       ref={ref}
-      style={{ position: 'fixed', left: '50%', bottom: 76, transform: 'translateX(-50%)', zIndex: 70, minWidth: 240 }}
+      role="menu"
+      aria-label="Main menu"
     >
       {ITEMS.map((item) => (
+        <Fragment key={item.label}>
+        {item.group ? <div className="menu__heading">{item.group}</div> : null}
         <button
-          key={item.label}
           type="button"
+          role="menuitem"
           className="menu__item"
           onClick={() => {
             setOpen(false);
@@ -103,6 +108,7 @@ export function Menu() {
           </span>
           {item.shortcut ? <span className="menu__shortcut">{item.shortcut}</span> : null}
         </button>
+        </Fragment>
       ))}
     </div>
   );

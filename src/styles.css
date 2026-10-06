@@ -1236,6 +1236,12 @@ input.input[type='color']::-webkit-color-swatch {
   z-index: 15;
 }
 
+/* Clear the 20px ruler strip so the readout never sits on the ruler. */
+.canvas__hud--rulers {
+  top: calc(20px + var(--panel-padding));
+  right: calc(var(--panel-padding));
+}
+
 .canvas__hud .icon-button {
   width: 20px;
   height: 20px;
@@ -1290,12 +1296,46 @@ input.input[type='color']::-webkit-color-swatch {
   box-shadow: var(--shadow-menu);
 }
 
+/* The main menu: a grouped, scrollable popover above the toolbar's menu button. */
+.menu[role='menu'] {
+  position: fixed;
+  left: 50%;
+  bottom: 68px;
+  transform: translateX(-50%);
+  z-index: 70;
+  width: 260px;
+  max-height: min(560px, calc(100vh - 120px));
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.menu__heading {
+  margin: 6px 0 2px;
+  padding: 6px 8px 2px;
+  border-top: 1px solid var(--figma-border);
+  color: var(--figma-text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.menu__heading:first-child {
+  margin-top: 0;
+  border-top: 0;
+}
+
 .menu__item {
   display: flex;
   align-items: center;
   gap: var(--panel-padding);
+  width: 100%;
   height: var(--control-height);
-  padding: 0 var(--panel-padding);
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--figma-text);
+  font: inherit;
+  text-align: left;
   border-radius: 4px;
   cursor: default;
   white-space: nowrap;
@@ -1331,8 +1371,10 @@ input.input[type='color']::-webkit-color-swatch {
 }
 
 .menu__label {
-  padding: var(--row-gap) var(--panel-padding);
-  color: var(--figma-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: inherit;
 }
 
 /* ==========================================================================
@@ -1815,4 +1857,33 @@ input.input[type='color']::-webkit-color-swatch {
   .app__right--open {
     animation: none;
   }
+}
+
+/* Collapsed "Advanced" block: the rarely needed fields stay out of the way. */
+.advanced {
+  display: flex;
+  flex-direction: column;
+  gap: var(--row-gap);
+}
+
+.advanced > summary {
+  cursor: default;
+  color: var(--figma-text-secondary);
+  padding: 4px 0;
+  user-select: none;
+}
+
+.advanced[open] > summary {
+  margin-bottom: 4px;
+}
+
+/* Tool picker and its Copy button share one row, the select taking the slack. */
+.mcp-setup {
+  display: flex;
+  gap: var(--row-gap);
+}
+
+.mcp-setup .input {
+  flex: 1;
+  min-width: 0;
 }

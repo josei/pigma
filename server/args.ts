@@ -75,7 +75,7 @@ Options:
                           advertise it at GET /config.json
       --mcp-path <path>   where to mount it (default /mcp)
       --mcp-token <secret>  require this session token on the MCP endpoint
-      --token-ttl <ms>    lifetime of a minted per-session token (default 30m)
+      --token-ttl <ms>    lifetime of a minted per-session token (default: never expires; revoke instead)
       --no-orphan-guard   keep running even if the parent process exits
   -h, --help              show this message
 

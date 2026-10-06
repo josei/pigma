@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { BridgePanel } from './BridgePanel';
+import { BridgeFields, BridgePanel } from './BridgePanel';
 import { getBridgeState, setBridgeTarget, subscribeBridge } from './bridgeController';
 import { harnessConfigs, type HarnessId } from './harnessConfig';
 import { isLoopbackEndpoint, readEndpointOverrides, saveEndpointOverrides } from '../config/endpoints';
@@ -110,13 +110,14 @@ export function McpPanel({ environment }: McpPanelProps = {}) {
     setBridgeTarget(advertisedBridge, current.token);
   }, [advertisedBridge]);
 
-  const requestToken = async () => {
+  /** Mint a session token for the hosted endpoint; resolves to it, or null (the error is shown). */
+  const requestToken = async (): Promise<string | null> => {
     setMinting(true);
     const result = await mintSessionToken(endpoint);
     setMinting(false);
     if (!result.token) {
       setTokenError(result.error ?? 'Could not mint a session token.');
-      return;
+      return null;
     }
     setTokenError(null);
     setSession(result.token);
@@ -124,9 +125,16 @@ export function McpPanel({ environment }: McpPanelProps = {}) {
     setBridgeTarget(getBridgeState().url, result.token.token);
     const left = minutesLeft(result.token);
     useEditor.getState().pushToast(
-      left === null ? 'Session token ready — MCP is usable for this session' : `Session token ready — valid for about ${left} minute${left === 1 ? '' : 's'}`,
+      left === null ? 'Token ready — it works until you revoke it' : `Token ready — valid for about ${left} minute${left === 1 ? '' : 's'}`,
       'success',
     );
+    return result.token.token;
+  };
+
+  /** A harness config needs the token, so fetch one first when this deployment wants it. */
+  const ensureToken = async (): Promise<string> => {
+    if (token !== '' || !tokenRequired) return token;
+    return (await requestToken()) ?? '';
   };
 
   const copy = async (text: string, what: 'token' | 'config') => {
@@ -139,6 +147,13 @@ export function McpPanel({ environment }: McpPanelProps = {}) {
     }
   };
 
+  const copyConfig = async () => {
+    const minted = await ensureToken();
+    if (tokenRequired && minted === '') return;
+    const ready = harnessConfigs({ endpoint, token: minted === '' ? null : minted }).find((entry) => entry.id === harness);
+    await copy(ready?.content ?? '', 'config');
+  };
+
   return (
     <div
       className="section"
@@ -147,88 +162,17 @@ export function McpPanel({ environment }: McpPanelProps = {}) {
       data-mcp-endpoint={endpoint ?? undefined}
     >
       <div className="section__header">
-        <span>MCP</span>
+        <span>AI agent (MCP)</span>
         <span style={{ color: 'var(--figma-text-tertiary)' }} data-testid="mcp-status">
           {state.status}
         </span>
       </div>
       <div className="section__body">
-        <div className="prop-row">
-          <span className="prop-row__label">Endpoint</span>
-          <input
-            className="input"
-            aria-label="MCP endpoint"
-            placeholder={availability.endpoint}
-            value={endpointDraft}
-            onChange={(event) => {
-              setEndpointDraft(event.target.value);
-              setUserOverride(event.target.value);
-              saveEndpointOverrides({ mcp: event.target.value });
-            }}
-          />
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Copy MCP endpoint"
-            data-tooltip="Copy the endpoint"
-            onClick={() => void copy(endpoint ?? '', 'config')}
-          >
-            {copied === 'config' ? '✓' : '⧉'}
-          </button>
-        </div>
         <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }} data-testid="mcp-state-note">
-          Effective: <code aria-label="Effective MCP endpoint">{endpoint}</code>
-          {isLoopbackEndpoint(endpoint ?? '') ? ' (this machine)' : ''}
-          {availability.kind === 'desktop' ? ' — served by the desktop app, no token needed' : ''}
-          {availability.kind === 'hosted'
-            ? ' — served by the relay, which logs nothing and stores nothing of MCP traffic; the session token below is minted for this tab only'
-            : ''}
-          {' — MCP stays off until you connect it.'}
+          Let an agent read and edit this file. Pick your tool, copy its setup, then connect.
+          {availability.kind === 'desktop' ? ' No token needed on the desktop app.' : ''}
         </p>
-        {tokenError ? (
-          <p role="alert" style={{ margin: 0, color: 'var(--figma-danger)' }} data-testid="mcp-token-error">
-            {tokenError}
-          </p>
-        ) : null}
-        <div className="prop-row">
-          <span className="prop-row__label">Token</span>
-          <input
-            className="input"
-            aria-label="MCP token"
-            readOnly
-            value={token === '' ? (tokenRequired ? 'required by this deployment' : 'none required') : maskToken(token)}
-          />
-          {tokenRequired && token === '' ? (
-            <button
-              type="button"
-              className="button"
-              aria-label="Get a session token"
-              data-tooltip="Ask this deployment for a short-lived session token"
-              disabled={minting}
-              onClick={() => void requestToken()}
-            >
-              {minting ? 'Requesting…' : 'Get token'}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="icon-button"
-            aria-label="Copy MCP token"
-            data-tooltip={
-              token === ''
-                ? tokenRequired
-                  ? 'This deployment requires a token: connect the bridge with it below'
-                  : 'No token: the desktop app and loopback need none'
-                : 'Copy the token'
-            }
-            disabled={token === ''}
-            onClick={() => void copy(token, 'token')}
-          >
-            {copied === 'token' ? '✓' : '⧉'}
-          </button>
-        </div>
-        <div className="prop-row">
-          <span className="prop-row__label">Harness</span>
+        <div className="mcp-setup">
           <select
             className="input"
             aria-label="Harness"
@@ -245,17 +189,95 @@ export function McpPanel({ environment }: McpPanelProps = {}) {
             type="button"
             className="button"
             aria-label="Copy harness config"
-            onClick={() => void copy(config?.content ?? '', 'config')}
+            disabled={minting}
+            onClick={() => void copyConfig()}
           >
-            {copied === 'config' ? 'Copied' : 'Copy harness config'}
+            {copied === 'config' ? 'Copied' : 'Copy setup'}
           </button>
         </div>
         {config ? (
-          <p style={{ margin: '4px 0 0', color: 'var(--figma-text-secondary)' }}>
-            Paste into <code>{config.path}</code>
+          <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
+            Paste it into <code>{config.path}</code>
           </p>
         ) : null}
-        <BridgePanel />
+        {tokenError ? (
+          <p role="alert" style={{ margin: 0, color: 'var(--figma-danger)' }} data-testid="mcp-token-error">
+            {tokenError}
+          </p>
+        ) : null}
+        <BridgePanel
+          canPrepare={tokenRequired && token === ''}
+          prepare={async () => (token !== '' || !tokenRequired ? true : (await requestToken()) !== null)}
+        />
+        <details className="advanced" data-testid="mcp-advanced">
+          <summary>Advanced</summary>
+          <div className="prop-row">
+            <span className="prop-row__label">Endpoint</span>
+            <input
+              className="input"
+              aria-label="MCP endpoint"
+              placeholder={availability.endpoint}
+              value={endpointDraft}
+              onChange={(event) => {
+                setEndpointDraft(event.target.value);
+                setUserOverride(event.target.value);
+                saveEndpointOverrides({ mcp: event.target.value });
+              }}
+            />
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Copy MCP endpoint"
+              data-tooltip="Copy the endpoint"
+              onClick={() => void copy(endpoint ?? '', 'config')}
+            >
+              {copied === 'config' ? '✓' : '⧉'}
+            </button>
+          </div>
+          <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
+            Effective: <code aria-label="Effective MCP endpoint">{endpoint}</code>
+            {isLoopbackEndpoint(endpoint ?? '') ? ' (this machine)' : ''}
+            {availability.kind === 'hosted' ? ' — the relay logs nothing and stores nothing of MCP traffic.' : ''}
+          </p>
+          <div className="prop-row">
+            <span className="prop-row__label">Token</span>
+            <input
+              className="input"
+              aria-label="MCP token"
+              readOnly
+              value={token === '' ? (tokenRequired ? 'required by this deployment' : 'none required') : maskToken(token)}
+            />
+            {tokenRequired && token === '' ? (
+              <button
+                type="button"
+                className="button"
+                aria-label="Get a session token"
+                data-tooltip="Ask this deployment for a token. It works until it is revoked."
+                disabled={minting}
+                onClick={() => void requestToken()}
+              >
+                {minting ? 'Requesting…' : 'Get token'}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="Copy MCP token"
+              data-tooltip={
+                token === ''
+                  ? tokenRequired
+                    ? 'This deployment requires a token: use Get token'
+                    : 'No token: the desktop app and loopback need none'
+                  : 'Copy the token'
+              }
+              disabled={token === ''}
+              onClick={() => void copy(token, 'token')}
+            >
+              {copied === 'token' ? '✓' : '⧉'}
+            </button>
+          </div>
+          <BridgeFields />
+        </details>
       </div>
     </div>
   );

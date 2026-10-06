@@ -224,7 +224,8 @@ export function createHttpHandler(
             token: session.token,
             sessionId: session.sessionId,
             createdAt: session.createdAt,
-            expiresAt: session.expiresAt,
+            // JSON has no Infinity: a token that never expires reports null.
+            expiresAt: Number.isFinite(session.expiresAt) ? session.expiresAt : null,
             ttlMs: tokens.lifetimeMs,
             harnessConfig: harnessConfigs({ endpoint, name, token: session.token }),
           },

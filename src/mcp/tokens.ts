@@ -15,8 +15,9 @@
  * - **Adoptable.** A deployment may pre-share one token (`adopt`), which is how
  *   a self-host says "this is the token" instead of minting per session. It is
  *   revocable like any other and can be set to never expire.
- * - **Short-lived.** `ttlMs` (default 30 minutes, `PIGMA_MCP_TOKEN_TTL_MS`)
- *   after which the token is refused as expired.
+ * - **Long-lived by default.** A token does not expire; it stays valid until it
+ *   is revoked. An operator who wants expiry opts in with `ttlMs`
+ *   (`PIGMA_MCP_TOKEN_TTL_MS`), after which the token is refused as expired.
  * - **Revocable.** `DELETE /mcp/token` with the token revokes it immediately;
  *   `revokeAll()` drops every session (used on shutdown).
  * - **Bounded.** `maxSessions` is enforced on mint: expired and revoked records
@@ -33,6 +34,7 @@ export interface SessionToken {
   sessionId: string;
   label: string | null;
   createdAt: number;
+  /** `Infinity` when the token never expires (the default). */
   expiresAt: number;
   revokedAt: number | null;
 }
@@ -53,8 +55,8 @@ export interface SessionSummary {
 }
 
 export interface TokenStoreOptions {
-  /** Lifetime of a minted token. Default 30 minutes. */
-  ttlMs?: number;
+  /** Lifetime of a minted token. Default: none - it lives until revoked. */
+  ttlMs?: number | null;
   now?: () => number;
   /** Token body generator; defaults to 32 random bytes, hex. */
   random?: () => string;
@@ -65,7 +67,8 @@ export interface TokenStoreOptions {
   maxSessions?: number;
 }
 
-export const DEFAULT_TOKEN_TTL_MS = 30 * 60 * 1000;
+/** Tokens do not expire unless an operator asks for it; they are revocable. */
+export const DEFAULT_TOKEN_TTL_MS: number | null = null;
 
 function defaultRandom(): string {
   const bytes = new Uint8Array(32);
@@ -75,20 +78,20 @@ function defaultRandom(): string {
 
 export class TokenStore {
   private readonly records = new Map<string, SessionToken>();
-  private readonly ttlMs: number;
+  private readonly ttlMs: number | null;
   private readonly now: () => number;
   private readonly random: () => string;
   private readonly maxSessions: number;
   private counter = 0;
 
   constructor(options: TokenStoreOptions = {}) {
-    this.ttlMs = options.ttlMs ?? DEFAULT_TOKEN_TTL_MS;
+    this.ttlMs = options.ttlMs === undefined ? DEFAULT_TOKEN_TTL_MS : options.ttlMs;
     this.now = options.now ?? Date.now;
     this.random = options.random ?? defaultRandom;
     this.maxSessions = options.maxSessions ?? 64;
   }
 
-  get lifetimeMs(): number {
+  get lifetimeMs(): number | null {
     return this.ttlMs;
   }
 
@@ -116,7 +119,7 @@ export class TokenStore {
       sessionId: `s${this.counter.toString(36)}${at.toString(36)}`,
       label,
       createdAt: at,
-      expiresAt: at + this.ttlMs,
+      expiresAt: this.ttlMs === null ? Number.POSITIVE_INFINITY : at + this.ttlMs,
       revokedAt: null,
     };
     this.records.set(session.token, session);
