@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon, type IconName } from './icons';
-import { useEditor, type Tool } from '../store/editorStore';
+import { useEditor } from '../store/editorStore';
 import { LayersPanel } from './LayersPanel';
 import { McpPanel } from '../mcp/McpPanel';
 import { StylesList } from './StylesList';
@@ -148,47 +148,6 @@ function AssetsList() {
   );
 }
 
-const TOOL_HELP: Array<{ tool: Tool; icon: IconName; label: string; shortcut: string }> = [
-  { tool: 'select', icon: 'cursor', label: 'Move / select', shortcut: 'V' },
-  { tool: 'frame', icon: 'frame', label: 'Frame', shortcut: 'F' },
-  { tool: 'rect', icon: 'rect', label: 'Rectangle', shortcut: 'R' },
-  { tool: 'ellipse', icon: 'ellipse', label: 'Ellipse', shortcut: 'O' },
-  { tool: 'polygon', icon: 'polygon', label: 'Polygon', shortcut: 'G' },
-  { tool: 'star', icon: 'star', label: 'Star', shortcut: 'S' },
-  { tool: 'line', icon: 'line', label: 'Line', shortcut: 'L' },
-  { tool: 'text', icon: 'text', label: 'Text', shortcut: 'T' },
-  { tool: 'hand', icon: 'hand', label: 'Hand', shortcut: 'H' },
-];
-
-function ToolsList() {
-  const tool = useEditor((state) => state.tool);
-  const setTool = useEditor((state) => state.setTool);
-  return (
-    <div className="section">
-      <div className="section__header">
-        <span>Tools</span>
-      </div>
-      <div className="section__body">
-        {TOOL_HELP.map((entry) => (
-          <div
-            key={entry.label}
-            className={`layer-row${tool === entry.tool ? ' layer-row--selected' : ''}`}
-            onClick={() => setTool(entry.tool)}
-          >
-            <span className="layer-row__icon">
-              <Icon name={entry.icon} size={14} />
-            </span>
-            <span className="layer-row__name">{entry.label}</span>
-            <span className="layer-row__actions" style={{ color: 'var(--figma-text-secondary)' }}>
-              {entry.shortcut}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function FileSection() {
   const file = useEditor((state) => state.file);
   const linkedFile = useEditor((state) => state.fileHandle?.name ?? null);
@@ -212,8 +171,9 @@ function FileSection() {
 
   const nodeCount = (() => {
     let count = 0;
+    // Layers only: the pages themselves are not layers.
     for (const page of file.document.children) walk(page, () => (count += 1));
-    return count;
+    return Math.max(0, count - file.document.children.length);
   })();
 
   return (
@@ -238,7 +198,7 @@ function FileSection() {
             : file.schema === 'pigma/1'
               ? 'Local document'
               : 'Imported'}{' '}
-        · {nodeCount} nodes · {file.document.children.length}{' '}
+        · {nodeCount} {nodeCount === 1 ? 'layer' : 'layers'} · {file.document.children.length}{' '}
         {file.document.children.length === 1 ? 'page' : 'pages'}
       </div>
       {linkedSource ? (
@@ -445,47 +405,10 @@ export function LeftPanel() {
         {leftTab === 'comments' ? <CommentsPanel /> : null}
         {leftTab === 'plugins' ? <PluginsPanel /> : null}
         {leftTab === 'rooms' ? <RoomsPanel /> : null}
-        {leftTab === 'tools' ? (
-          <>
-            <ToolsList />
-            <McpPanel />
-          </>
-        ) : null}
-        {leftTab === 'file' ? (
-          <>
-            <FileMenuList />
-            <VersionHistoryPanel />
-          </>
-        ) : null}
+        {leftTab === 'tools' ? <McpPanel /> : null}
+        {leftTab === 'file' ? <VersionHistoryPanel /> : null}
       </div>
     </aside>
   );
 }
 
-function FileMenuList() {
-  const actions: Array<{ label: string; run: () => void }> = [
-    { label: 'New file', run: () => useEditor.getState().newFile() },
-    { label: 'Open starter design', run: () => useEditor.getState().loadStarterDocument() },
-    { label: 'Place image…', run: () => window.dispatchEvent(new CustomEvent('pigma:place-image')) },
-    { label: 'Export .pigma…', run: () => window.dispatchEvent(new CustomEvent('pigma:export-json')) },
-    { label: 'Import JSON…', run: () => window.dispatchEvent(new CustomEvent('pigma:import-json')) },
-    { label: 'Export SVG…', run: () => window.dispatchEvent(new CustomEvent('pigma:export-svg')) },
-    { label: 'Copy as SVG', run: () => window.dispatchEvent(new CustomEvent('pigma:copy-svg')) },
-    { label: 'Copy as CSS', run: () => window.dispatchEvent(new CustomEvent('pigma:copy-css')) },
-    { label: 'Zoom to fit', run: () => useEditor.getState().zoomToFit() },
-  ];
-  return (
-    <div className="section">
-      <div className="section__header">
-        <span>File</span>
-      </div>
-      <div className="section__body">
-        {actions.map((action) => (
-          <div key={action.label} className="layer-row" onClick={action.run}>
-            <span className="layer-row__name">{action.label}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}

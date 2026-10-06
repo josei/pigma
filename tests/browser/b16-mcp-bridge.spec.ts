@@ -12,7 +12,7 @@ import type { Page } from '@playwright/test';
 async function openBridgePanel(page: Page) {
   await page.goto('/');
   await page.waitForSelector('.app');
-  await page.locator('.rail__button[aria-label="Tools"]').click();
+  await page.locator('.rail__button[aria-label="AI agent"]').click();
   const panel = page.locator('[data-testid="mcp-bridge-panel"]');
   await expect(panel).toBeVisible();
   return panel;

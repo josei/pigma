@@ -120,7 +120,7 @@ export async function connectEditor(page: Page, relay: RelayInfo): Promise<void>
     await page.goto('/');
     await page.waitForSelector('.app');
   }
-  await page.locator('.rail__button[aria-label="Tools"]').click();
+  await page.locator('.rail__button[aria-label="AI agent"]').click();
   await openMcpAdvanced(page);
   await page.locator('input[aria-label="Relay URL"]').fill(relay.url);
   await page.locator('input[aria-label="Relay token"]').fill(relay.token);

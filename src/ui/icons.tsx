@@ -70,6 +70,8 @@ export type IconName =
   | 'constraint-stretch'
   | 'constraint-scale'
   | 'tools'
+  | 'comment'
+  | 'sparkle'
   | 'variables'
   | 'pig';
 
@@ -315,6 +317,8 @@ const GLYPHS: Record<IconName, JSX.Element> = {
       <rect x="8.5" y="9" width="5" height="5" rx="1" />
     </>
   ),
+  comment: <path d="M3 3h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H8l-3 2.5V11H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />,
+  sparkle: <path d="M8 1.5 9.4 6.6 14.5 8 9.4 9.4 8 14.5 6.6 9.4 1.5 8 6.6 6.6Z" />,
   tools: (
     <>
       <path d="M2.5 4.5h11M2.5 11.5h11" />

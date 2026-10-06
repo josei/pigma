@@ -13,7 +13,7 @@ import { hasChildren } from '../model/types';
 import { defaultAutoLayout } from '../model/autoLayout';
 import { EFFECT_TYPES, effectLabel, isBlur, isShadow, type EffectKind } from '../model/effects';
 import { CONSTRAINT_TYPES, constraintLabel } from '../model/constraints';
-import { VariableBind } from './VariablesPanel';
+import { VariableBindInline, VariableBindRow } from './VariablesPanel';
 import { InspectPanel } from './InspectPanel';
 import { BOOLEAN_MODES, booleanLabel } from '../model/boolean';
 import { cornerRadii } from '../render/SceneRenderer';
@@ -210,12 +210,7 @@ function PaintRow({
       </div>
       {/* The bind control is a sibling row: sharing the paint row squeezed the
           colour input to zero width. */}
-      {variableProperty ? (
-        <div className="prop-row">
-          <span className="prop-row__label">{label} var</span>
-          <VariableBind property={variableProperty} label={label} />
-        </div>
-      ) : null}
+      {variableProperty ? <VariableBindRow property={variableProperty} label={label} /> : null}
     </>
   );
 }
@@ -362,10 +357,7 @@ function TransformSection({ node }: { node: SceneNode }) {
             onCommit={(value) => updateSelected({ opacity: value / 100 }, 'Set opacity')}
           />
         </div>
-        <div className="prop-row">
-          <span className="prop-row__label">Opacity var</span>
-          <VariableBind property="opacity" label="Opacity" />
-        </div>
+        <VariableBindRow property="opacity" label="Opacity" />
         <div className="prop-grid prop-grid--2">
           <button
             type="button"
@@ -920,8 +912,7 @@ function LayoutSection({ node }: { node: SceneNode }) {
             aria-label="Visible"
             onChange={() => useEditor.getState().toggleVisible(node.id)}
           />
-          <span className="prop-row__label">Visible var</span>
-          <VariableBind property="visible" label="Visible" />
+          <VariableBindInline property="visible" label="Visible" />
           <span className="prop-row__label">Locked</span>
           <input
             type="checkbox"

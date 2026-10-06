@@ -85,7 +85,7 @@ export function Menu() {
 
   return (
     <div
-      className="menu"
+      className="menu menu--main"
       ref={ref}
       role="menu"
       aria-label="Main menu"

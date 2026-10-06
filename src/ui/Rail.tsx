@@ -12,8 +12,8 @@ const ENTRIES: RailEntry[] = [
   { tab: 'file', icon: 'file', label: 'File' },
   { tab: 'layers', icon: 'layers', label: 'Layers' },
   { tab: 'assets', icon: 'assets', label: 'Assets' },
-  { tab: 'comments', icon: 'menu', label: 'Comments' },
-  { tab: 'tools', icon: 'tools', label: 'Tools' },
+  { tab: 'comments', icon: 'comment', label: 'Comments' },
+  { tab: 'tools', icon: 'sparkle', label: 'AI agent' },
   { tab: 'plugins', icon: 'instance', label: 'Plugins' },
   { tab: 'rooms', icon: 'share', label: 'Rooms' },
 ];

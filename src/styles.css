@@ -1297,7 +1297,7 @@ input.input[type='color']::-webkit-color-swatch {
 }
 
 /* The main menu: a grouped, scrollable popover above the toolbar's menu button. */
-.menu[role='menu'] {
+.menu--main {
   position: fixed;
   left: 50%;
   bottom: 68px;

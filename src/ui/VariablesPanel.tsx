@@ -147,6 +147,44 @@ export function VariablesPanel() {
   );
 }
 
+/**
+ * Whether a bind control has anything to offer for a property: a variable to
+ * bind, or one already bound. With neither, the row is clutter and is hidden.
+ */
+export function useCanBind(property: string): boolean {
+  const file = useEditor((state) => state.file);
+  const bound = useEditor((state) => {
+    const id = state.selection[0];
+    const node = id ? findNode(state.file.document, id) : null;
+    return node && node.type !== 'DOCUMENT' && node.type !== 'CANVAS' ? Boolean((node.boundVariables ?? {})[property]) : false;
+  });
+  return bound || bindableVariables(file, property).length > 0;
+}
+
+/** A labelled bind row that only appears when there is something to bind. */
+export function VariableBindRow({ property, label }: { property: string; label: string }) {
+  const canBind = useCanBind(property);
+  if (!canBind) return null;
+  return (
+    <div className="prop-row">
+      <span className="prop-row__label">{label} var</span>
+      <VariableBind property={property} label={label} />
+    </div>
+  );
+}
+
+/** An inline label + bind control (no row of its own), hidden when there is nothing to bind. */
+export function VariableBindInline({ property, label }: { property: string; label: string }) {
+  const canBind = useCanBind(property);
+  if (!canBind) return null;
+  return (
+    <>
+      <span className="prop-row__label">{label} var</span>
+      <VariableBind property={property} label={label} />
+    </>
+  );
+}
+
 /** Compact bind control used by the properties panel rows. */
 export function VariableBind({ property, label }: { property: string; label: string }) {
   const file = useEditor((state) => state.file);

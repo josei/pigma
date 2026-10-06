@@ -4,7 +4,7 @@ import { boot } from './helpers';
 const APP_ORIGIN = 'http://127.0.0.1:5173';
 
 async function openTools(page: Page) {
-  await page.locator('.rail__button[aria-label="Tools"]').click();
+  await page.locator('.rail__button[aria-label="AI agent"]').click();
   await page.waitForTimeout(400);
 }
 

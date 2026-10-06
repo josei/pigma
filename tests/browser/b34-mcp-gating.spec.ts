@@ -23,7 +23,7 @@ const panel = (page: Page) => page.locator('[data-testid="mcp-panel"]');
 async function openTools(page: Page) {
   await page.goto('/?blank=1');
   await page.waitForSelector('.app');
-  await page.locator('.rail__button[aria-label="Tools"]').click();
+  await page.locator('.rail__button[aria-label="AI agent"]').click();
   await page.waitForTimeout(500);
 }
 
