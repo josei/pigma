@@ -392,14 +392,14 @@ export function LeftPanel() {
       <FileSection />
       <div className="panel__scroll">
         {leftTab === 'file' ? <DocumentsSection /> : null}
-        <PageRows />
+        {leftTab === 'file' || leftTab === 'layers' ? <PageRows /> : null}
         {leftTab === 'layers' ? <LayersPanel /> : null}
         {leftTab === 'assets' ? (
           <>
-            <LibrariesPanel />
+            <AssetsList />
             <StylesList />
             <VariablesPanel />
-            <AssetsList />
+            <LibrariesPanel />
           </>
         ) : null}
         {leftTab === 'comments' ? <CommentsPanel /> : null}

@@ -15,6 +15,7 @@ async function joinRoom(page: Page, nickname: string, roomId: string, relayUrl: 
   await page.waitForTimeout(300);
   await page.locator('input[aria-label="Room nickname"]').fill(nickname);
   await page.locator('input[aria-label="Room id"]').fill(roomId);
+  await page.locator('[data-testid="rooms-advanced"] summary').click();
   await page.locator('input[aria-label="Relay base"]').fill(relayUrl);
   const plaintext = page.locator('input[type="checkbox"]').first();
   if (await plaintext.count()) await plaintext.check();

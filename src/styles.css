@@ -1054,12 +1054,14 @@ input.input[type='color']::-webkit-color-swatch {
 }
 
 .segmented__option {
-  flex: 1 1 0;
+  /* Size to the label, then share the slack: equal thirds clipped "Column". */
+  flex: 1 1 auto;
   /* Never let a segment collapse into an unclickable sliver, and never let a
      long label wrap out of the button (icon-only options carry no text). */
   min-width: 28px;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
   height: 20px;
   display: inline-flex;
   align-items: center;

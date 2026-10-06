@@ -159,75 +159,6 @@ export function RoomsPanel() {
               />
             </div>
             <div className="prop-row">
-              <span className="prop-row__label">Key</span>
-              <input
-                className="input"
-                aria-label="Room key"
-                placeholder="from a share link"
-                value={keyText}
-                onChange={(event) => setKeyText(event.target.value)}
-              />
-            </div>
-            <div className="prop-row">
-              <span className="prop-row__label">Token</span>
-              <input
-                className="input"
-                aria-label="Room token"
-                placeholder="optional"
-                value={token}
-                onChange={(event) => setToken(event.target.value)}
-              />
-            </div>
-            <div className="prop-row">
-              <label className="prop-row__label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input
-                  type="checkbox"
-                  aria-label="Join in plaintext"
-                  checked={plaintextOptIn}
-                  // A key in the field means an encrypted join: plaintext cannot be
-                  // selected until the user clears it.
-                  disabled={inviteKey !== null}
-                  onChange={(event) => setPlaintextOptIn(event.target.checked)}
-                />
-                Join in plaintext
-              </label>
-            </div>
-            {keyInvalid ? (
-              <p role="alert" style={{ margin: 0, color: 'var(--figma-danger)' }} data-testid="room-key-error">
-                That key is not a valid room key. Paste the whole share link, or clear the field to join
-                in plaintext.
-              </p>
-            ) : null}
-            {!keyInvalid && !canJoin ? (
-              <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
-                Encrypted rooms need the key from a share link. Tick “Join in plaintext” to enter
-                without one — the relay can read a plaintext room.
-              </p>
-            ) : null}
-            {inviteKey !== null && plaintextOptIn ? (
-              <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
-                A key is present: this joins encrypted, and the plaintext choice is ignored.
-              </p>
-            ) : null}
-            <div className="prop-row">
-              <span className="prop-row__label">Relay</span>
-              <input
-                className="input"
-                aria-label="Relay base"
-                placeholder={HOSTED_RELAY_URL}
-                value={base}
-                onChange={(event) => {
-                  setBase(event.target.value);
-                  // Remembered like the MCP endpoint: the choice outlives the session.
-                  saveEndpointOverrides({ relay: event.target.value });
-                }}
-              />
-            </div>
-            <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
-              Effective: <code aria-label="Effective relay">{effective}</code>
-              {isLoopbackEndpoint(effective) ? ' (this machine)' : ''} — override it for self-host or LAN.
-            </p>
-            <div className="prop-row">
               <button
                 type="button"
                 className="button button--primary"
@@ -292,6 +223,78 @@ export function RoomsPanel() {
                 </button>
               </div>
             ) : null}
+            {keyInvalid ? (
+              <p role="alert" style={{ margin: 0, color: 'var(--figma-danger)' }} data-testid="room-key-error">
+                That key is not a valid room key. Paste the whole share link, or clear the field to join
+                in plaintext.
+              </p>
+            ) : null}
+            {!keyInvalid && !canJoin ? (
+              <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
+                Click Share to start an encrypted room, or open an invite link. For a plaintext room,
+                see Advanced.
+              </p>
+            ) : null}
+            {inviteKey !== null && plaintextOptIn ? (
+              <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
+                A key is present: this joins encrypted, and the plaintext choice is ignored.
+              </p>
+            ) : null}
+            <details className="advanced" data-testid="rooms-advanced">
+              <summary>Advanced</summary>
+            <div className="prop-row">
+              <span className="prop-row__label">Key</span>
+              <input
+                className="input"
+                aria-label="Room key"
+                placeholder="from a share link"
+                value={keyText}
+                onChange={(event) => setKeyText(event.target.value)}
+              />
+            </div>
+            <div className="prop-row">
+              <span className="prop-row__label">Token</span>
+              <input
+                className="input"
+                aria-label="Room token"
+                placeholder="optional"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+              />
+            </div>
+            <div className="prop-row">
+              <label className="prop-row__label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="checkbox"
+                  aria-label="Join in plaintext"
+                  checked={plaintextOptIn}
+                  // A key in the field means an encrypted join: plaintext cannot be
+                  // selected until the user clears it.
+                  disabled={inviteKey !== null}
+                  onChange={(event) => setPlaintextOptIn(event.target.checked)}
+                />
+                Join in plaintext
+              </label>
+            </div>
+            <div className="prop-row">
+              <span className="prop-row__label">Relay</span>
+              <input
+                className="input"
+                aria-label="Relay base"
+                placeholder={HOSTED_RELAY_URL}
+                value={base}
+                onChange={(event) => {
+                  setBase(event.target.value);
+                  // Remembered like the MCP endpoint: the choice outlives the session.
+                  saveEndpointOverrides({ relay: event.target.value });
+                }}
+              />
+            </div>
+            <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
+              Effective: <code aria-label="Effective relay">{effective}</code>
+              {isLoopbackEndpoint(effective) ? ' (this machine)' : ''} — override it for self-host or LAN.
+            </p>
+            </details>
             <p style={{ margin: '6px 0 0', color: 'var(--figma-text-secondary)' }}>
               {room.phase === 'error'
                 ? `Relay error: ${room.error ?? 'unknown'}`

@@ -28,6 +28,7 @@ async function joinRoom(page: Page, { nickname, roomId, relayUrl }: JoinOptions)
 
   await page.locator('input[aria-label="Room nickname"]').fill(nickname);
   await page.locator('input[aria-label="Room id"]').fill(roomId);
+  await page.locator('[data-testid="rooms-advanced"] summary').click();
   await page.locator('input[aria-label="Relay base"]').fill(relayUrl);
   // Plaintext avoids needing a share-link key; the panel says so explicitly.
   const plaintext = page.locator('input[type="checkbox"]').first();
