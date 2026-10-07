@@ -43,6 +43,7 @@ const ITEMS: MenuItem[] = [
   { label: 'Snap to pixel grid', icon: 'rect', shortcut: '⇧X', run: () => useEditor.getState().toggleSnapToGrid() },
   { group: 'Tools', label: 'Present', icon: 'play', shortcut: '⌘\\', run: () => useEditor.getState().setPresentation(true) },
   { label: 'Toggle dark theme', icon: 'eye', shortcut: '⇧D', run: () => useEditor.getState().toggleTheme() },
+  { label: 'Connect AI agent…', icon: 'sparkle', run: () => useEditor.getState().setLeftTab('tools') },
   { label: 'Plugins…', icon: 'instance', run: () => useEditor.getState().setLeftTab('plugins') },
 ];
 

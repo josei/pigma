@@ -1671,6 +1671,8 @@ function BooleanSection() {
   const boolean = selected && selected.type === 'BOOLEAN_OPERATION' ? (selected as ContainerNode) : null;
   const currentMode = boolean?.booleanOperation ?? null;
   const creates = selection.length >= 2;
+  // With one ordinary layer there is nothing to combine: the four dead buttons are noise.
+  if (!creates && !boolean) return null;
 
   return (
     <div className="section">

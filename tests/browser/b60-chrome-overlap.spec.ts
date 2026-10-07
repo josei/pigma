@@ -46,3 +46,11 @@ test('B60d an empty document reads "0 layers", and a lone layer is singular', as
   await page.locator('.menu__item', { hasText: 'New file' }).first().click();
   await expect(page.locator('.panel-header__subtitle')).toContainText('0 layers');
 });
+
+test('B60e the menu opens the AI agent panel', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.app');
+  await page.locator('[aria-label="Main menu"]').first().click();
+  await page.locator('.menu__item', { hasText: 'Connect AI agent' }).click();
+  await expect(page.locator('[data-testid="mcp-panel"]')).toBeVisible();
+});

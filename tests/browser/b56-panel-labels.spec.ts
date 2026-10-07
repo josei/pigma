@@ -15,6 +15,9 @@ const PANEL_MIN = 180;
 test('B56a no label in a four-up row is clipped at any supported panel width', async ({ page }) => {
   await boot(page, { blank: true });
   await drawShape(page, 'Rectangle', 160, 160);
+  // The boolean row only appears when there are two layers to combine.
+  await drawShape(page, 'Rectangle', 200, 120);
+  await page.keyboard.press('Control+a');
 
   for (const width of [PANEL_MIN, 220, 260, 320, 420]) {
     await page.evaluate((value) => window.__pigmaStore!.getState().setPanelWidth('right', value), width);
