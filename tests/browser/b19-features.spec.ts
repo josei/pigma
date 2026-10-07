@@ -13,6 +13,18 @@ async function exportVia(page: Page, label: string) {
   return download;
 }
 
+/** Export a PNG at a scale through the Export PNG dialog, returning the download. */
+async function exportPngAt(page: Page, scale: number) {
+  await openMenu(page);
+  await page.locator('.menu__item', { hasText: 'Export PNG…' }).first().click();
+  await page.locator('select[aria-label="PNG scale"]').selectOption(String(scale));
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.locator('button[aria-label="Export PNG now"]').click(),
+  ]);
+  return download;
+}
+
 /** True PNG dimensions, read from the IHDR chunk of the download. */
 async function pngSize(download: import('@playwright/test').Download) {
   const stream = await download.createReadStream();
@@ -119,9 +131,9 @@ test('B19h Export PNG 1x/2x/3x scales the real image', async ({ page }) => {
   await boot(page, { blank: true });
   await selectSomething(page);
 
-  const one = await pngSize(await exportVia(page, 'Export PNG 1x'));
-  const two = await pngSize(await exportVia(page, 'Export PNG 2x'));
-  const three = await pngSize(await exportVia(page, 'Export PNG 3x'));
+  const one = await pngSize(await exportPngAt(page, 1));
+  const two = await pngSize(await exportPngAt(page, 2));
+  const three = await pngSize(await exportPngAt(page, 3));
 
   expect(one.w).toBeGreaterThan(0);
   expect(one.h).toBeGreaterThan(0);

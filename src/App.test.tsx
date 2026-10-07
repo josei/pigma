@@ -90,7 +90,7 @@ describe('App shell', () => {
     // tests and the browser QA suite.
     const html = renderToStaticMarkup(<App />);
     expect(html).toContain('Nothing selected');
-    expect(html).toContain('Alignment');
+    expect(html).not.toContain('Alignment');
     expect(html).toContain('Website');
     expect(useEditor.getState().selection).toEqual([]);
   });

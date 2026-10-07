@@ -1035,6 +1035,7 @@ function ConstraintsSection({ node }: { node: SceneNode }) {
                 </button>
               </div>
             ))}
+            <span className="prop-row__label">Add a layout grid</span>
             <div className="prop-grid prop-grid--4">
               {(['COLUMNS', 'ROWS', 'GRID'] as const).map((pattern) => (
                 <button
@@ -1890,7 +1891,6 @@ function EmptySelection({ pageName }: { pageName: string }): ReactNode {
           </p>
         </div>
       </div>
-      <AlignmentSection />
     </>
   );
 }
