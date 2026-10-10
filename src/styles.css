@@ -1889,3 +1889,20 @@ input.input[type='color']::-webkit-color-swatch {
   flex: 1;
   min-width: 0;
 }
+
+/* A folded section header keeps a visible chevron so it reads as openable. */
+details.section > summary.section__header {
+  cursor: default;
+  list-style: none;
+}
+
+details.section > summary.section__header::before {
+  content: '▸';
+  margin-right: 6px;
+  font-size: 10px;
+  color: var(--figma-text-tertiary);
+}
+
+details.section[open] > summary.section__header::before {
+  content: '▾';
+}
