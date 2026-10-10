@@ -157,36 +157,35 @@ function PaintRow({
 }) {
   const color = paint?.type === 'SOLID' ? paint.color : { r: 0, g: 0, b: 0 };
   const alpha = paint?.type === 'SOLID' ? paint.opacity ?? 1 : 1;
-  const hasPaint = !!paint && paint.visible !== false;
   const gradient = paint && paint.type !== 'SOLID' ? gradientSpec(paint, 'preview') : null;
 
   return (
     <>
       <div className="prop-row">
-        <span className="prop-row__label">{label}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-        <button
-          type="button"
-          className={`color-swatch${hasPaint ? '' : ' color-swatch--empty'}`}
-          data-tooltip={hasPaint ? 'Toggle visibility' : 'Add'}
-          onClick={() => onChange(paint ? { ...paint, visible: paint.visible === false } : { type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 })}
-        >
-          <span className="color-swatch__fill" style={{ background: hasPaint ? paintToCssBackground(paint) : 'transparent' }} />
-        </button>
+        <span className="prop-row__label" style={{ minWidth: 44 }}>{label}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
         {paint?.type === 'SOLID' ? (
-          <input
-            className="input"
-            type="color"
-            aria-label={`${label} colour`}
-            value={rgbaToHex(color)}
-            onChange={(event) => onChange({ ...paint, color: hexToRgba(event.target.value) })}
-            style={{ width: 28, padding: 0, border: 'none', background: 'transparent' }}
-          />
-        ) : null}
-        {gradient ? <GradientSummary spec={gradient} /> : null}
+          <>
+            <input
+              className="color-well"
+              type="color"
+              aria-label={`${label} colour`}
+              value={rgbaToHex(color)}
+              onChange={(event) => onChange({ ...paint, color: hexToRgba(event.target.value) })}
+            />
+            <HexField label={label} value={rgbaToHex(color)} onCommit={(hex) => onChange({ ...paint, color: hexToRgba(hex) })} />
+          </>
+        ) : paint ? (
+          <>
+            <span className="color-well color-well--static" style={{ background: paintToCssBackground(paint) }} />
+            {gradient ? <GradientSummary spec={gradient} /> : <span className="prop-row__label">image</span>}
+          </>
+        ) : (
+          <span className="prop-row__label" style={{ flex: 1 }}>None</span>
+        )}
+        {paint ? (
         <input
-          className="input input--numeric"
-          style={{ width: 56 }}
+          className="input input--numeric input--alpha"
           aria-label={`${label} opacity`}
           value={`${Math.round(alpha * 100)}%`}
           onChange={(event) => {
@@ -195,6 +194,7 @@ function PaintRow({
             onChange({ ...paint, opacity: Math.min(1, Math.max(0, parsed / 100)) });
           }}
         />
+        ) : <span style={{ flex: 1 }} />}
         <button
           type="button"
           className="icon-button"
@@ -212,6 +212,33 @@ function PaintRow({
           colour input to zero width. */}
       {variableProperty ? <VariableBindRow property={variableProperty} label={label} /> : null}
     </>
+  );
+}
+
+/** A hex text field: type or paste `#rrggbb`, committed on Enter or blur; junk reverts. */
+function HexField({ label, value, onCommit }: { label: string; value: string; onCommit: (hex: string) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const shown = draft ?? value.replace('#', '').toUpperCase();
+  const commit = () => {
+    if (draft === null) return;
+    const hex = draft.trim().replace('#', '');
+    if (/^[0-9a-fA-F]{6}$/.test(hex)) onCommit(`#${hex.toLowerCase()}`);
+    setDraft(null);
+  };
+  return (
+    <input
+      className="input input--hex"
+      aria-label={`${label} hex`}
+      value={shown}
+      spellCheck={false}
+      onFocus={(event) => event.currentTarget.select()}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') commit();
+        if (event.key === 'Escape') setDraft(null);
+      }}
+    />
   );
 }
 
