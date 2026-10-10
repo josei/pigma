@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, field, openMenu, tool } from './helpers';
+import { boot, drawShape, field, openFold, openMenu, tool } from './helpers';
 
 const FIXTURE = 'tests/browser/fixtures/pixel.png';
 
@@ -94,6 +94,7 @@ test('B19d flip vertical leaves width and X untouched', async ({ page }) => {
 test('B19e a drop shadow adds a rendered shadow', async ({ page }) => {
   await boot(page, { blank: true });
   await selectSomething(page);
+  await openFold(page, 'effects-add');
   await page.locator('[aria-label="Add Drop shadow"]').click();
   await page.waitForTimeout(300);
 
@@ -107,6 +108,7 @@ test('B19e a drop shadow adds a rendered shadow', async ({ page }) => {
 test('B19f a layer blur adds a rendered filter', async ({ page }) => {
   await boot(page, { blank: true });
   await selectSomething(page);
+  await openFold(page, 'effects-add');
   await page.locator('[aria-label="Add Layer blur"]').click();
   await page.waitForTimeout(300);
 

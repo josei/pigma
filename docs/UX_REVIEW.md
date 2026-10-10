@@ -45,7 +45,7 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 - **Export PNG 1x / 2x / 3x** duplicate **Export PNG...** in the main menu. They
   exist because specs click them; collapse them into the dialog.
-- **Disabled controls with no selection**: the Alignment block and, on a
+- **Disabled controls (resolved)**: alignment, boolean, size limits, effects and layout-grid add rows now only appear when usable, or fold away until used.
   selection, Boolean / Effects rows show as dead controls. Hide until usable.
 - **Layout grid rows** (`Cols / Rows / Grid`) under Constraints have no heading
   and read as stray text.

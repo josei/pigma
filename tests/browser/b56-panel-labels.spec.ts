@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { boot, drawShape } from './helpers';
+import { boot, drawShape, openFold } from './helpers';
 
 /**
  * The four-up segmented rows must not clip their labels.
@@ -18,6 +18,7 @@ test('B56a no label in a four-up row is clipped at any supported panel width', a
   // The boolean row only appears when there are two layers to combine.
   await drawShape(page, 'Rectangle', 200, 120);
   await page.keyboard.press('Control+a');
+  await openFold(page, 'effects-add');
 
   for (const width of [PANEL_MIN, 220, 260, 320, 420]) {
     await page.evaluate((value) => window.__pigmaStore!.getState().setPanelWidth('right', value), width);
@@ -39,6 +40,7 @@ test('B56a no label in a four-up row is clipped at any supported panel width', a
 test('B56b the widest label still fits at the narrowest panel', async ({ page }) => {
   await boot(page, { blank: true });
   await drawShape(page, 'Rectangle', 160, 160);
+  await openFold(page, 'effects-add');
   await page.evaluate((value) => window.__pigmaStore!.getState().setPanelWidth('right', value), PANEL_MIN);
   await page.waitForTimeout(250);
   const background = page.locator('.prop-grid--4 .segmented__option', { hasText: 'Background' });

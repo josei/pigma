@@ -174,3 +174,9 @@ export async function openMenu(page: Page): Promise<void> {
 export function nwHandle(page: Page) {
   return page.locator('.canvas__overlay rect[style*="nwse-resize"]').first();
 }
+
+/** Open a folded properties block (`data-testid`) if it is closed. */
+export async function openFold(page: Page, testId: string): Promise<void> {
+  const details = page.locator(`[data-testid="${testId}"]`);
+  if ((await details.getAttribute('open')) === null) await details.locator('summary').click();
+}

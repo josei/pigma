@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, tool, field } from './helpers';
+import { boot, tool, field, openFold } from './helpers';
 
 /**
  * Grid auto layout on the LIVE canvas.
@@ -154,6 +154,7 @@ test('B57d the track editor is a DIFFERENT control from the layout guides', asyn
 
   // The layout GUIDES are a separate control with their own labels, and adding
   // one must NOT be confused with the grid's tracks.
+  await openFold(page, 'layout-grids');
   const addCols = page.locator('[aria-label="Add COLUMNS grid"]');
   await expect(addCols, 'the layout-guide controls are gone').toBeVisible();
   for (const guide of ['Add COLUMNS grid', 'Add ROWS grid', 'Add GRID grid']) {

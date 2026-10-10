@@ -1035,7 +1035,8 @@ function ConstraintsSection({ node }: { node: SceneNode }) {
                 </button>
               </div>
             ))}
-            <span className="prop-row__label">Add a layout grid</span>
+            <details className="advanced" data-testid="layout-grids" open={grids.length > 0}>
+            <summary>Add a layout grid</summary>
             <div className="prop-grid prop-grid--4">
               {(['COLUMNS', 'ROWS', 'GRID'] as const).map((pattern) => (
                 <button
@@ -1050,6 +1051,7 @@ function ConstraintsSection({ node }: { node: SceneNode }) {
                 </button>
               ))}
             </div>
+            </details>
           </>
         ) : null}
       </div>
@@ -1121,6 +1123,8 @@ function EffectsSection({ node }: { node: SceneNode }) {
             </div>
           );
         })}
+        <details className="advanced" data-testid="effects-add" open={effects.length > 0}>
+          <summary>Add effect</summary>
         <div className="prop-grid prop-grid--4">
           {EFFECT_TYPES.map((kind) => (
             <button
@@ -1135,6 +1139,7 @@ function EffectsSection({ node }: { node: SceneNode }) {
             </button>
           ))}
         </div>
+        </details>
       </div>
     </div>
   );
