@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { activeContainer, useEditor, type Tool } from '../store/editorStore';
 import { findNode, findParent } from '../model/tree';
 import { isContainer } from '../model/types';
+import { defaultAutoLayout } from '../model/autoLayout';
 import { MAX_ZOOM, MIN_ZOOM } from '../collab/protocol';
 
 const TOOL_KEYS: Record<string, Tool> = {
@@ -213,6 +214,27 @@ export function useKeyboardShortcuts(): void {
       if (event.shiftKey && !meta && event.code === 'KeyV' && state.selection.length > 0) {
         event.preventDefault();
         state.flip('vertical');
+        return;
+      }
+
+      // Figma's Shift+A adds auto layout: a frame gets it directly, anything else is
+      // wrapped in a frame first.
+      if (event.shiftKey && !meta && !event.altKey && event.code === 'KeyA' && state.selection.length > 0) {
+        event.preventDefault();
+        const only = state.selection.length === 1 ? findNode(state.file.document, state.selection[0]!) : null;
+        const isFrame = only !== null && (only.type === 'FRAME' || only.type === 'COMPONENT');
+        const mode = (only as { autoLayout?: { layoutMode?: string } } | null)?.autoLayout?.layoutMode;
+        if (isFrame && mode && mode !== 'NONE') return;
+        if (!isFrame) state.frameSelection();
+        useEditor.getState().setAutoLayout({ ...defaultAutoLayout('HORIZONTAL'), layoutMode: 'HORIZONTAL' });
+        return;
+      }
+
+      // Figma's number keys set the selection's opacity: 1 = 10% ... 9 = 90%, 0 = 100%.
+      if (!event.shiftKey && !meta && !event.altKey && /^Digit[0-9]$/.test(event.code) && state.selection.length > 0) {
+        event.preventDefault();
+        const digit = Number(event.code.slice(5));
+        state.updateSelected({ opacity: digit === 0 ? 1 : digit / 10 }, 'Set opacity');
         return;
       }
 
