@@ -862,10 +862,10 @@ function SizeLimitsSection({ node }: { node: SceneNode }) {
     { label: 'Max H', value: node.maxHeight ?? 0, key: 'maxHeight', unbounded: 0 },
   ];
   return (
-    <div className="section">
-      <div className="section__header">
+    <details className="section advanced" data-testid="size-limits" open={limits.minWidth > 1 || limits.minHeight > 1 || Boolean(node.maxWidth) || Boolean(node.maxHeight)}>
+      <summary className="section__header">
         <span>Size limits</span>
-      </div>
+      </summary>
       <div className="section__body">
         <div className="prop-grid prop-grid--2">
           {fields.map((field) => (
@@ -879,7 +879,7 @@ function SizeLimitsSection({ node }: { node: SceneNode }) {
           ))}
         </div>
       </div>
-    </div>
+    </details>
   );
 }
 

@@ -40,11 +40,18 @@ const svgHtml = (page: Page) => page.locator('.canvas__svg').innerHTML();
 
 // ---------------------------------------------------------------- min/max ----
 
+/** Size limits are folded away until used (or set); open them before editing. */
+async function openSizeLimits(page: import('@playwright/test').Page) {
+  const details = page.locator('[data-testid="size-limits"]');
+  if ((await details.getAttribute('open')) === null) await details.locator('summary').click();
+}
+
 test('B22a Min W clamps an attempted shrink', async ({ page }) => {
   await boot(page, { blank: true });
   await rect(page);
   const w0 = Number(await field(page, 'W').inputValue());
 
+  await openSizeLimits(page);
   await field(page, 'Min W').fill(String(w0 + 100));
   await field(page, 'Min W').press('Enter');
   await page.waitForTimeout(250);
@@ -61,6 +68,7 @@ test('B22b Max W clamps an attempted grow', async ({ page }) => {
   await rect(page);
   const w0 = Number(await field(page, 'W').inputValue());
 
+  await openSizeLimits(page);
   await field(page, 'Max W').fill(String(w0 - 40));
   await field(page, 'Max W').press('Enter');
   await page.waitForTimeout(250);
@@ -78,6 +86,7 @@ test('B22c a handle resize stops at Max W with the opposite edge fixed', async (
   await tool(page, 'Move').click();
 
   const start = await nodeGeometry(page);
+  await openSizeLimits(page);
   await field(page, 'Max W').fill(String(start.w / 2));
   await field(page, 'Max W').press('Enter');
   await page.waitForTimeout(250);
@@ -102,6 +111,7 @@ test('B22c a handle resize stops at Max W with the opposite edge fixed', async (
 test('B22d min/max limits survive a reload', async ({ page }) => {
   await boot(page, { blank: true });
   await rect(page);
+  await openSizeLimits(page);
   await field(page, 'Min W').fill('300');
   await field(page, 'Min W').press('Enter');
   await field(page, 'Max H').fill('500');
