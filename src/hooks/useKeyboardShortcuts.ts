@@ -101,6 +101,32 @@ export function useKeyboardShortcuts(): void {
         state.selectAll();
         return;
       }
+      // Figma's Copy / Paste properties: Cmd/Ctrl+Alt+C / V (appearance only).
+      if (meta && event.altKey && event.code === 'KeyC') {
+        event.preventDefault();
+        state.copyProperties();
+        return;
+      }
+      if (meta && event.altKey && event.code === 'KeyV') {
+        event.preventDefault();
+        state.pasteProperties();
+        return;
+      }
+      // Figma's Frame selection: Cmd/Ctrl+Alt+G.
+      if (meta && event.altKey && event.code === 'KeyG') {
+        event.preventDefault();
+        state.frameSelection();
+        return;
+      }
+      // Hide / lock the selection: Cmd/Ctrl+Shift+H and Cmd/Ctrl+Shift+L.
+      if (meta && event.shiftKey && (event.code === 'KeyH' || event.code === 'KeyL') && state.selection.length > 0) {
+        event.preventDefault();
+        for (const id of state.selection) {
+          if (event.code === 'KeyH') state.toggleVisible(id);
+          else state.toggleLock(id);
+        }
+        return;
+      }
       if (meta && event.key.toLowerCase() === 'c') {
         state.copySelection();
         return;

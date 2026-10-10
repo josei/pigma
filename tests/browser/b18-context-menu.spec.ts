@@ -86,7 +86,7 @@ test('conditional no-ops are DISABLED and say why; enabled items still work', as
   await expect(ungroup).toBeDisabled();
   await expect(ungroup).toHaveAttribute('data-disabled-reason', 'nothing in the selection is a group or frame');
   // Paste with an empty clipboard: disabled.
-  const paste = page.locator(`${menu} [data-testid="context-menu-item"]`, { hasText: 'Paste' });
+  const paste = page.locator(`${menu} [data-testid="context-menu-item"]`, { hasText: /^Paste(?! properties)/ });
   await expect(paste).toBeDisabled();
   // And an ENABLED item still works — disabling too broadly would be worse.
   await page.locator(`${menu} [data-testid="context-menu-item"]`, { hasText: 'Use as mask' }).click();

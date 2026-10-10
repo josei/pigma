@@ -67,6 +67,14 @@ function nodeItems(): ContextItem[] {
       run: () => store().pasteClipboard(),
       ...((store().clipboard?.length ?? 0) === 0 ? { disabledReason: 'the clipboard is empty' } : {}),
     },
+    { label: 'Copy properties', icon: 'copy', shortcut: '⌘⌥C', run: () => store().copyProperties() },
+    {
+      label: 'Paste properties',
+      icon: 'paste',
+      shortcut: '⌘⌥V',
+      run: () => store().pasteProperties(),
+      ...(store().copiedProperties === null ? { disabledReason: 'no properties have been copied' } : {}),
+    },
     { label: 'Duplicate', icon: 'duplicate', shortcut: '⌘D', run: () => store().duplicateSelection() },
     {
       label: 'Group selection',
@@ -94,7 +102,7 @@ function nodeItems(): ContextItem[] {
       shortcut: '⌘⌥K',
       run: () => store().createComponentFromSelection(),
     },
-    { label: 'Frame selection', icon: 'frame', run: () => store().frameSelection() },
+    { label: 'Frame selection', icon: 'frame', shortcut: '⌘⌥G', run: () => store().frameSelection() },
     { label: 'Delete', icon: 'trash', shortcut: '⌫', run: () => store().deleteSelection() },
   ];
   return items;

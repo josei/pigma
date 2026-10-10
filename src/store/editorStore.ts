@@ -240,6 +240,8 @@ export interface EditorState {
   enteredContainerId: string | null;
   editingTextId: string | null;
   clipboard: SceneNode[] | null;
+  /** Appearance copied with Copy properties (Cmd/Ctrl+Alt+C), pasted onto other layers. */
+  copiedProperties: NodePatch | null;
   past: HistoryEntry[];
   future: HistoryEntry[];
   transaction: HistoryEntry | null;
@@ -373,6 +375,8 @@ export interface EditorState {
   duplicateSelection: () => void;
   copySelection: () => void;
   cutSelection: () => void;
+  copyProperties: () => void;
+  pasteProperties: () => void;
   pasteClipboard: () => void;
   updateSelected: (patch: NodePatch, label?: string) => void;
   /** Drop an image into the document, or fill the selection with it. */
@@ -792,6 +796,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   enteredContainerId: null,
   editingTextId: null,
   clipboard: null,
+  copiedProperties: null,
   past: [],
   future: [],
   transaction: null,
@@ -1077,6 +1082,22 @@ export const useEditor = create<EditorState>((set, get) => ({
     const nodes = selectedNodes(get());
     if (nodes.length === 0) return;
     set({ clipboard: nodes.map((node) => structuredClone(node)) });
+  },
+
+  copyProperties: () => {
+    const node = selectedNodes(get())[0] as (SceneNode & Record<string, unknown>) | undefined;
+    if (!node) return;
+    // Appearance only: never geometry, name or content, so pasting cannot move or rename.
+    const keys = ['opacity', 'blendMode', 'fills', 'strokes', 'strokeWeight', 'strokeAlign', 'dashPattern', 'cornerRadius', 'rectangleCornerRadii', 'effects'] as const;
+    const patch: Record<string, unknown> = {};
+    for (const key of keys) if (node[key] !== undefined) patch[key] = structuredClone(node[key]);
+    set({ copiedProperties: patch as NodePatch });
+  },
+
+  pasteProperties: () => {
+    const patch = get().copiedProperties;
+    if (!patch || get().selection.length === 0) return;
+    get().updateSelected(structuredClone(patch), 'Paste properties');
   },
 
   cutSelection: () => {

@@ -46,3 +46,51 @@ test('B61c Shift+A on a frame adds auto layout in place', async ({ page }) => {
   expect(node.type).toBe('FRAME');
   expect(node.layoutMode).toBe('HORIZONTAL');
 });
+
+const fillOf = (page: import('@playwright/test').Page, index: number) =>
+  page.evaluate((i) => {
+    const s = window.__pigmaStore!.getState();
+    const node = s.file.document.children[0]!.children[i] as any;
+    return { fill: JSON.stringify(node.fills), opacity: node.opacity ?? 1, w: node.width, name: node.name, visible: node.visible, locked: node.locked };
+  }, index);
+
+test('B61d copy / paste properties moves appearance only', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 120, 100);
+  await drawShape(page, 'Ellipse', 300, 100);
+  await tool(page, 'Move').click();
+  const [rect, ellipse] = [await fillOf(page, 0), await fillOf(page, 1)];
+  // Give the ellipse (selected) a distinctive opacity, copy its properties, paste on the rectangle.
+  await page.keyboard.press('3');
+  await page.keyboard.press('Control+Alt+c');
+  await page.evaluate(() => {
+    const s = window.__pigmaStore!.getState();
+    s.select([s.file.document.children[0]!.children[0]!.id]);
+  });
+  await page.keyboard.press('Control+Alt+v');
+  const after = await fillOf(page, 0);
+  expect(after.opacity).toBeCloseTo(0.3, 5);
+  expect(after.w, 'pasting properties changed the size').toBe(rect.w);
+  expect(after.name, 'pasting properties renamed the layer').toBe(rect.name);
+  expect(ellipse.opacity).toBe(1);
+});
+
+test('B61e Ctrl+Shift+H hides and Ctrl+Shift+L locks the selection', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 160, 120);
+  await tool(page, 'Move').click();
+  await page.keyboard.press('Control+Shift+h');
+  expect((await fillOf(page, 0)).visible).toBe(false);
+  await page.keyboard.press('Control+Shift+h');
+  expect((await fillOf(page, 0)).visible).toBe(true);
+  await page.keyboard.press('Control+Shift+l');
+  expect((await fillOf(page, 0)).locked).toBe(true);
+});
+
+test('B61f Ctrl+Alt+G frames the selection', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 160, 120);
+  await tool(page, 'Move').click();
+  await page.keyboard.press('Control+Alt+g');
+  expect((await selected(page)).type).toBe('FRAME');
+});
