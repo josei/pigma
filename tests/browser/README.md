@@ -36,6 +36,9 @@ PIGMA_FIREFOX=1 npx playwright test --project=firefox
 The pixel baseline is per engine (`__baseline__/shell-<project>-1440x900.png`).
 Clipboard specs skip on Firefox, which cannot grant clipboard permissions.
 
+WebKit (Safari's engine) is wired the same way, `PIGMA_WEBKIT=1 npx playwright test --project=webkit`,
+but it needs system libraries first: `sudo npx playwright install-deps`.
+
 ## What is covered
 
 | File | Area |

@@ -39,6 +39,10 @@ export default defineConfig({
     ...(process.env.PIGMA_FIREFOX
       ? [{ name: 'firefox', use: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 900 } } }]
       : []),
+    // Opt-in WebKit (Safari's engine): `PIGMA_WEBKIT=1 npx playwright test --project=webkit`.
+    ...(process.env.PIGMA_WEBKIT
+      ? [{ name: 'webkit', use: { ...devices['Desktop Safari'], viewport: { width: 1440, height: 900 } } }]
+      : []),
   ],
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1 --port 5173 --strictPort',

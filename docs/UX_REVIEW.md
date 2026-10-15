@@ -52,7 +52,7 @@ other than Chromium. Nothing below should be read as a claim about those.
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
 - **Second engine.** Firefox passes the suite (297, 5 clipboard specs skipped), run
-  with `PIGMA_FIREFOX=1`. Safari (WebKit) is not run yet.
+  with `PIGMA_FIREFOX=1`. Safari (WebKit) cannot launch on this machine: it needs `sudo npx playwright install-deps` first. The project is wired behind `PIGMA_WEBKIT=1`.
 - **Hosted deployment.** The domain is `pigma.design` and resolves, but nothing is
   deployed behind it yet. Development does not need it.
 

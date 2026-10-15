@@ -1,6 +1,10 @@
 import { test, expect } from './rooms';
 import type { Page } from '@playwright/test';
 
+// These specs run a local relay or several browser contexts: under six-worker load they
+// take 7-10s each, so they get more headroom than the 30s default.
+test.setTimeout(60_000);
+
 /**
  * Two-context ROOMS coverage.
  *

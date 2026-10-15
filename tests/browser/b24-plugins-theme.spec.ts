@@ -1,6 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
 import { boot, drawShape, field, openMenu } from './helpers';
 
+// These specs run a local relay or several browser contexts: under six-worker load they
+// take 7-10s each, so they get more headroom than the 30s default.
+test.setTimeout(60_000);
+
 /** Open the Plugins rail tab. */
 async function openPlugins(page: Page) {
   const tab = page.locator('.rail__button[aria-label="Plugins"]');
