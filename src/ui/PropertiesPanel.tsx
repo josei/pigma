@@ -127,7 +127,12 @@ function NumberField({
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => commit(display)}
         onKeyDown={(event) => {
-          if (event.key === 'Enter') commit(display);
+          // Enter commits and leaves the field, so the next key is a shortcut again
+          // (otherwise "t" after a rotation typed into the box instead of picking Text).
+          if (event.key === 'Enter') {
+            commit(display);
+            event.currentTarget.blur();
+          }
           if (event.key === 'Escape') setDraft(null);
           if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
             event.preventDefault();

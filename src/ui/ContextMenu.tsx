@@ -134,7 +134,8 @@ export function ContextMenu() {
       // Only the CANVAS: a right-click over a panel must not open this menu (the
       // panels keep their own affordances).
       const target = event.target as HTMLElement | null;
-      if (!target?.closest('.canvas')) return;
+      // The canvas, and the layers list (Figma offers the same menu on a layer row).
+      if (!target?.closest('.canvas, .layer-row')) return;
       event.preventDefault();
       setState({ x: event.clientX, y: event.clientY });
     };

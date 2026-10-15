@@ -66,6 +66,11 @@ function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRe
         className={`layer-row${selected ? ' layer-row--selected' : ''}${node.visible ? '' : ' layer-row--hidden'}`}
         style={{ paddingLeft: 8 + depth * 12 }}
         onClick={(event) => select([node.id], event.shiftKey || event.metaKey || event.ctrlKey ? 'toggle' : 'replace')}
+        // Right-click selects the row first (unless it is already part of the
+        // selection), so the context menu acts on what was clicked, as in Figma.
+        onContextMenu={() => {
+          if (!selected) select([node.id], 'replace');
+        }}
         onDoubleClick={() => {
           onStartRename(node.id);
           if (hasChildren(node)) setEnteredContainer(node.id);
