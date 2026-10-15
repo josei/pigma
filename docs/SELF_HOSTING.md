@@ -91,7 +91,7 @@ npm run relay -- --host 0.0.0.0 --port 8080 --hosted --token-ttl 1800000
   results, documents — success or error path) and never written to disk; the only
   file writes are room snapshots, a separate TTL-cached path. `/health` and
   `/metrics` are aggregate-only. See
-  [`MCP.md`](./MCP.md#hosted-deployment-getpigmacom) for the full policy and the
+  [`MCP.md`](./MCP.md#no-log-no-store) for the full policy and the
   tests that assert it.
 
 ### Exposing a deployment (proxy or tunnel)

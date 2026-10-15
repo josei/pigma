@@ -27,9 +27,9 @@ past drawing:
 - MCP bridge (connect, resilience, remote edit + undo round trip) and
   collaboration presence (cursors, follow)
 
-Evidence: **1072 unit tests across 118 files**, **285 browser tests passing / 0 failing**,
-**15 Rust tests passing**
-(`CI=true npm run test:browser`), and a parity script that separates its INTERNAL
+Evidence: **1072 unit tests across 118 files**, **304 browser tests passing / 0 failing**
+on Chromium (`CI=true npm run test:browser`; Firefox is an opt-in second engine),
+**15 Rust tests passing**, and a parity script that separates its INTERNAL
 contract rows (**11/11** - Pigma's own values, not evidence about Figma) from its
 EXTERNAL references (one cited structural fact, **0 pixel references**), so it
 reports the 1:1 visual-parity claim as **UNSUPPORTED**. See
@@ -109,13 +109,13 @@ the selection in the right-hand panel.
 | `npm run typecheck` | `tsc -b` |
 | `npm test` | the unit suite (vitest) |
 | `npm run test:watch` | the unit suite in watch mode |
-| `npm run test:browser` | the browser suite (Playwright, Chromium) |
+| `npm run test:browser` | the browser suite (Playwright, Chromium); `PIGMA_FIREFOX=1 npx playwright test --project=firefox` runs it on Firefox |
 | `npm run test:browser:install` | install Chromium once, before the first browser run |
 | `npm run mcp` | the MCP server over stdio |
 | `npm run relay` | the collaboration / MCP relay server |
 
-Current evidence: **1072 unit tests across 118 files**, **285 browser tests
-passing**, and **15 Rust tests passing** - see [`docs/ROADMAP.md`](docs/ROADMAP.md) for
+Current evidence: **1072 unit tests across 118 files**, **304 browser tests
+passing** on Chromium, and **15 Rust tests passing** - see [`docs/ROADMAP.md`](docs/ROADMAP.md) for
 what each milestone
 proves and for the known limitations.
 
