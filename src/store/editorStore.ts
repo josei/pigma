@@ -1698,7 +1698,17 @@ export const useEditor = create<EditorState>((set, get) => ({
   setEditingText: (id) => set({ editingTextId: id }),
 
   setCharacters: (id, characters, transient = false) => {
-    const patched = applyNodePatchToAll(get().file, [id], { characters });
+    // Figma names a text layer after its content until someone renames it: a name
+    // still at its default ("Text", "Text 3") follows the words, a chosen name stays.
+    const node = findNode(get().file.document, id);
+    // A name that still equals the words it was taken from keeps following them, so
+    // typing (one commit per keystroke) renames the layer as it goes.
+    const followsContent =
+      node !== null &&
+      node.type === 'TEXT' &&
+      (/^Text( \d+)?$/.test(node.name) || node.name === node.characters.slice(0, 24));
+    const name = followsContent && characters.trim() !== '' ? characters.slice(0, 24) : undefined;
+    const patched = applyNodePatchToAll(get().file, [id], name === undefined ? { characters } : { characters, name });
     if (patched.document === get().file.document) return;
     const next = settleDocument(syncTextSizesOp(patched));
     if (transient) {
