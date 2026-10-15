@@ -1742,9 +1742,12 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   createComponentFromSelection: () => {
     const state = get();
-    const node = selectedNodes(state)[0];
-    if (!node || hasChildren(node)) {
-      get().pushToast('Select a single shape to create a component');
+    const selected = selectedNodes(state);
+    const node = selected[0];
+    // Any single layer can become a component, containers included (Figma turns a
+    // frame into a component directly). Several layers, or a component, cannot.
+    if (selected.length !== 1 || !node || node.type === 'COMPONENT') {
+      get().pushToast('Select a single layer, a frame or a shape, to create a component');
       return;
     }
     const componentId = nextNodeId();
