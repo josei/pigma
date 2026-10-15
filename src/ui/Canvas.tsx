@@ -753,7 +753,7 @@ export function Canvas() {
       }
       case 'draw': {
         applyInteraction({ kind: 'draw', start: live.start, current: world });
-        const rect = rectFromPoints(live.start, world);
+        const rect = rectForDrag(live.start, world, event.altKey);
         setBadge({ text: `${Math.round(rect.width)} × ${Math.round(rect.height)}`, x: event.clientX, y: event.clientY });
         break;
       }
@@ -810,12 +810,19 @@ export function Canvas() {
     }
 
     if (current.kind === 'draw') {
-      const rect = rectFromPoints(current.start, current.current);
+      const rect = rectForDrag(current.start, current.current, event.altKey);
       createFromDrag(rect, current.start, current.current, event.shiftKey);
     }
 
     applyInteraction(null);
   };
+
+  /**
+   * The rectangle a draw drag describes. Alt draws from the centre (Figma's
+   * behaviour): the start point is the middle, and the drag mirrors around it.
+   */
+  const rectForDrag = (start: Point, current: Point, fromCentre: boolean): Rect =>
+    rectFromPoints(fromCentre ? { x: 2 * start.x - current.x, y: 2 * start.y - current.y } : start, current);
 
   /** Topmost frame under a point, so drawing inside a frame nests into it. */
   const frameUnder = (point: Point): string | null => {

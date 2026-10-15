@@ -193,3 +193,33 @@ test('B61j Shift+A on two layers wraps both in one auto layout frame', async ({ 
   expect(result.kids).toBe(2);
   expect(result.mode).toBe('HORIZONTAL');
 });
+
+test('B61k Alt-drag draws a shape from its centre', async ({ page }) => {
+  await boot(page, { blank: true });
+  const last = () =>
+    page.evaluate(() => {
+      const kids = window.__pigmaStore!.getState().file.document.children[0]!.children as any[];
+      const node = kids[kids.length - 1];
+      return { w: node.width, h: node.height, x: node.transform.tx, y: node.transform.ty };
+    });
+  // A plain corner drag from (500,400): its top-left is the press point in world space.
+  await page.keyboard.press('r');
+  await page.mouse.move(500, 400);
+  await page.mouse.down();
+  await page.mouse.move(600, 460, { steps: 5 });
+  await page.mouse.up();
+  const corner = await last();
+  // The same press with Alt draws from the centre: the press point is the middle.
+  await page.keyboard.press('r');
+  await page.keyboard.down('Alt');
+  await page.mouse.move(500, 400);
+  await page.mouse.down();
+  await page.mouse.move(600, 460, { steps: 5 });
+  await page.mouse.up();
+  await page.keyboard.up('Alt');
+  const centred = await last();
+  expect(Math.abs(centred.w - corner.w * 2), 'the width is not doubled from the centre').toBeLessThan(4);
+  expect(Math.abs(centred.h - corner.h * 2), 'the height is not doubled from the centre').toBeLessThan(4);
+  expect(Math.abs(centred.x + centred.w / 2 - corner.x)).toBeLessThan(4);
+  expect(Math.abs(centred.y + centred.h / 2 - corner.y)).toBeLessThan(4);
+});
