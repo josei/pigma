@@ -57,7 +57,7 @@ export interface RelayMetrics {
   connectionsTotal: number;
   connectionsRejected: number;
   peersRejected: number;
-  /** Document payloads refused because an E2E room received plaintext. */
+  /** Document payloads refused because a room received plaintext. */
   plaintextRejected: number;
   messagesIn: number;
   messagesOut: number;
@@ -442,8 +442,8 @@ export function createCollabServer(options: CollabServerOptions = {}): CollabSer
             }
             // Register first: the room sends the welcome through this socket.
             sockets.set(clientId, { roomId, connection });
-            // The room's mode is fixed by the first participant; a mismatch is
-            // refused so a plaintext client can never sit in an encrypted room.
+            // Every room is encrypted: a join that did not declare `e2e` is refused,
+            // so a plaintext client can never enter a room.
             const violation = room.join(clientId, message.nickname, message.e2e === true);
             if (violation) {
               metrics.plaintextRejected += 1;
