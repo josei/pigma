@@ -158,3 +158,38 @@ test('B61h copy properties moves a text layer\'s size onto another text layer', 
   await page.keyboard.press('Control+Alt+v');
   expect(await sizes(), 'the text size did not carry over').toEqual([32, 32]);
 });
+
+test('B61i hide on a mixed selection sets every layer to one state, undone in one step', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 120, 100);
+  await drawShape(page, 'Ellipse', 100, 80, 300, 0);
+  // Hide only the rectangle first, so the selection is mixed: one visible, one hidden.
+  await page.evaluate(() => {
+    const s = window.__pigmaStore!.getState();
+    s.toggleVisible(s.file.document.children[0]!.children[0]!.id);
+  });
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Control+Shift+h');
+  const vis = () =>
+    page.evaluate(() => window.__pigmaStore!.getState().file.document.children[0]!.children.map((c: any) => c.visible));
+  expect(await vis(), 'a mixed selection did not converge to one state').toEqual([false, false]);
+  await page.keyboard.press('Control+z');
+  expect(await vis(), 'one undo did not restore the layers').toEqual([false, true]);
+});
+
+test('B61j Shift+A on two layers wraps both in one auto layout frame', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 120, 100);
+  await drawShape(page, 'Ellipse', 100, 80, 300, 0);
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Shift+A');
+  const result = await page.evaluate(() => {
+    const s = window.__pigmaStore!.getState();
+    const top = s.file.document.children[0]!.children;
+    const frame = top.find((c: any) => c.type === 'FRAME') as any;
+    return { topTypes: top.map((c: any) => c.type), kids: frame?.children.length ?? 0, mode: frame?.autoLayout?.layoutMode };
+  });
+  expect(result.topTypes).toEqual(['FRAME']);
+  expect(result.kids).toBe(2);
+  expect(result.mode).toBe('HORIZONTAL');
+});

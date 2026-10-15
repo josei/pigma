@@ -451,6 +451,9 @@ export interface EditorState {
   distribute: (axis: 'horizontal' | 'vertical') => void;
   toggleVisible: (id: string) => void;
   toggleLock: (id: string) => void;
+  /** Hide / lock the whole selection in one step: every layer takes the state the first one is not in. */
+  toggleSelectionVisible: () => void;
+  toggleSelectionLock: () => void;
   renameNode: (id: string, name: string) => void;
   groupSelection: () => void;
   ungroupSelection: () => void;
@@ -1657,6 +1660,27 @@ export const useEditor = create<EditorState>((set, get) => ({
     const locked = !node.locked;
     get().apply(locked ? 'Lock' : 'Unlock', (file) => applyNodePatchToAll(file, [id], { locked }));
     if (locked) set({ selection: state.selection.filter((selected) => selected !== id) });
+  },
+
+  toggleSelectionVisible: () => {
+    const state = get();
+    const nodes = state.selection.map((id) => findNode(state.file.document, id)).filter((n): n is SceneNode => n !== null);
+    if (nodes.length === 0) return;
+    // Order-independent: any visible layer means hide them all; all hidden means show them all.
+    const visible = !nodes.some((node) => node.visible);
+    const ids = state.selection;
+    get().apply(visible ? 'Show' : 'Hide', (file) => applyNodePatchToAll(file, ids, { visible }));
+  },
+
+  toggleSelectionLock: () => {
+    const state = get();
+    const nodes = state.selection.map((id) => findNode(state.file.document, id)).filter((n): n is SceneNode => n !== null);
+    if (nodes.length === 0) return;
+    // Any unlocked layer means lock them all; all locked means unlock them all.
+    const locked = !nodes.every((node) => node.locked);
+    const ids = state.selection;
+    get().apply(locked ? 'Lock' : 'Unlock', (file) => applyNodePatchToAll(file, ids, { locked }));
+    if (locked) set({ selection: [] });
   },
 
   renameNode: (id, name) => {

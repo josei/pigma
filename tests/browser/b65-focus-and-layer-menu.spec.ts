@@ -43,3 +43,16 @@ test('B65d a right-click on a panel that is not layers or canvas opens no menu',
   await page.locator('.app__left .section__header').first().click({ button: 'right' });
   await expect(page.locator('[data-testid="context-menu"]')).toHaveCount(0);
 });
+
+/** Enter commits a field once: one undo puts the old value back, not one step per commit path. */
+test('B65e Enter in a number field is one undo step', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 160, 120);
+  await page.locator('.rail__button[aria-label="Layers"]').click();
+  const before = await field(page, 'W').inputValue();
+  await field(page, 'W').fill('300');
+  await field(page, 'W').press('Enter');
+  await expect(field(page, 'W')).toHaveValue('300');
+  await page.keyboard.press('Control+z');
+  await expect(field(page, 'W'), 'one undo did not restore the width').toHaveValue(before);
+});

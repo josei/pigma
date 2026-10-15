@@ -121,10 +121,8 @@ export function useKeyboardShortcuts(): void {
       // Hide / lock the selection: Cmd/Ctrl+Shift+H and Cmd/Ctrl+Shift+L.
       if (meta && event.shiftKey && (event.code === 'KeyH' || event.code === 'KeyL') && state.selection.length > 0) {
         event.preventDefault();
-        for (const id of state.selection) {
-          if (event.code === 'KeyH') state.toggleVisible(id);
-          else state.toggleLock(id);
-        }
+        if (event.code === 'KeyH') state.toggleSelectionVisible();
+        else state.toggleSelectionLock();
         return;
       }
       if (meta && event.key.toLowerCase() === 'c') {
