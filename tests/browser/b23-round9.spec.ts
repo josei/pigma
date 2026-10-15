@@ -103,7 +103,7 @@ test('B23d per-line alignment repositions wrapped children', async ({ page }) =>
 
   // Counter-axis alignment positions each wrapped LINE, so the children's Y
   // values must move when it changes.
-  const counter = page.locator('[aria-label="Counter align"]');
+  const counter = page.locator('[aria-label="Counter"]');
   await expect(counter).toHaveCount(1);
   const options = await counter.locator('button').allTextContents();
   expect(options.length).toBeGreaterThan(1);

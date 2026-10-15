@@ -43,23 +43,26 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Open
 
-- **Export PNG 1x / 2x / 3x** duplicate **Export PNG...** in the main menu. They
-  exist because specs click them; collapse them into the dialog.
-- **Disabled controls (resolved)**: alignment, boolean, size limits, effects and layout-grid add rows now only appear when usable, or fold away until used.
-  selection, Boolean / Effects rows show as dead controls. Hide until usable.
-- **Layout grid rows** (`Cols / Rows / Grid`) under Constraints have no heading
-  and read as stray text.
-- **Plaintext rooms need an opt-in** that is now in Advanced; if hosted rooms
-  become the default, revisit whether an encrypted room should simply be created
-  on first Share without any visible choice (it already is).
-- **MCP lives in the left rail** beside layers. A "Connect AI agent" item in the
-  main menu that opens it would make it findable without a dedicated tab.
-- **The shell has never been compared with Figma's rendering** (the parity
-  diff is against our own constants). Pixel parity is not claimed.
-- **Nobody outside the project has used it.** The strongest product risk is not
-  a missing feature; it is untested assumptions. The next useful artifact is one
-  designer completing a real task and a written list of where they stalled.
-- **Single engine**: every browser spec is Chromium. Firefox and Safari are
+- **Plaintext rooms need an opt-in** (now under Advanced). If hosted rooms become the
+  default, decide whether an encrypted room should be created on first Share with no
+  visible choice. It already is for Share; this is only about the default join.
+- **Shell parity is unmeasured against Figma.** The parity diff compares our own
+  constants, so pixel parity is not claimed.
+- **No outside user yet.** The biggest product risk is untested assumptions. The next
+  useful artifact is one designer finishing a real task and a written list of where
+  they stalled.
+- **Single engine.** Every browser spec runs on Chromium. Firefox and Safari are
   unverified.
-- **Hosted deployment**: the domain is `pigma.design`; nothing is deployed behind
-  it yet. Development does not need it.
+- **Hosted deployment.** The domain is `pigma.design` and resolves, but nothing is
+  deployed behind it yet. Development does not need it.
+
+## Resolved
+
+- Export PNG 1x/2x/3x duplicated the main-menu entry: the scale now lives in the
+  Export PNG dialog only.
+- Disabled controls with nothing to act on: alignment, boolean, size limits, effects
+  and layout-grid add rows now appear only when usable, or fold away until used.
+- Layout grid rows had no heading: the add row is labelled "Add a layout grid".
+- MCP was hard to find: the main menu has "Connect AI agent…".
+- Segmented controls in a labelled row started at different x positions: rows that
+  hold a segmented control now share one label column (B63a).

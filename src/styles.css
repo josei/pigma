@@ -1953,3 +1953,23 @@ input.input.input--alpha {
   flex: none;
   width: 44px;
 }
+
+/* Rows that hold a segmented control share one label column, so the controls
+   in a block start at the same x whatever their labels say. */
+.prop-row:has(> .segmented) > .prop-row__label {
+  flex: 0 0 72px;
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.prop-row:has(> .segmented) > .segmented {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Five icon segments in a labelled row fit a 240px panel only if they can shrink. */
+.prop-row:has(> .segmented) .segmented__option {
+  min-width: 24px;
+}
+

@@ -1325,7 +1325,7 @@ function AutoLayoutSection({ node }: { node: SceneNode }) {
             </div>
             <div className="prop-stack">
               <Segmented
-                label="Counter align"
+                label="Counter"
                 value={layout.counterAxisAlignItems ?? 'MIN'}
                 options={COUNTER_ALIGN_OPTIONS}
                 onChange={(value) => setAutoLayout({ counterAxisAlignItems: value })}
