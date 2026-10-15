@@ -94,3 +94,67 @@ test('B61f Ctrl+Alt+G frames the selection', async ({ page }) => {
   await page.keyboard.press('Control+Alt+g');
   expect((await selected(page)).type).toBe('FRAME');
 });
+
+test('B61g copy properties carries text style to a text layer only', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 120, 100);
+  await page.keyboard.press('t');
+  await page.mouse.click(400, 300);
+  await page.keyboard.type('Hi');
+  await page.keyboard.press('Escape');
+  await tool(page, 'Move').click();
+  // Copy the text layer's style, paste onto the rectangle: the rectangle must not gain a text style.
+  const textIndex = await page.evaluate(() => window.__pigmaStore!.getState().file.document.children[0]!.children.findIndex((c: any) => c.type === 'TEXT'));
+  await page.evaluate((i) => {
+    const s = window.__pigmaStore!.getState();
+    s.select([s.file.document.children[0]!.children[i]!.id]);
+  }, textIndex);
+  await page.keyboard.press('Control+Alt+c');
+  await page.evaluate(() => {
+    const s = window.__pigmaStore!.getState();
+    const rect = s.file.document.children[0]!.children.find((c: any) => c.type === 'RECTANGLE')!;
+    s.select([rect.id]);
+  });
+  await page.keyboard.press('Control+Alt+v');
+  const rect = await page.evaluate(() => {
+    const r = window.__pigmaStore!.getState().file.document.children[0]!.children.find((c: any) => c.type === 'RECTANGLE') as any;
+    return { hasStyle: 'style' in r, type: r.type };
+  });
+  expect(rect.type).toBe('RECTANGLE');
+  expect(rect.hasStyle, 'a rectangle gained a text style').toBe(false);
+});
+
+test('B61h copy properties moves a text layer\'s size onto another text layer', async ({ page }) => {
+  await boot(page, { blank: true });
+  for (const [x, y, word] of [[400, 260, 'One'], [400, 420, 'Two']] as const) {
+    await page.keyboard.press('t');
+    await page.mouse.click(x, y);
+    await page.keyboard.type(word);
+    await page.keyboard.press('Escape');
+  }
+  await tool(page, 'Move').click();
+  const sizes = () =>
+    page.evaluate(() =>
+      window.__pigmaStore!.getState().file.document.children[0]!.children
+        .filter((c: any) => c.type === 'TEXT')
+        .map((c: any) => c.style.fontSize),
+    );
+  const ids = () =>
+    page.evaluate(() =>
+      window.__pigmaStore!.getState().file.document.children[0]!.children
+        .filter((c: any) => c.type === 'TEXT')
+        .map((c: any) => c.id),
+    );
+  const [first, second] = await ids();
+  await page.evaluate((id) => {
+    const s = window.__pigmaStore!.getState();
+    s.select([id]);
+    const current = s.file.document.children[0]!.children.find((c: any) => c.id === id) as unknown as { style: object };
+    s.updateSelected({ style: { ...current.style, fontSize: 32 } } as never, 'Set size');
+  }, first!);
+  await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), first!);
+  await page.keyboard.press('Control+Alt+c');
+  await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), second!);
+  await page.keyboard.press('Control+Alt+v');
+  expect(await sizes(), 'the text size did not carry over').toEqual([32, 32]);
+});

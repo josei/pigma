@@ -48,6 +48,7 @@ test('B26a the MCP panel never renders a raw token', async ({ page }) => {
 });
 
 test('B26b Copy harness config writes a config for the selected harness', async ({ page, context }) => {
+  test.skip(test.info().project.name === 'firefox', 'Playwright cannot grant clipboard permissions in Firefox');
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: APP_ORIGIN });
   await boot(page, { blank: true });
   await openTools(page);

@@ -51,8 +51,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
-- **Single engine.** Every browser spec runs on Chromium. Firefox and Safari are
-  unverified.
+- **Second engine.** Firefox passes the suite (297, 5 clipboard specs skipped), run
+  with `PIGMA_FIREFOX=1`. Safari (WebKit) is not run yet.
 - **Hosted deployment.** The domain is `pigma.design` and resolves, but nothing is
   deployed behind it yet. Development does not need it.
 

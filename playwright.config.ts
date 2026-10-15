@@ -33,6 +33,12 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } },
+    // Opt-in second engine: `PIGMA_FIREFOX=1 npx playwright test --project=firefox`.
+    // Off by default so the normal run stays fast; the suite has only been
+    // exercised on Chromium until this is run.
+    ...(process.env.PIGMA_FIREFOX
+      ? [{ name: 'firefox', use: { ...devices['Desktop Firefox'], viewport: { width: 1440, height: 900 } } }]
+      : []),
   ],
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1 --port 5173 --strictPort',

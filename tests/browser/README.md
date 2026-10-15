@@ -27,6 +27,15 @@ Browsers live out-of-tree (the built-in tooling cannot install Chromium here):
 PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers npx playwright test
 ```
 
+Firefox is an opt-in second engine (off by default to keep the normal run fast):
+
+```
+PIGMA_FIREFOX=1 npx playwright test --project=firefox
+```
+
+The pixel baseline is per engine (`__baseline__/shell-<project>-1440x900.png`).
+Clipboard specs skip on Firefox, which cannot grant clipboard permissions.
+
 ## What is covered
 
 | File | Area |

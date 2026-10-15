@@ -13,6 +13,7 @@ import type {
   PigmaFile,
   SceneNode,
   StrokeAlign,
+  TextStyle,
   Transform,
 } from './types';
 import { hasChildren } from './types';
@@ -699,6 +700,8 @@ export interface NodePatch {
   maxHeight?: number;
   clipsContent?: boolean;
   characters?: string;
+  /** Whole text style; only text layers take it (Copy / Paste properties). */
+  style?: TextStyle;
   constraints?: Constraints;
   effects?: Effect[];
   layoutGrids?: LayoutGrid[];

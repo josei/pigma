@@ -14,7 +14,8 @@ import { dirname } from 'node:path';
  * that. Comparison happens IN THE PAGE: both PNGs are decoded to a canvas and
  * diffed pixel-by-pixel, so no image library is needed.
  */
-const BASELINE = 'tests/browser/__baseline__/shell-1440x900.png';
+// One baseline per engine: rasterisation differs between Chromium and Firefox.
+const baselineFor = (project: string) => `tests/browser/__baseline__/shell-${project}-1440x900.png`;
 const VIEWPORT = { width: 1440, height: 900 };
 /** Channel delta at or above which a pixel counts as changed. */
 const CHANNEL_TOLERANCE = 12;
@@ -32,6 +33,7 @@ async function capture(page: import('@playwright/test').Page): Promise<Buffer> {
 test('B39a the shell matches its committed baseline within tolerance', async ({ page }) => {
   const shot = await capture(page);
   const update = process.env.UPDATE_BASELINE === '1';
+  const BASELINE = baselineFor(test.info().project.name);
 
   if (update) {
     mkdirSync(dirname(BASELINE), { recursive: true });

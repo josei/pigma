@@ -1091,13 +1091,26 @@ export const useEditor = create<EditorState>((set, get) => ({
     const keys = ['opacity', 'blendMode', 'fills', 'strokes', 'strokeWeight', 'strokeAlign', 'dashPattern', 'cornerRadius', 'rectangleCornerRadii', 'effects'] as const;
     const patch: Record<string, unknown> = {};
     for (const key of keys) if (node[key] !== undefined) patch[key] = structuredClone(node[key]);
+    // Text layers also carry their type setting; other layers ignore it on paste.
+    if (node.type === 'TEXT') patch.style = structuredClone(node.style);
     set({ copiedProperties: patch as NodePatch });
   },
 
   pasteProperties: () => {
     const patch = get().copiedProperties;
-    if (!patch || get().selection.length === 0) return;
-    get().updateSelected(structuredClone(patch), 'Paste properties');
+    const ids = get().selection;
+    if (!patch || ids.length === 0) return;
+    get().apply('Paste properties', (file) => {
+      let next = file;
+      for (const id of ids) {
+        const target = findNode(next.document, id);
+        if (!target) continue;
+        const { style, ...appearance } = structuredClone(patch);
+        const perNode = target.type === 'TEXT' && style ? { ...appearance, style } : appearance;
+        next = applyNodePatch(next, id, perNode as NodePatch);
+      }
+      return next;
+    });
   },
 
   cutSelection: () => {
