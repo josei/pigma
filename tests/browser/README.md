@@ -106,8 +106,8 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **285 browser tests passing / 0 failing**, measured twice
-back-to-back (exit 0 both runs) with **0 orphan processes**. `npx vitest run` =
+Current state: **317 browser tests passing / 0 failing** on Chromium (Firefox 312
+passed, 5 skipped; WebKit 311 passed, 6 skipped) with **0 orphan processes**. `npx vitest run` =
 1072 passing across 118 files.
 
 ### Round 12 - what is and is not covered
@@ -554,7 +554,7 @@ structural fact and **no pixels** — see "Parity evidence" above.
 If a browser run reports a `flaky`, it is stated with the run rather than replaced by the
 passing count. Example: `b16-mcp-bridge`'s *B16c* (a wrong token rejected with a visible
 error) flaked once during a 2026-10-05 pass - **282 passed + 1 flaky** - and the next run
-passed **285 / 0 flaky**. A count that moved because another track added specs is
+passed **285 / 0 flaky** (that was the count at the time). A count that moved because another track added specs is
 attributed the same way.
 
 ## A transient failure is reported the same way
