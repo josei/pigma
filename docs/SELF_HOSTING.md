@@ -367,12 +367,10 @@ it is one process.
 
 ### Refusal semantics (no silent plaintext)
 
-- A client **refuses to join without a key** unless the caller explicitly opts
-  into plaintext mode, in which case the room is labelled `plaintext` in the UI.
-- The relay fixes a room's mode at the first join. A client that disagrees is
-  refused (`mode-mismatch`, close `1008`), so a plaintext client cannot sit in an
-  encrypted room — or the reverse.
-- In an encrypted room the relay **refuses plaintext document payloads**
+- **There is no plaintext room.** A client refuses to join without its key, and
+  the relay refuses any join that did not declare `e2e` (`plaintext-refused`, close
+  `1008`). A plaintext client cannot enter a room, or open one.
+- In every room the relay **refuses plaintext document payloads**
   (`plaintext-rejected`, close `1008`) and stores nothing. That is what turns
   "zero-knowledge" from a promise into something the server enforces; the counter
   `pigma_plaintext_rejected_total` records it.

@@ -92,7 +92,11 @@ test('B37a a cold visit registers a service worker', async ({ page, previewUrl }
     .toBeGreaterThan(0);
 });
 
-test('B37b an offline reload still renders the shell', async ({ page, context, previewUrl }) => {
+test('B37b an offline reload still renders the shell', async ({ page, context, previewUrl }, testInfo) => {
+  // Playwright's WebKit build fails an offline reload with an internal engine error
+  // ("WebKit encountered an internal error") before the app runs. Chromium and
+  // Firefox exercise this path; WebKit is skipped until that engine error is fixed.
+  test.skip(testInfo.project.name === 'webkit', 'Playwright WebKit: offline reload hits an internal engine error');
   await page.goto(previewUrl);
   await page.waitForSelector('.app');
 

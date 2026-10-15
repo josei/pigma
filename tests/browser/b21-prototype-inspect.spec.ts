@@ -25,7 +25,7 @@ async function copyVia(page: Page, label: string) {
 }
 
 test('B21a Copy as SVG writes SVG markup to the clipboard', async ({ page, context }) => {
-  test.skip(test.info().project.name === 'firefox', 'Playwright cannot grant clipboard permissions in Firefox');
+  test.skip(test.info().project.name !== 'chromium', 'Playwright grants clipboard permissions only in Chromium');
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: APP_ORIGIN });
   await boot(page, { blank: true });
   await drawShape(page, 'Rectangle', 200, 120);
@@ -38,7 +38,7 @@ test('B21a Copy as SVG writes SVG markup to the clipboard', async ({ page, conte
 });
 
 test('B21b Copy as CSS writes CSS declarations to the clipboard', async ({ page, context }) => {
-  test.skip(test.info().project.name === 'firefox', 'Playwright cannot grant clipboard permissions in Firefox');
+  test.skip(test.info().project.name !== 'chromium', 'Playwright grants clipboard permissions only in Chromium');
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: APP_ORIGIN });
   await boot(page, { blank: true });
   await drawShape(page, 'Rectangle', 200, 120);

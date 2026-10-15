@@ -36,8 +36,8 @@ PIGMA_FIREFOX=1 npx playwright test --project=firefox
 The pixel baseline is per engine (`__baseline__/shell-<project>-1440x900.png`).
 Clipboard specs skip on Firefox, which cannot grant clipboard permissions.
 
-WebKit (Safari's engine) is wired the same way, `PIGMA_WEBKIT=1 npx playwright test --project=webkit`,
-but it needs system libraries first: `sudo npx playwright install-deps`.
+WebKit (Safari's engine) is wired the same way: `PIGMA_WEBKIT=1 npx playwright test --project=webkit`.
+It needs system libraries once: `sudo npx playwright install-deps`.
 
 ## What is covered
 
@@ -168,7 +168,7 @@ Control surface, printed from the live app (`/tmp/rooms-discovery.mjs`):
     Key         (share-link key; encrypted rooms only)
     Relay base  input[aria-label="Relay base"]   default wss://pigma.design/relay
     Join        button[aria-label="Join room"]
-    Join in plaintext  checkbox - required to enter a room without a share key
+    Room key   field - every room is encrypted; paste the key from a share link
 
 Joining with an unreachable relay puts the panel in `Rooms error / Mode: Not
 connected`, so the flow is drivable and observable. URL/hash are untouched by a

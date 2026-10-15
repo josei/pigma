@@ -110,17 +110,15 @@ export class Room {
 
   join(clientId: string, nickname: string, e2e = false): RoomViolation | null {
     this.touch();
-    if (this.e2eMode === null) this.e2eMode = e2e;
-    else if (this.e2eMode !== e2e) {
-      // A plaintext client must not slip into an encrypted room (or the reverse):
-      // that is the difference between a claim and a guarantee.
+    // Every room is end-to-end encrypted. A client that did not join with its key
+    // is refused here, so the relay can never hold a plaintext document.
+    if (!e2e) {
       return {
-        code: 'mode-mismatch',
-        message: this.e2eMode
-          ? 'this room is end-to-end encrypted; join with its key'
-          : 'this room is in plaintext mode; an encrypted client cannot join it',
+        code: 'plaintext-refused',
+        message: 'rooms are end-to-end encrypted: join with the key from a share link',
       };
     }
+    this.e2eMode = true;
     const peer: Participant = {
       clientId,
       nickname,

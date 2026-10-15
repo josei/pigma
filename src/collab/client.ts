@@ -22,8 +22,7 @@ import type { Viewport } from '../store/editorStore';
  *
  * Document payloads (ops and snapshots) are end-to-end encrypted: the room key
  * travels in the URL fragment, the relay only ever sees AES-GCM envelopes, and a
- * room whose key is missing is **refused** unless the caller explicitly opts into
- * the labelled plaintext mode.
+ * join without a key is **refused**. There is no plaintext mode.
  */
 
 export type RoomPhase = 'offline' | 'connecting' | 'online' | 'error';
@@ -38,7 +37,7 @@ export interface RoomPeerState {
   viewport: { x: number; y: number; zoom: number } | null;
 }
 
-export type RoomMode = 'e2e' | 'plaintext';
+export type RoomMode = 'e2e';
 
 export interface RoomState {
   phase: RoomPhase;
@@ -103,9 +102,7 @@ export function applyServerMessage(state: RoomState, message: ServerMessage): Ro
         error: null,
         roomId: message.room,
         base: state.base,
-        // The relay reports the room's mode; the client's own key is the source
-        // of truth for decryption, this is what the UI labels.
-        mode: message.e2e ? 'e2e' : 'plaintext',
+        mode: 'e2e',
         selfId: message.self.clientId,
         nickname: normalizeNickname(message.self.nickname),
         peers: message.peers.map(toPeer).filter((peer) => peer.clientId !== message.self.clientId),
@@ -193,9 +190,8 @@ export function initialsOf(nickname: string): string {
 
 export interface RoomClient {
   /**
-   * Join a room. `key` is the room key from the share link's fragment; without it
-   * the join is refused unless `allowPlaintext` is set, and then the state is
-   * labelled `plaintext` so the UI can say so.
+   * Join a room. `key` is the room key from the share link's fragment. Every room
+   * is end-to-end encrypted, so a join without a valid key is refused.
    */
   connect(options: {
     base: string;
@@ -204,7 +200,6 @@ export interface RoomClient {
     nickname: string;
     clientId: string;
     key?: string;
-    allowPlaintext?: boolean;
   }): void;
   disconnect(): void;
   sendCursor(cursor: Cursor | null): void;
@@ -304,28 +299,26 @@ export function createRoomClient(handlers: RoomClientHandlers, createSocket?: (u
       const typedKey = options.key?.trim() ?? '';
       const rawKey = typedKey === '' ? null : decodeRoomKey(typedKey);
       if (typedKey !== '' && rawKey === null) {
-        // A key that is present but unreadable is an error, never "no key":
-        // joining plaintext here would silently ignore what the user typed.
+        // A key that is present but unreadable is an error, never "no key".
         emit({
           ...EMPTY_ROOM,
           phase: 'error',
           roomId: options.roomId,
           base: options.base,
           mode: null,
-          error: 'That key is not a valid room key. Paste the whole share link, or clear the field to join in plaintext.',
+          error: 'That key is not a valid room key. Paste the whole share link from the room.',
         });
         return;
       }
-      if (!rawKey && !options.allowPlaintext) {
-        // Never join silently in plaintext: that is the whole point of the key
-        // living in the fragment.
+      if (!rawKey) {
+        // Rooms are always encrypted: without the key there is nothing to join.
         emit({
           ...EMPTY_ROOM,
           phase: 'error',
           roomId: options.roomId,
           base: options.base,
           mode: null,
-          error: 'This room is encrypted. Open the share link (its key is in the URL fragment) or join in plaintext mode explicitly.',
+          error: 'Rooms are encrypted. Open the share link from the room to join; its key is in the URL fragment.',
         });
         return;
       }
@@ -339,7 +332,7 @@ export function createRoomClient(handlers: RoomClientHandlers, createSocket?: (u
         phase: 'connecting',
         roomId: options.roomId,
         base: options.base,
-        mode: rawKey ? 'e2e' : 'plaintext',
+        mode: 'e2e',
         nickname,
       });
       const url = roomSocketUrl({ base: options.base, roomId: options.roomId, ...(options.token ? { token: options.token } : {}) });

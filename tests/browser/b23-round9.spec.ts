@@ -152,7 +152,7 @@ test('B23e Export selection as SVG contains only the selection', async ({ page }
 });
 
 test('B23f Copy as PNG puts a PNG image on the clipboard', async ({ page, context }) => {
-  test.skip(test.info().project.name === 'firefox', 'Playwright cannot grant clipboard permissions in Firefox');
+  test.skip(test.info().project.name !== 'chromium', 'Playwright grants clipboard permissions only in Chromium');
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], {
     origin: 'http://127.0.0.1:5173',
   });

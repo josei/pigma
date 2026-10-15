@@ -485,10 +485,8 @@ export interface EditorState {
     roomId: string;
     token?: string;
     base?: string;
-    /** Room key from a share link. Present means an end-to-end encrypted room. */
+    /** Room key from a share link. Every room is end-to-end encrypted, so a join needs it. */
     key?: string;
-    /** Joining without a key requires this explicit opt-in. */
-    allowPlaintext?: boolean;
   }) => void;
   leaveRoom: () => void;
   followPeer: (clientId: string | null) => void;
@@ -1926,7 +1924,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   joinRoom: (options) => {
     const base = options.base?.trim() || defaultRelayBase(window.location);
     const rawKey = options.key?.trim() ?? '';
-    // A malformed key is an error, never a silent plaintext join.
+    // A malformed or missing key is an error: rooms are always encrypted.
     if (rawKey !== '' && parseKeyText(rawKey) === null) {
       set({ room: { ...EMPTY_ROOM, phase: 'error', roomId: options.roomId, base, error: 'That key is not a valid room key' } });
       get().pushToast('That room key is not valid — paste the whole share link, or clear it');
@@ -2017,12 +2015,9 @@ export const useEditor = create<EditorState>((set, get) => ({
       ...(options.token ? { token: options.token } : {}),
       nickname: options.nickname,
       clientId: roomClientId,
-      // The key comes from the share link's fragment; plaintext is only ever
-      // joined when the user opts in, never as a silent fallback.
+      // The key comes from the share link's fragment. Rooms are always encrypted,
+      // so a join without a key is refused by the client.
       ...(rawKey !== '' ? { key: rawKey } : {}),
-      // A key always means an encrypted join; plaintext needs an explicit opt-in
-      // *and* no key.
-      allowPlaintext: rawKey === '' && options.allowPlaintext === true,
     });
   },
 

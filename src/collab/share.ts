@@ -78,8 +78,7 @@ export function parseKeyText(text: string): Uint8Array | null {
 }
 
 /** Human label for a room's mode, used by the panel and the toolbar. */
-export function modeLabel(mode: 'e2e' | 'plaintext' | null): string {
+export function modeLabel(mode: 'e2e' | null): string {
   if (mode === 'e2e') return 'End-to-end encrypted';
-  if (mode === 'plaintext') return 'Plaintext — the relay can read this room';
   return 'Not connected';
 }

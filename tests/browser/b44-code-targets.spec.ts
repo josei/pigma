@@ -102,7 +102,7 @@ test('B44b each target shows real code with the selection name and its geometry'
 });
 
 test('B44c the copy button follows the active tab', async ({ page, context }) => {
-  test.skip(test.info().project.name === 'firefox', 'Playwright cannot grant clipboard permissions in Firefox');
+  test.skip(test.info().project.name !== 'chromium', 'Playwright grants clipboard permissions only in Chromium');
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: APP_ORIGIN });
   await boot(page, { blank: true });
   await drawShape(page, 'Rectangle', 200, 120);

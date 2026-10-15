@@ -131,7 +131,7 @@ test('B49b TILE actually repeats on the canvas: one period matches, half differs
   const period = tile.width * info.zoom; // tile period in screen pixels
 
   const canvas = (await page.locator('.canvas').boundingBox())!;
-  const shot = await page.screenshot();
+  const shot = await page.screenshot({ scale: 'css' });
   const y = canvas.y + canvas.height / 2;
 
   // `patternUnits="userSpaceOnUse"` anchors the tile to the SVG origin, not to
@@ -183,12 +183,12 @@ test('B49c TILE renders differently from FILL for the same image', async ({ page
   const select = page.locator('[aria-label="Image scale mode"]');
   await select.selectOption('FILL');
   await page.waitForTimeout(400);
-  const fillShot = await page.screenshot();
+  const fillShot = await page.screenshot({ scale: 'css' });
   const fillPatterns = (await patternInfo(page)).patterns;
 
   await select.selectOption('TILE');
   await page.waitForTimeout(400);
-  const tileShot = await page.screenshot();
+  const tileShot = await page.screenshot({ scale: 'css' });
   const tilePatterns = (await patternInfo(page)).patterns;
 
   // FILL covers the box with one stretched copy (the pattern is the node box),

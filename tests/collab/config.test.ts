@@ -128,7 +128,7 @@ describe('a self-hosted deployment', () => {
 
     // The relay the config advertises is real.
     const client = await TestClient.connect(`${config.relay.url}?room=advertised`);
-    client.send({ t: 'hello', clientId: 'cfg-a', nickname: 'Ada' });
+    client.send({ t: 'hello', e2e: true, clientId: 'cfg-a', nickname: 'Ada' });
     expect(await client.next('welcome')).toMatchObject({ room: 'advertised' });
     client.close();
 

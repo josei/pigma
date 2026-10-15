@@ -38,6 +38,9 @@ export default defineConfig({
     strictPort: true,
     // A Cloudflare quick tunnel reaches the dev server for live review.
     allowedHosts: ['.trycloudflare.com'],
+    // The Rust build tree is huge and never source: watching it exhausts the
+    // inotify limit (ENOSPC), which kills every relay started under load.
+    watch: { ignored: ['**/src-tauri/target/**', '**/dist/**', '**/test-results/**'] },
   },
   build: {
     target: 'es2022',

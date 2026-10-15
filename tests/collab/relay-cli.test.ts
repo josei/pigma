@@ -202,8 +202,8 @@ describe('the relay CLI as a process', () => {
 
     // A real client joins the room the CLI advertised.
     const client = await TestClient.connect(`ws://127.0.0.1:${port}/collab?room=cli-smoke`);
-    client.send({ t: 'hello', clientId: 'cli-a', nickname: 'Ada' });
-    expect(await client.next('welcome')).toMatchObject({ room: 'cli-smoke', e2e: false });
+    client.send({ t: 'hello', e2e: true, clientId: 'cli-a', nickname: 'Ada' });
+    expect(await client.next('welcome')).toMatchObject({ room: 'cli-smoke', e2e: true });
     const health = (await fetch(`http://127.0.0.1:${port}/health`).then((r) => r.json())) as { ok: boolean; rooms: number };
     expect(health).toMatchObject({ ok: true, rooms: 1 });
     client.close();

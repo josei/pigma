@@ -53,7 +53,6 @@ describe('room invites', () => {
     expect(link.split('#')[0]).not.toContain(keyText);
     expect(decodeRoomKey(keyText)).not.toBeNull();
     expect(modeLabel('e2e')).toContain('End-to-end');
-    expect(modeLabel('plaintext')).toContain('Plaintext');
     expect(modeLabel(null)).toBe('Not connected');
   });
 });

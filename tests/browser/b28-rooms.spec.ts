@@ -14,7 +14,7 @@ test.setTimeout(60_000);
  *
  * Control surface, from the discovery table in tests/browser/README.md:
  *   Room nickname / Room id / Room token / Relay base / Join room
- *   Join in plaintext (checkbox, required to enter without a share key)
+ *   Room key (every room is encrypted: the host creates the key, a guest pastes it)
  *   Mode (read-only status)
  */
 
@@ -22,9 +22,15 @@ interface JoinOptions {
   nickname: string;
   roomId: string;
   relayUrl: string;
+  /** The room's key. Omitted for the host, who creates the room and gets its key back. */
+  key?: string;
 }
 
-async function joinRoom(page: Page, { nickname, roomId, relayUrl }: JoinOptions) {
+/**
+ * Join a room with its key. Rooms are always encrypted: the host creates the key
+ * with "Create share link", a guest pastes the same key. Returns the key.
+ */
+async function joinRoom(page: Page, { nickname, roomId, relayUrl, key }: JoinOptions): Promise<string> {
   await page.goto('/?blank=1');
   await page.waitForSelector('.app');
   await page.locator('.rail__button[aria-label="Rooms"]').click();
@@ -34,25 +40,32 @@ async function joinRoom(page: Page, { nickname, roomId, relayUrl }: JoinOptions)
   await page.locator('input[aria-label="Room id"]').fill(roomId);
   await page.locator('[data-testid="rooms-advanced"] summary').click();
   await page.locator('input[aria-label="Relay base"]').fill(relayUrl);
-  // Plaintext avoids needing a share-link key; the panel says so explicitly.
-  const plaintext = page.locator('input[type="checkbox"]').first();
-  if (await plaintext.count()) await plaintext.check();
+  let roomKey = key;
+  if (roomKey === undefined) {
+    await page.locator('[aria-label="Create share link"]').click();
+    roomKey = await page.locator('input[aria-label="Room key"]').inputValue();
+  } else {
+    await page.locator('input[aria-label="Room key"]').fill(roomKey);
+  }
   await page.locator('[aria-label="Join room"]').click();
   await page.waitForTimeout(1200);
+  return roomKey;
 }
 
 test('B28a two contexts join the same room with different nicknames', async ({
   browser,
   roomsRelay,
 }) => {
-  const roomId = 'qa-room-1';
+  // A fresh room per test: a room keeps its ciphertext, and a re-used id would hold
+  // another test's key.
+  const roomId = `qa-room-1-${Math.random().toString(36).slice(2, 8)}`;
   const alice = await browser.newContext();
   const bob = await browser.newContext();
   const alicePage = await alice.newPage();
   const bobPage = await bob.newPage();
 
-  await joinRoom(alicePage, { nickname: 'alice', roomId, relayUrl: roomsRelay.url });
-  await joinRoom(bobPage, { nickname: 'bob', roomId, relayUrl: roomsRelay.url });
+  const key = await joinRoom(alicePage, { nickname: 'alice', roomId, relayUrl: roomsRelay.url });
+  await joinRoom(bobPage, { nickname: 'bob', roomId, relayUrl: roomsRelay.url, key });
   await alicePage.waitForTimeout(1500);
 
   // Each side sees the other as a peer, by nickname.
@@ -67,14 +80,16 @@ test('B28a two contexts join the same room with different nicknames', async ({
 });
 
 test('B28b the remote cursor is labelled with the peer nickname', async ({ browser, roomsRelay }) => {
-  const roomId = 'qa-room-2';
+  // A fresh room per test: a room keeps its ciphertext, and a re-used id would hold
+  // another test's key.
+  const roomId = `qa-room-2-${Math.random().toString(36).slice(2, 8)}`;
   const alice = await browser.newContext();
   const bob = await browser.newContext();
   const alicePage = await alice.newPage();
   const bobPage = await bob.newPage();
 
-  await joinRoom(alicePage, { nickname: 'alice', roomId, relayUrl: roomsRelay.url });
-  await joinRoom(bobPage, { nickname: 'bob', roomId, relayUrl: roomsRelay.url });
+  const key = await joinRoom(alicePage, { nickname: 'alice', roomId, relayUrl: roomsRelay.url });
+  await joinRoom(bobPage, { nickname: 'bob', roomId, relayUrl: roomsRelay.url, key });
   await alicePage.waitForTimeout(1200);
 
   // Bob moves his pointer over the canvas. The remote cursor is a <g> inside the
@@ -100,14 +115,16 @@ test('B28b the remote cursor is labelled with the peer nickname', async ({ brows
 });
 
 test('B28c a remote edit and selection reach the peer view', async ({ browser, roomsRelay }) => {
-  const roomId = 'qa-room-3';
+  // A fresh room per test: a room keeps its ciphertext, and a re-used id would hold
+  // another test's key.
+  const roomId = `qa-room-3-${Math.random().toString(36).slice(2, 8)}`;
   const alice = await browser.newContext();
   const bob = await browser.newContext();
   const alicePage = await alice.newPage();
   const bobPage = await bob.newPage();
 
-  await joinRoom(alicePage, { nickname: 'alice', roomId, relayUrl: roomsRelay.url });
-  await joinRoom(bobPage, { nickname: 'bob', roomId, relayUrl: roomsRelay.url });
+  const key = await joinRoom(alicePage, { nickname: 'alice', roomId, relayUrl: roomsRelay.url });
+  await joinRoom(bobPage, { nickname: 'bob', roomId, relayUrl: roomsRelay.url, key });
   await alicePage.waitForTimeout(1200);
 
   const overlayBefore = await alicePage.locator('.canvas__overlay').innerHTML();
@@ -161,14 +178,16 @@ test('B28c a remote edit and selection reach the peer view', async ({ browser, r
 });
 
 test('B28d follow mode centres on the peer and Esc stops following', async ({ browser, roomsRelay }) => {
-  const roomId = 'qa-room-4';
+  // A fresh room per test: a room keeps its ciphertext, and a re-used id would hold
+  // another test's key.
+  const roomId = `qa-room-4-${Math.random().toString(36).slice(2, 8)}`;
   const alice = await browser.newContext();
   const bob = await browser.newContext();
   const alicePage = await alice.newPage();
   const bobPage = await bob.newPage();
 
-  await joinRoom(alicePage, { nickname: 'alice', roomId, relayUrl: roomsRelay.url });
-  await joinRoom(bobPage, { nickname: 'bob', roomId, relayUrl: roomsRelay.url });
+  const key = await joinRoom(alicePage, { nickname: 'alice', roomId, relayUrl: roomsRelay.url });
+  await joinRoom(bobPage, { nickname: 'bob', roomId, relayUrl: roomsRelay.url, key });
   await alicePage.waitForTimeout(1500);
 
   const follow = alicePage.locator('[aria-label="Follow bob"]');

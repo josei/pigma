@@ -6,6 +6,7 @@
  * every one of them is overridable. Keys are IP addresses; nothing identifies a
  * person.
  */
+import { ENVELOPE } from './fixtures';
 import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -79,8 +80,8 @@ describe('relay limits', () => {
     relay = await startRelay({ dataDir, limits: { maxConnectionsPerIp: 2 } });
     const first = await relay.connect('capped');
     const second = await relay.connect('capped');
-    first.send({ t: 'hello', clientId: 'a', nickname: 'Ada' });
-    second.send({ t: 'hello', clientId: 'b', nickname: 'Grace' });
+    first.send({ t: 'hello', e2e: true, clientId: 'a', nickname: 'Ada' });
+    second.send({ t: 'hello', e2e: true, clientId: 'b', nickname: 'Grace' });
     await first.next('welcome');
     await second.next('welcome');
 
@@ -92,7 +93,7 @@ describe('relay limits', () => {
     first.close();
     await new Promise((resolve) => setTimeout(resolve, 150));
     const third = await relay.connect('capped');
-    third.send({ t: 'hello', clientId: 'c', nickname: 'Late' });
+    third.send({ t: 'hello', e2e: true, clientId: 'c', nickname: 'Late' });
     await third.next('welcome');
   });
 
@@ -107,14 +108,14 @@ describe('relay limits', () => {
   it('caps participants per room and says why', async () => {
     relay = await startRelay({ limits: { maxRoomPeers: 2 } });
     const ada = await relay.connect('full');
-    ada.send({ t: 'hello', clientId: 'a', nickname: 'Ada' });
+    ada.send({ t: 'hello', e2e: true, clientId: 'a', nickname: 'Ada' });
     await ada.next('welcome');
     const grace = await relay.connect('full');
-    grace.send({ t: 'hello', clientId: 'b', nickname: 'Grace' });
+    grace.send({ t: 'hello', e2e: true, clientId: 'b', nickname: 'Grace' });
     await grace.next('welcome');
 
     const late = await relay.connect('full');
-    late.send({ t: 'hello', clientId: 'c', nickname: 'Late' });
+    late.send({ t: 'hello', e2e: true, clientId: 'c', nickname: 'Late' });
     const error = await late.next('error');
     expect(error).toMatchObject({ code: 'room-full' });
     expect(await late.waitForClose()).toMatchObject({ code: 1013 });
@@ -128,7 +129,7 @@ describe('relay limits', () => {
   it('closes a connection that exceeds the message rate', async () => {
     relay = await startRelay({ limits: { messagesPerWindow: 4, messageWindowMs: 60_000 } });
     const ada = await relay.connect('noisy');
-    ada.send({ t: 'hello', clientId: 'a', nickname: 'Ada' });
+    ada.send({ t: 'hello', e2e: true, clientId: 'a', nickname: 'Ada' });
     await ada.next('welcome');
     // hello + 3 more are allowed; the fifth message trips the limit.
     for (let index = 0; index < 3; index += 1) ada.send({ t: 'cursor', x: index, y: 0 });
@@ -142,9 +143,9 @@ describe('relay limits', () => {
     let now = 1_000_000;
     relay = await startRelay({ dataDir, now: () => now, limits: { roomTtlMs: 1000, snapshotTtlMs: 60_000, gcIntervalMs: 60_000 } });
     const ada = await relay.connect('idle');
-    ada.send({ t: 'hello', clientId: 'a', nickname: 'Ada' });
+    ada.send({ t: 'hello', e2e: true, clientId: 'a', nickname: 'Ada' });
     await ada.next('welcome');
-    ada.send({ t: 'snapshot', file: { schema: 'pigma/1', name: 'Doc' }, seq: 1 });
+    ada.send({ t: 'snapshot', file: ENVELOPE, seq: 1 });
     await new Promise((resolve) => setTimeout(resolve, 150));
     expect(await readdir(dataDir)).toHaveLength(1);
 
@@ -164,7 +165,7 @@ describe('relay limits', () => {
 
     // A late joiner therefore converges on nothing rather than a stale document.
     const late = await relay.connect('idle');
-    late.send({ t: 'hello', clientId: 'b', nickname: 'Late' });
+    late.send({ t: 'hello', e2e: true, clientId: 'b', nickname: 'Late' });
     expect((await late.next('welcome')).snapshot).toBeNull();
   });
 
@@ -172,9 +173,9 @@ describe('relay limits', () => {
     let now = 2_000_000;
     relay = await startRelay({ dataDir, now: () => now, limits: { snapshotTtlMs: 1000, roomTtlMs: 10 * 60_000, gcIntervalMs: 60_000 } });
     const ada = await relay.connect('live');
-    ada.send({ t: 'hello', clientId: 'a', nickname: 'Ada' });
+    ada.send({ t: 'hello', e2e: true, clientId: 'a', nickname: 'Ada' });
     await ada.next('welcome');
-    ada.send({ t: 'snapshot', file: { schema: 'pigma/1' }, seq: 4 });
+    ada.send({ t: 'snapshot', file: ENVELOPE, seq: 4 });
     await new Promise((resolve) => setTimeout(resolve, 150));
 
     now += 1500;
@@ -189,10 +190,10 @@ describe('relay limits', () => {
   it('reports capacity and counters on /health and /metrics', async () => {
     relay = await startRelay({ limits: { maxRoomPeers: 4, messagesPerWindow: 100, messageWindowMs: 1000 } });
     const ada = await relay.connect('metrics');
-    ada.send({ t: 'hello', clientId: 'a', nickname: 'Ada' });
+    ada.send({ t: 'hello', e2e: true, clientId: 'a', nickname: 'Ada' });
     await ada.next('welcome');
     const grace = await relay.connect('metrics');
-    grace.send({ t: 'hello', clientId: 'b', nickname: 'Grace' });
+    grace.send({ t: 'hello', e2e: true, clientId: 'b', nickname: 'Grace' });
     await grace.next('welcome');
     ada.send({ t: 'cursor', x: 1, y: 2 });
     await grace.next('cursor');

@@ -27,10 +27,10 @@ export function RoomsPanel() {
   const [nickname, setNickname] = useState('');
   const [roomId, setRoomId] = useState('');
   const [token, setToken] = useState('');
-  // A key pasted or arriving in the link's fragment: present means E2E. It lives
-  // in this field and in the room client — never in the store, never logged.
+  // The room key: from a share link's fragment, or pasted. Every room is encrypted,
+  // so joining needs it. It lives in this field and in the room client — never in
+  // the store, never logged.
   const [keyText, setKeyText] = useState('');
-  const [plaintextOptIn, setPlaintextOptIn] = useState(false);
   const [sharedLink, setSharedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState<'link' | 'key' | null>(null);
   // Pre-filled with the hosted relay (the default in every build), overridable
@@ -42,10 +42,9 @@ export function RoomsPanel() {
   const effective = effectiveRelayUrl({ relay: base });
   const keyRaw = keyText.trim();
   const inviteKey = parseKeyText(keyRaw);
-  // A key that is present but unreadable is an error, not "no key": joining
-  // plaintext while a key sits in the field would silently ignore it.
   const keyInvalid = keyRaw !== '' && inviteKey === null;
-  const canJoin = !keyInvalid && (inviteKey !== null || plaintextOptIn);
+  // Rooms are always encrypted: joining needs a valid key.
+  const canJoin = inviteKey !== null;
 
   // A link that opened this page carries the invite: pre-fill it and say so.
   useEffect(() => {
@@ -84,7 +83,7 @@ export function RoomsPanel() {
             <div className="prop-row">
               <span className="prop-row__label">Key</span>
               <span className="layer-row__name">
-                {room.mode === 'e2e' ? 'held by this browser (from the link)' : 'none — plaintext room'}
+                held by this browser (from the link)
               </span>
             </div>
             <div className="prop-row">
@@ -173,7 +172,6 @@ export function RoomsPanel() {
                     base: effective,
                     ...(keyRaw !== '' ? { key: keyRaw } : {}),
                     // With a key present the join is encrypted, whatever the tick says.
-                    allowPlaintext: inviteKey === null && plaintextOptIn,
                   });
                 }}
               >
@@ -194,7 +192,6 @@ export function RoomsPanel() {
                   // The sharer joins their own room: the key goes in the field, so
                   // the button becomes "Join encrypted room".
                   setKeyText(inviteKeyText(invite));
-                  setPlaintextOptIn(false);
                   void copy(link, 'link');
                 }}
               >
@@ -225,23 +222,14 @@ export function RoomsPanel() {
             ) : null}
             {keyInvalid ? (
               <p role="alert" style={{ margin: 0, color: 'var(--figma-danger)' }} data-testid="room-key-error">
-                That key is not a valid room key. Paste the whole share link, or clear the field to join
-                in plaintext.
+                That key is not a valid room key. Paste the whole share link from the room.
               </p>
             ) : null}
             {!keyInvalid && !canJoin ? (
               <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
-                Click Share to start an encrypted room, or open an invite link. For a plaintext room,
-                see Advanced.
+                Rooms are encrypted. Click Share to create one, or paste the key from a share link.
               </p>
             ) : null}
-            {inviteKey !== null && plaintextOptIn ? (
-              <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
-                A key is present: this joins encrypted, and the plaintext choice is ignored.
-              </p>
-            ) : null}
-            <details className="advanced" data-testid="rooms-advanced">
-              <summary>Advanced</summary>
             <div className="prop-row">
               <span className="prop-row__label">Key</span>
               <input
@@ -252,6 +240,8 @@ export function RoomsPanel() {
                 onChange={(event) => setKeyText(event.target.value)}
               />
             </div>
+            <details className="advanced" data-testid="rooms-advanced">
+              <summary>Advanced</summary>
             <div className="prop-row">
               <span className="prop-row__label">Token</span>
               <input
@@ -261,20 +251,6 @@ export function RoomsPanel() {
                 value={token}
                 onChange={(event) => setToken(event.target.value)}
               />
-            </div>
-            <div className="prop-row">
-              <label className="prop-row__label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input
-                  type="checkbox"
-                  aria-label="Join in plaintext"
-                  checked={plaintextOptIn}
-                  // A key in the field means an encrypted join: plaintext cannot be
-                  // selected until the user clears it.
-                  disabled={inviteKey !== null}
-                  onChange={(event) => setPlaintextOptIn(event.target.checked)}
-                />
-                Join in plaintext
-              </label>
             </div>
             <div className="prop-row">
               <span className="prop-row__label">Relay</span>

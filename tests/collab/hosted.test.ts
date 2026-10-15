@@ -12,6 +12,7 @@
  * process's stdout and stderr, every file under the data directory, and the
  * health/metrics responses.
  */
+import { ENVELOPE } from './fixtures';
 import { afterEach, describe, expect, it } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
@@ -294,16 +295,16 @@ describe('hosted deployment: no log, no store', () => {
     // …while a room snapshot (a different, already TTL-cached path) is written
     // when a client publishes one, and that file holds no MCP payload.
     const client = await TestClient.connect(`${hosted.config.relay.url}?room=snap`);
-    client.send({ t: 'hello', clientId: 'snap-a', nickname: 'Ada' });
+    client.send({ t: 'hello', e2e: true, clientId: 'snap-a', nickname: 'Ada' });
     await client.next('welcome');
-    client.send({ t: 'snapshot', file: { schema: 'pigma/1', name: 'Room doc' }, seq: 1 });
+    client.send({ t: 'snapshot', file: ENVELOPE, seq: 1 });
     await new Promise((resolve) => setTimeout(resolve, 200));
     client.close();
 
     const files = await readdir(dataDir as string);
     expect(files).toEqual(['snap.json']);
     const stored = await readFile(join(dataDir as string, files[0] as string), 'utf8');
-    expect(stored).toContain('Room doc');
+    expect(stored).toContain(ENVELOPE.ct);
     expect(stored).not.toContain(MARKER);
     expect((await stat(join(dataDir as string, files[0] as string))).size).toBeGreaterThan(0);
   }, 45_000);

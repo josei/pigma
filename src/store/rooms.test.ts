@@ -26,8 +26,8 @@ beforeEach(() => {
 });
 
 describe('room join guard', () => {
-  it('refuses a malformed key instead of joining plaintext', () => {
-    useEditor.getState().joinRoom({ nickname: 'Ada', roomId: 'studio', base: 'http://relay', key: 'not-a-key', allowPlaintext: true });
+  it('refuses a malformed key', () => {
+    useEditor.getState().joinRoom({ nickname: 'Ada', roomId: 'studio', base: 'http://relay', key: 'not-a-key' });
     const room = useEditor.getState().room;
     expect(room.phase).toBe('error');
     expect(room.mode).toBeNull();
@@ -36,7 +36,7 @@ describe('room join guard', () => {
     expect(useEditor.getState().room.peers).toEqual([]);
   });
 
-  it('joins without a key only when plaintext is explicit', () => {
+  it('refuses to join without a key: there is no plaintext room', () => {
     useEditor.getState().joinRoom({ nickname: 'Ada', roomId: 'studio', base: 'http://relay' });
     expect(useEditor.getState().room.phase).toBe('error');
     expect(useEditor.getState().room.mode).toBeNull();

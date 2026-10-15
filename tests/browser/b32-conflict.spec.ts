@@ -12,7 +12,8 @@ test.setTimeout(60_000);
  * and edits to the SAME node must converge to one value on both sides.
  */
 
-async function joinRoom(page: Page, nickname: string, roomId: string, relayUrl: string) {
+/** Join with the room's key: the host creates it (returned), a guest pastes it. */
+async function joinRoom(page: Page, nickname: string, roomId: string, relayUrl: string, key?: string): Promise<string> {
   await page.goto('/?blank=1');
   await page.waitForSelector('.app');
   await page.locator('.rail__button[aria-label="Rooms"]').click();
@@ -21,10 +22,16 @@ async function joinRoom(page: Page, nickname: string, roomId: string, relayUrl: 
   await page.locator('input[aria-label="Room id"]').fill(roomId);
   await page.locator('[data-testid="rooms-advanced"] summary').click();
   await page.locator('input[aria-label="Relay base"]').fill(relayUrl);
-  const plaintext = page.locator('input[type="checkbox"]').first();
-  if (await plaintext.count()) await plaintext.check();
+  let roomKey = key;
+  if (roomKey === undefined) {
+    await page.locator('[aria-label="Create share link"]').click();
+    roomKey = await page.locator('input[aria-label="Room key"]').inputValue();
+  } else {
+    await page.locator('input[aria-label="Room key"]').fill(roomKey);
+  }
   await page.locator('[aria-label="Join room"]').click();
   await page.waitForTimeout(1200);
+  return roomKey;
 }
 
 const shapes = (page: Page) =>
@@ -41,14 +48,16 @@ async function drawRect(page: Page, dx: number) {
 }
 
 test('B32a concurrent edits to different nodes both survive', async ({ browser, roomsRelay }) => {
-  const roomId = 'qa-conflict-diff';
+  // A fresh room per test: a room keeps its ciphertext, and a re-used id would hold
+  // another test's key.
+  const roomId = `qa-conflict-diff-${Math.random().toString(36).slice(2, 8)}`;
   const alice = await browser.newContext();
   const bob = await browser.newContext();
   const alicePage = await alice.newPage();
   const bobPage = await bob.newPage();
 
-  await joinRoom(alicePage, 'alice', roomId, roomsRelay.url);
-  await joinRoom(bobPage, 'bob', roomId, roomsRelay.url);
+  const key = await joinRoom(alicePage, 'alice', roomId, roomsRelay.url);
+  await joinRoom(bobPage, 'bob', roomId, roomsRelay.url, key);
 
   const before = await shapes(alicePage);
   await drawRect(alicePage, -120);
@@ -63,14 +72,16 @@ test('B32a concurrent edits to different nodes both survive', async ({ browser, 
 });
 
 test('B32b concurrent edits to the same node converge', async ({ browser, roomsRelay }) => {
-  const roomId = 'qa-conflict-same';
+  // A fresh room per test: a room keeps its ciphertext, and a re-used id would hold
+  // another test's key.
+  const roomId = `qa-conflict-same-${Math.random().toString(36).slice(2, 8)}`;
   const alice = await browser.newContext();
   const bob = await browser.newContext();
   const alicePage = await alice.newPage();
   const bobPage = await bob.newPage();
 
-  await joinRoom(alicePage, 'alice', roomId, roomsRelay.url);
-  await joinRoom(bobPage, 'bob', roomId, roomsRelay.url);
+  const key = await joinRoom(alicePage, 'alice', roomId, roomsRelay.url);
+  await joinRoom(bobPage, 'bob', roomId, roomsRelay.url, key);
 
   await drawRect(alicePage, 0);
   await expect.poll(() => shapes(bobPage), { timeout: 20000 }).toBeGreaterThan(0);

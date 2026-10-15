@@ -7,6 +7,7 @@
  * covered. The relay behaviour itself is tested through Node's built-in
  * `WebSocket` client in `tests/collab/relay.test.ts`.
  */
+import { envelopeWith } from './fixtures';
 import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { connect, type Socket } from 'node:net';
@@ -223,7 +224,7 @@ describe('websocket framing', () => {
   it('reassembles a fragmented text message', async () => {
     const client = await raw();
     await client.handshake;
-    client.send(OPCODE_TEXT, '{"t":"hello","clientId":"raw-a","nick', { fin: false });
+    client.send(OPCODE_TEXT, '{"t":"hello","e2e":true,"clientId":"raw-a","nick', { fin: false });
     client.send(OPCODE_CONTINUATION, 'name":"Ada"}', { fin: true });
     const welcome = await client.nextFrame((frame) => frame.opcode === OPCODE_TEXT);
     expect(JSON.parse(welcome.payload.toString('utf8'))).toMatchObject({ t: 'welcome', room: 'raw', self: { nickname: 'Ada' } });
@@ -234,21 +235,21 @@ describe('websocket framing', () => {
     await client.handshake;
     // >125 bytes uses the 16-bit length form on the way in.
     const medium = 'x'.repeat(400);
-    client.send(OPCODE_TEXT, JSON.stringify({ t: 'hello', clientId: 'raw-a', nickname: medium.slice(0, 32) }));
+    client.send(OPCODE_TEXT, JSON.stringify({ t: 'hello', e2e: true, clientId: 'raw-a', nickname: medium.slice(0, 32) }));
     const welcome = await client.nextFrame((frame) => frame.opcode === OPCODE_TEXT);
     expect(JSON.parse(welcome.payload.toString('utf8')).self.nickname.length).toBe(32);
 
     // >64 KiB uses the 64-bit form; the server relays it to another client.
     const observer = await raw();
     await observer.handshake;
-    observer.send(OPCODE_TEXT, JSON.stringify({ t: 'hello', clientId: 'raw-b', nickname: 'Bob' }));
+    observer.send(OPCODE_TEXT, JSON.stringify({ t: 'hello', e2e: true, clientId: 'raw-b', nickname: 'Bob' }));
     await observer.nextFrame((frame) => frame.opcode === OPCODE_TEXT && frame.payload.includes('welcome'));
     await client.nextFrame((frame) => frame.opcode === OPCODE_TEXT && frame.payload.includes('peer-join'));
 
     const big = 'y'.repeat(70 * 1024);
-    client.send(OPCODE_TEXT, JSON.stringify({ t: 'ops', ops: [{ op: 'blob', data: big }] }));
+    client.send(OPCODE_TEXT, JSON.stringify({ t: 'ops', ops: envelopeWith(big) }));
     const relayed = await observer.nextFrame((frame) => frame.opcode === OPCODE_TEXT && frame.payload.includes('"t":"ops"'));
-    expect(JSON.parse(relayed.payload.toString('utf8')).ops[0].data.length).toBe(70 * 1024);
+    expect(JSON.parse(relayed.payload.toString('utf8')).ops.ct.length).toBe(70 * 1024);
   });
 
   it('answers ping with pong', async () => {
@@ -293,7 +294,7 @@ describe('websocket framing', () => {
     await client.nextFrame((frame) => frame.opcode === OPCODE_PONG);
     expect(client.open).toBe(true);
 
-    client.send(OPCODE_TEXT, JSON.stringify({ t: 'hello', clientId: 'raw-binary', nickname: 'Bin' }));
+    client.send(OPCODE_TEXT, JSON.stringify({ t: 'hello', e2e: true, clientId: 'raw-binary', nickname: 'Bin' }));
     const welcome = await client.nextFrame((frame) => frame.opcode === OPCODE_TEXT);
     expect(JSON.parse(welcome.payload.toString('utf8'))).toMatchObject({ t: 'welcome', self: { nickname: 'Bin' } });
   });
@@ -340,7 +341,7 @@ describe('websocket framing', () => {
     const client = await raw();
     await client.handshake;
     // "é" split across two fragments: each half alone is invalid UTF-8.
-    const encoded = Buffer.from(JSON.stringify({ t: 'hello', clientId: 'raw-utf8', nickname: 'éé' }), 'utf8');
+    const encoded = Buffer.from(JSON.stringify({ t: 'hello', e2e: true, clientId: 'raw-utf8', nickname: 'éé' }), 'utf8');
     const split = encoded.indexOf(0xc3);
     client.send(OPCODE_TEXT, encoded.subarray(0, split + 1), { fin: false });
     client.send(OPCODE_CONTINUATION, encoded.subarray(split + 1), { fin: true });

@@ -102,9 +102,8 @@ describe('payload encryption', () => {
     }
   });
 
-  it('encrypts a plaintext array in plaintext mode identically to the wire shape', async () => {
-    // A plaintext room keeps sending arrays; the envelope check is what tells
-    // them apart, so the relay can refuse the former in an encrypted room.
+  it('tells an envelope from a plaintext array, so the relay can refuse the latter', async () => {
+    // Every room is encrypted; the envelope check is what tells the two apart.
     const doc = await deriveRoomKey(generateRoomKey(), 'studio', 'doc');
     const envelope = await encryptPayload(doc, 'studio', 'ops', []);
     expect(isEncryptedEnvelope([])).toBe(false);

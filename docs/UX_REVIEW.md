@@ -43,22 +43,22 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Open
 
-- **Plaintext rooms need an opt-in** (now under Advanced). If hosted rooms become the
-  default, decide whether an encrypted room should be created on first Share with no
-  visible choice. It already is for Share; this is only about the default join.
 - **Shell parity is unmeasured against Figma.** The parity diff compares our own
   constants, so pixel parity is not claimed.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
-- **Second engine.** Firefox passes the suite (306, 5 clipboard specs skipped), run
-  with `PIGMA_FIREFOX=1`. Safari (WebKit) cannot launch on this machine: it needs
-  `sudo npx playwright install-deps` first. The project is wired behind `PIGMA_WEBKIT=1`.
+- **Other engines.** Firefox passes the suite (309, 5 clipboard specs skipped), run
+  with `PIGMA_FIREFOX=1`. WebKit passes 308 with 6 skipped (5 clipboard specs and the
+  offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
 - **Hosted deployment.** The domain is `pigma.design` and resolves, but nothing is
   deployed behind it yet. Development does not need it.
 
 ## Resolved
 
+- No plaintext rooms: the "Join in plaintext" option is gone. The relay refuses any
+  join that is not end-to-end encrypted (`plaintext-refused`), and the client refuses a
+  join without a key. Decided by the owner.
 - Export PNG 1x/2x/3x duplicated the main-menu entry: the scale now lives in the
   Export PNG dialog only.
 - Disabled controls with nothing to act on: alignment, boolean, size limits, effects

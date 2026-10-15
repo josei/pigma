@@ -155,22 +155,21 @@ describe('the relay only ever sees ciphertext', () => {
     expect(await ada.waitForClose()).toMatchObject({ code: 1008 });
   });
 
-  it('refuses a plaintext client in an encrypted room (and the reverse)', async () => {
+  it('refuses a plaintext join, even into a fresh room: rooms are always encrypted', async () => {
     await joinE2E('client-a', 'Ada');
 
+    // A plaintext client cannot enter an encrypted room...
     const plaintext = await relay.connect('secret-room');
     plaintext.send({ t: 'hello', clientId: 'client-c', nickname: 'Plain' });
     const error = await plaintext.next('error');
-    expect(error).toMatchObject({ code: 'mode-mismatch' });
+    expect(error).toMatchObject({ code: 'plaintext-refused' });
     expect(await plaintext.waitForClose()).toMatchObject({ code: 1008 });
 
-    // A fresh plaintext room refuses an encrypted client for the same reason.
-    const plainRoom = await relay.connect('plain-room');
-    plainRoom.send({ t: 'hello', clientId: 'client-d', nickname: 'Plain' });
-    await plainRoom.next('welcome');
-    const encrypted = await relay.connect('plain-room');
-    encrypted.send({ t: 'hello', clientId: 'client-e', nickname: 'Cipher', e2e: true });
-    expect(await encrypted.next('error')).toMatchObject({ code: 'mode-mismatch' });
+    // ...and it cannot open a new room in plaintext either.
+    const fresh = await relay.connect('plain-room');
+    fresh.send({ t: 'hello', clientId: 'client-d', nickname: 'Plain' });
+    expect(await fresh.next('error')).toMatchObject({ code: 'plaintext-refused' });
+    expect(await fresh.waitForClose()).toMatchObject({ code: 1008 });
   });
 
   it('still carries presence in plaintext, as documented', async () => {

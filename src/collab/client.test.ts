@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { encodeRoomKey, generateRoomKey } from './crypto';
+import { describe, expect, it, vi } from 'vitest';
+import { decodeRoomKey, deriveRoomKey, encodeRoomKey, encryptPayload, generateRoomKey } from './crypto';
 import {
   EMPTY_ROOM,
   applyServerMessage,
@@ -12,6 +12,15 @@ import {
   roomSocketUrl,
 } from './client';
 import { MAX_VIEW_COORD, decodeClientMessage, type ServerMessage } from './protocol';
+
+/** One room key for every encrypted join in this file. */
+const ROOM_KEY = encodeRoomKey(generateRoomKey());
+
+/** Encrypt a document the way a peer would before it reaches the relay. */
+async function sealForRoom(value: unknown) {
+  const key = await deriveRoomKey(decodeRoomKey(ROOM_KEY)!, 'r', 'doc');
+  return encryptPayload(key, 'r', 'snapshot', value);
+}
 
 /** Minimal fake WebSocket: the client only uses these members. */
 class FakeSocket {
@@ -124,7 +133,7 @@ describe('rooms client', () => {
     expect(two.peers.find((entry) => entry.clientId === 'other')!.viewport).toEqual({ x: -120, y: 40, zoom: 1.5 });
   });
 
-  it('labels the join-time snapshot as the room\'s own, not a peer\'s', () => {
+  it('labels the join-time snapshot as the room\'s own, not a peer\'s', async () => {
     // The store relies on this: only the snapshot offered on joining may be
     // adopted (a peer's later publish must not flip everyone's node ids).
     const sockets: FakeSocket[] = [];
@@ -141,15 +150,17 @@ describe('rooms client', () => {
         return socket as unknown as WebSocket;
       },
     );
-    client.connect({ base: 'http://relay', roomId: 'r', nickname: 'Ada', clientId: 'me', allowPlaintext: true });
+    client.connect({ base: 'http://relay', roomId: 'r', nickname: 'Ada', clientId: 'me', key: ROOM_KEY });
     const socket = sockets[0]!;
     socket.fireOpen();
-    const file = { document: { id: 'room', children: [] } };
-    socket.fireMessage({ t: 'welcome', protocol: 1, room: 'r', e2e: false, seq: 0,
+    // Rooms are encrypted: the snapshots on the wire are envelopes, not documents.
+    const file = await sealForRoom({ document: { id: 'room', children: [] } });
+    socket.fireMessage({ t: 'welcome', protocol: 1, room: 'r', e2e: true, seq: 0,
       self: { clientId: 'me', nickname: 'Ada', color: '', cursor: null, selection: [] }, peers: [],
       snapshot: { file, seq: 3 } });
     socket.fireMessage({ t: 'snapshot', clientId: 'bob', file, seq: 4 });
-    expect(snapshots).toEqual([{ clientId: null }, { clientId: 'bob' }]);
+    // Decryption is asynchronous: wait for both snapshots to be delivered.
+    await vi.waitFor(() => expect(snapshots).toEqual([{ clientId: null }, { clientId: 'bob' }]));
   });
 
   it('clamps a peer viewport to the documented view range', () => {
@@ -181,7 +192,7 @@ describe('rooms client', () => {
         return socket as unknown as WebSocket;
       },
     );
-    client.connect({ base: 'http://relay', roomId: 'r', nickname: 'Ada', clientId: 'me', allowPlaintext: true });
+    client.connect({ base: 'http://relay', roomId: 'r', nickname: 'Ada', clientId: 'me', key: ROOM_KEY });
     sockets[0]!.fireOpen();
     client.sendViewport({ x: 10, y: -20, zoom: 2 });
     expect(JSON.parse(sockets[0]!.sent.at(-1)!)).toEqual({ t: 'viewport', x: 10, y: -20, zoom: 2 });
@@ -239,14 +250,14 @@ describe('rooms client', () => {
       },
     );
 
-    client.connect({ base: 'http://localhost:8080', roomId: 'one', nickname: 'Ada', clientId: 'me', allowPlaintext: true });
+    client.connect({ base: 'http://localhost:8080', roomId: 'one', nickname: 'Ada', clientId: 'me', key: ROOM_KEY });
     const first = sockets[0]!;
     // Capture the handlers as they were installed, before any supersede.
     const staleClose = first.onclose!;
     const staleError = first.onerror!;
 
     client.disconnect();
-    client.connect({ base: 'http://localhost:8080', roomId: 'two', nickname: 'Ada', clientId: 'me', allowPlaintext: true });
+    client.connect({ base: 'http://localhost:8080', roomId: 'two', nickname: 'Ada', clientId: 'me', key: ROOM_KEY });
     const second = sockets[1]!;
     expect(second.closed).toBe(false);
     expect(states.at(-1)).toMatchObject({ phase: 'connecting', roomId: 'two' });
@@ -278,13 +289,13 @@ describe('rooms client', () => {
       },
     );
 
-    client.connect({ base: 'http://localhost:8080', roomId: 'one', nickname: 'Ada', clientId: 'me', allowPlaintext: true });
+    client.connect({ base: 'http://localhost:8080', roomId: 'one', nickname: 'Ada', clientId: 'me', key: ROOM_KEY });
     sockets[0]!.fireOpen();
     sockets[0]!.fireMessage(welcome);
     expect(client.connected).toBe(true);
 
     const staleClose = sockets[0]!.onclose!;
-    client.connect({ base: 'http://localhost:8080', roomId: 'two', nickname: 'Ada', clientId: 'me', allowPlaintext: true });
+    client.connect({ base: 'http://localhost:8080', roomId: 'two', nickname: 'Ada', clientId: 'me', key: ROOM_KEY });
     // The previous socket is closed and inert; its late close is ignored.
     expect(sockets[0]!.closed).toBe(true);
     staleClose();
@@ -307,7 +318,7 @@ describe('rooms client', () => {
     client.sendSelection(['a']);
     expect(sockets).toHaveLength(0);
 
-    client.connect({ base: 'http://localhost:8080', roomId: 'one', nickname: 'Ada', clientId: 'me', allowPlaintext: true });
+    client.connect({ base: 'http://localhost:8080', roomId: 'one', nickname: 'Ada', clientId: 'me', key: ROOM_KEY });
     client.sendCursor({ x: 1, y: 2 });
     expect(sockets[0]!.sent).toHaveLength(0); // still connecting
 
@@ -317,7 +328,7 @@ describe('rooms client', () => {
     expect(sockets[0]!.sent.map((line) => (JSON.parse(line) as { t: string }).t)).toEqual(['hello', 'cursor', 'selection']);
   });
 
-  it('refuses to join a room without its key unless plaintext is explicit', () => {
+  it('refuses to join a room without its key: rooms are always encrypted', () => {
     const sockets: FakeSocket[] = [];
     const states: RoomState[] = [];
     const client = createRoomClient(
@@ -329,24 +340,23 @@ describe('rooms client', () => {
       },
     );
 
-    // No key and no opt-in: refused, with nothing sent to any relay.
+    // No key: refused, with nothing sent to any relay.
     client.connect({ base: 'http://localhost:8080', roomId: 'one', nickname: 'Ada', clientId: 'me' });
     expect(sockets).toHaveLength(0);
     expect(states.at(-1)).toMatchObject({ phase: 'error', mode: null });
     expect(states.at(-1)!.error).toMatch(/encrypted/i);
     expect(client.connected).toBe(false);
 
-    // A malformed key is its own error, even with plaintext allowed: it must
-    // never be dropped in favour of an unencrypted join.
-    client.connect({ base: 'http://localhost:8080', roomId: 'one', nickname: 'Ada', clientId: 'me', key: 'not-a-key', allowPlaintext: true });
+    // A malformed key is its own error, never a join.
+    client.connect({ base: 'http://localhost:8080', roomId: 'one', nickname: 'Ada', clientId: 'me', key: 'not-a-key' });
     expect(sockets).toHaveLength(0);
     expect(states.at(-1)).toMatchObject({ phase: 'error', mode: null });
     expect(states.at(-1)!.error).toMatch(/not a valid room key/i);
 
-    // The explicit plaintext mode joins, and is labelled as plaintext.
-    client.connect({ base: 'http://localhost:8080', roomId: 'one', nickname: 'Ada', clientId: 'me', allowPlaintext: true });
+    // A valid key joins, labelled as encrypted.
+    client.connect({ base: 'http://localhost:8080', roomId: 'one', nickname: 'Ada', clientId: 'me', key: ROOM_KEY });
     expect(sockets).toHaveLength(1);
-    expect(states.at(-1)).toMatchObject({ phase: 'connecting', mode: 'plaintext' });
+    expect(states.at(-1)).toMatchObject({ phase: 'connecting', mode: 'e2e' });
   });
 
   it('labels an encrypted join and keeps the key out of the socket URL and messages', () => {

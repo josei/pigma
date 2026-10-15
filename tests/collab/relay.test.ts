@@ -8,6 +8,7 @@
  * The no-account guarantee is asserted here too: no auth/user surface exists,
  * and no nickname is ever stored.
  */
+import { ENVELOPE } from './fixtures';
 import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -55,13 +56,13 @@ afterEach(async () => {
 describe('collab relay', () => {
   it('relays cursors and selection between two nicknames', async () => {
     const ada = await connect();
-    ada.send({ t: 'hello', clientId: 'client-a', nickname: 'Ada' });
+    ada.send({ t: 'hello', e2e: true, clientId: 'client-a', nickname: 'Ada' });
     const welcomeA = await ada.next('welcome');
     expect(welcomeA).toMatchObject({ protocol: 1, room: 'room-1', seq: 0, snapshot: null });
     expect(welcomeA.peers).toEqual([]);
 
     const grace = await connect();
-    grace.send({ t: 'hello', clientId: 'client-b', nickname: 'Grace' });
+    grace.send({ t: 'hello', e2e: true, clientId: 'client-b', nickname: 'Grace' });
     const welcomeB = await grace.next('welcome');
     expect(welcomeB.peers.map((peer) => peer.nickname)).toEqual(['Ada']);
     expect(welcomeB.peers[0]?.color).toBe(deriveColor('client-a'));
@@ -86,31 +87,30 @@ describe('collab relay', () => {
 
   it('relays document ops and converges a late joiner on the last snapshot', async () => {
     const ada = await connect();
-    ada.send({ t: 'hello', clientId: 'client-a', nickname: 'Ada' });
+    ada.send({ t: 'hello', e2e: true, clientId: 'client-a', nickname: 'Ada' });
     await ada.next('welcome');
 
     const grace = await connect();
-    grace.send({ t: 'hello', clientId: 'client-b', nickname: 'Grace' });
+    grace.send({ t: 'hello', e2e: true, clientId: 'client-b', nickname: 'Grace' });
     await grace.next('welcome');
 
     // Ada moves a layer; the op reaches Grace with a server-assigned sequence.
-    ada.send({ t: 'ops', ops: [{ op: 'patch', id: '1:2', patch: { x: 10 } }] });
+    ada.send({ t: 'ops', ops: ENVELOPE });
     const relayed = await grace.next('ops');
     expect(relayed.seq).toBe(1);
-    expect(relayed.ops).toEqual([{ op: 'patch', id: '1:2', patch: { x: 10 } }]);
+    expect(relayed.ops).toEqual(ENVELOPE);
     expect(ada.received().some((m) => m.t === 'ops')).toBe(false);
 
     // Grace applies it and publishes the resulting snapshot.
-    const snapshot = { schema: 'pigma/1', name: 'Doc', document: { id: '0:0', type: 'DOCUMENT', children: [] } };
-    grace.send({ t: 'snapshot', file: snapshot, seq: relayed.seq });
+    grace.send({ t: 'snapshot', file: ENVELOPE, seq: relayed.seq });
     await ada.next('snapshot');
 
     // A late joiner converges: it receives the snapshot, and every op it might
     // also receive has a sequence at or below the snapshot's.
     const late = await connect();
-    late.send({ t: 'hello', clientId: 'client-c', nickname: 'Late' });
+    late.send({ t: 'hello', e2e: true, clientId: 'client-c', nickname: 'Late' });
     const welcomeLate = await late.next('welcome');
-    expect(welcomeLate.snapshot).toEqual({ file: snapshot, seq: 1 });
+    expect(welcomeLate.snapshot).toEqual({ file: ENVELOPE, seq: 1 });
     expect(welcomeLate.seq).toBe(1);
     expect(relayed.seq).toBeLessThanOrEqual(welcomeLate.snapshot!.seq);
 
@@ -121,10 +121,10 @@ describe('collab relay', () => {
 
   it('broadcasts departures and prunes an empty room with no snapshot', async () => {
     const ada = await connect('ephemeral');
-    ada.send({ t: 'hello', clientId: 'client-a', nickname: 'Ada' });
+    ada.send({ t: 'hello', e2e: true, clientId: 'client-a', nickname: 'Ada' });
     await ada.next('welcome');
     const grace = await connect('ephemeral');
-    grace.send({ t: 'hello', clientId: 'client-b', nickname: 'Grace' });
+    grace.send({ t: 'hello', e2e: true, clientId: 'client-b', nickname: 'Grace' });
     await ada.next('peer-join');
 
     grace.close();
@@ -138,7 +138,7 @@ describe('collab relay', () => {
 
   it('answers ping with pong', async () => {
     const ada = await connect();
-    ada.send({ t: 'hello', clientId: 'client-a', nickname: 'Ada' });
+    ada.send({ t: 'hello', e2e: true, clientId: 'client-a', nickname: 'Ada' });
     await ada.next('welcome');
     ada.send({ t: 'ping' });
     await ada.next('pong');
@@ -151,7 +151,7 @@ describe('collab relay', () => {
     expect(error.code).toBe('not-joined');
 
     ada.socket.send('not json at all');
-    ada.send({ t: 'hello', clientId: 'client-a', nickname: 'Ada' });
+    ada.send({ t: 'hello', e2e: true, clientId: 'client-a', nickname: 'Ada' });
     const welcome = await ada.next('welcome');
     expect(welcome.self.nickname).toBe('Ada');
   });
@@ -163,7 +163,7 @@ describe('collab relay', () => {
     await expect(TestClient.connect(`${base}/collab?room=locked`)).rejects.toThrow(/failed to connect|closed before open/);
 
     const allowed = await connect('locked', 'sekret');
-    allowed.send({ t: 'hello', clientId: 'client-a', nickname: 'Ada' });
+    allowed.send({ t: 'hello', e2e: true, clientId: 'client-a', nickname: 'Ada' });
     expect((await allowed.next('welcome')).room).toBe('locked');
 
     await expect(TestClient.connect(`${base}/collab?room=locked&token=wrong`)).rejects.toThrow(/failed to connect|closed before open/);
@@ -171,13 +171,13 @@ describe('collab relay', () => {
 
   it('keeps nicknames out of the persisted snapshot', async () => {
     const ada = await connect('persisted');
-    ada.send({ t: 'hello', clientId: 'client-a', nickname: 'Ada' });
+    ada.send({ t: 'hello', e2e: true, clientId: 'client-a', nickname: 'Ada' });
     await ada.next('welcome');
     const grace = await connect('persisted');
-    grace.send({ t: 'hello', clientId: 'client-b', nickname: 'Grace' });
+    grace.send({ t: 'hello', e2e: true, clientId: 'client-b', nickname: 'Grace' });
     await grace.next('welcome');
 
-    ada.send({ t: 'snapshot', file: { schema: 'pigma/1', name: 'Doc' }, seq: 1 });
+    ada.send({ t: 'snapshot', file: ENVELOPE, seq: 1 });
     // The snapshot is relayed to other participants and stored server-side.
     const relayed = await grace.next('snapshot');
     expect(relayed).toMatchObject({ clientId: 'client-a', seq: 1 });
@@ -188,7 +188,7 @@ describe('collab relay', () => {
     expect(files).toEqual([`${safeRoomId('persisted')}.json`]);
     const raw = await readFile(join(dataDir, files[0] as string), 'utf8');
     expect(raw).not.toContain('Ada');
-    expect(JSON.parse(raw)).toEqual({ file: { schema: 'pigma/1', name: 'Doc' }, seq: 1 });
+    expect(JSON.parse(raw)).toEqual({ file: ENVELOPE, seq: 1 });
   });
 
   it('serves static assets, and nothing else', async () => {
@@ -240,10 +240,10 @@ describe('no-account guarantee', () => {
 
   it('holds nicknames only as live presence, never in room state', async () => {
     const ada = await connect('presence');
-    ada.send({ t: 'hello', clientId: 'client-a', nickname: 'Ada' });
+    ada.send({ t: 'hello', e2e: true, clientId: 'client-a', nickname: 'Ada' });
     await ada.next('welcome');
     const grace = await connect('presence');
-    grace.send({ t: 'hello', clientId: 'client-b', nickname: 'Grace' });
+    grace.send({ t: 'hello', e2e: true, clientId: 'client-b', nickname: 'Grace' });
     await ada.next('peer-join');
 
     // The room knows the nicknames only while the sockets are open…
