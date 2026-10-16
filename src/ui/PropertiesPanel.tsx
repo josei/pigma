@@ -801,6 +801,16 @@ function TextSection({ node }: { node: TextNode }) {
           onChange={(value) => updateStyle({ textAlignVertical: value })}
         />
         <Segmented
+          label="List"
+          value={style.listType ?? 'NONE'}
+          options={[
+            { value: 'NONE', label: 'None' },
+            { value: 'UNORDERED', label: '•' },
+            { value: 'ORDERED', label: '1.' },
+          ]}
+          onChange={(value) => updateStyle({ listType: value })}
+        />
+        <Segmented
           label="Case"
           value={style.textCase ?? 'ORIGINAL'}
           options={[

@@ -258,6 +258,8 @@ export interface TextStyle {
   textDecoration?: 'NONE' | 'UNDERLINE' | 'STRIKETHROUGH';
   textAutoResize?: TextAutoResize;
   paragraphSpacing?: number;
+  /** Paragraph list marker: a bullet or a number in front of each non-empty paragraph. */
+  listType?: 'NONE' | 'UNORDERED' | 'ORDERED';
   paragraphIndent?: number;
   /** Style runs, preserved verbatim for imported documents. */
   styleRuns?: unknown[];

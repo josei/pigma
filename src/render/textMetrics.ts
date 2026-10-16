@@ -79,9 +79,16 @@ export interface TextLayout {
  */
 export function layoutText(characters: string, style: TextStyle, maxWidth?: number, wrap = false): TextLayout {
   const transformed = textCaseTransform(characters, style);
-  const paragraphs = transformed.split('\n');
   const lineHeight = resolveLineHeight(style);
   const lines: string[] = [];
+
+  // A list marks each non-empty paragraph; ordered lists count only those.
+  let listIndex = 0;
+  const paragraphs = transformed.split('\n').map((paragraph) => {
+    if (style.listType === undefined || style.listType === 'NONE' || paragraph === '') return paragraph;
+    listIndex += 1;
+    return style.listType === 'ORDERED' ? `${listIndex}. ${paragraph}` : `• ${paragraph}`;
+  });
 
   for (const paragraph of paragraphs) {
     if (!wrap || maxWidth === undefined || maxWidth <= 0) {
