@@ -14,6 +14,7 @@ import type {
 } from '../model/types';
 import { hasChildren, isComponentNode } from '../model/types';
 import { firstVisibleFill, gradientEnds, withGradientEnds, withRadialHandle } from '../model/paint';
+import { flattenFrameOp } from '../model/flatten';
 import type { Paint } from '../model/types';
 
 /** A draggable point of a gradient: a linear's two ends, or a radial's centre and edges. */
@@ -1629,8 +1630,19 @@ export const useEditor = create<EditorState>((set, get) => ({
     // have no fill of their own to lose. A frame is refused: its fill and clipping would go.
     const nodes = state.selection.map((id) => findNode(state.file.document, id)).filter((n) => n !== null);
     const single = nodes.length === 1 ? nodes[0]! : null;
+    if (single && single.type === 'FRAME') {
+      // A frame flattens to one layer: its clipped union, with its paint (see model/flatten.ts).
+      const result = flattenFrameOp(state.file, single.id);
+      if (result.reason !== undefined) {
+        get().pushToast(result.reason);
+        return;
+      }
+      get().apply('Flatten frame', () => result.file);
+      set({ selection: [result.nodeId] });
+      return;
+    }
     const groupChildren = single && single.type === 'GROUP' ? single.children : null;
-    const refuse = () => get().pushToast('Select two or more shapes, or a group of shapes, to flatten (frames are not flattened)');
+    const refuse = () => get().pushToast('Select two or more shapes, a group of shapes or a frame, to flatten');
     if (groupChildren) {
       if (groupChildren.length < 2 || groupChildren.some((child) => hasChildren(child))) return refuse();
       // Ungroup and union are one gesture: a single undo brings the group back.

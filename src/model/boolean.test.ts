@@ -3,7 +3,7 @@ import { settleDocument } from './settle';
 import { parseFile, serializeFile } from './serialize';
 import { worldTransform, updateNode } from './tree';
 import { BOOLEAN_MODES, BooleanMode, booleanLabel, booleanNodes, booleanOperandsOf, canBoolean, nodePolygons, setBooleanMode } from './boolean';
-import { createEllipseNode, createRectNode, createTextNode } from './factory';
+import { createEllipseNode, createFrameNode, createRectNode, createTextNode } from './factory';
 import { emptyFile } from './validate';
 import { absoluteBounds, findNode } from './tree';
 import type { ContainerNode, PigmaFile, SceneNode } from './types';
@@ -295,5 +295,23 @@ describe('live boolean operations', () => {
     const freshNode = findNode(fresh.file.document, fresh.nodeId!) as ContainerNode;
     expect(after.pathData).toBe(freshNode.pathData);
     expect(after.width).toBeGreaterThan(200);
+  });
+});
+
+describe('boolean operations inside an offset container', () => {
+  it('places the result where its operands are, not twice as far out', () => {
+    const file = emptyFile('Offset boolean');
+    const page = file.document.children[0]!;
+    const frame = createFrameNode(file.document, 300, 200, 200, 200) as ContainerNode;
+    const a = createRectNode(null, 20, 20, 100, 100);
+    const b = createRectNode(null, 60, 60, 100, 100);
+    frame.children = [a, b];
+    page.children = [frame];
+    const result = booleanNodes(file, [a.id, b.id], 'UNION');
+    // The operands span x 320..420, y 220..320 in the page (the frame is at 300,200).
+    const bounds = absoluteBounds(result.file.document, result.nodeId!)!;
+    expect(bounds.x).toBeCloseTo(320, 0);
+    expect(bounds.y).toBeCloseTo(220, 0);
+    expect(bounds.width).toBeCloseTo(140, 0);
   });
 });

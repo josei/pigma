@@ -48,17 +48,21 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
-- **Other engines.** Firefox passes the suite (337, 5 clipboard specs skipped), run
-  with `PIGMA_FIREFOX=1`. WebKit passes 336 with 6 skipped (5 clipboard specs and the
+- **Other engines.** Firefox passes the suite (338, 5 clipboard specs skipped), run
+  with `PIGMA_FIREFOX=1`. WebKit passes 337 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
-- **Flatten a frame.** Ctrl/Cmd+E flattens two or more shapes, and a group of shapes, into
-  one path. A frame is refused: flattening it would lose its fill and clipping, and that
-  needs a decision about what a flattened frame should keep.
+- **Flatten a frame where its children are not all shapes.** Ctrl/Cmd+E flattens a frame whose
+  children are outlined shapes, clipped to the frame, into one path. A frame with text or
+  groups inside is refused: those children need their own flattening first.
 - **Hosted deployment.** The domain is `pigma.design` and resolves, but nothing is
   deployed behind it yet. Development does not need it.
 
 ## Resolved
 
+- Flatten a frame: Ctrl/Cmd+E turns a frame of shapes into one path, clipped to the frame and
+  given its paint and name (B74d; unit tests in flatten.test.ts).
+- A boolean inside an offset frame or group landed twice as far from its parent: the result's
+  position was in world space inside a local parent. It is localised now (boolean.test.ts).
 - A draft comment stayed on screen after switching pages, and would have been posted to the
   new page. Changing page drops the draft (B78d).
 - Placing a comment created a thread at once, with the placeholder "New comment" as its text.

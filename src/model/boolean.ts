@@ -2,6 +2,7 @@ import * as polygonClippingNamespace from 'polygon-clipping';
 import type { AnyNode, ContainerNode, PigmaFile, Rect, SceneNode } from './types';
 import { createShapeNode } from './factory';
 import { findNode, insertChild, parentAndIndex, removeNode, updateNode, worldTransform } from './tree';
+import { applyToPoint, invert } from './matrix';
 import { hasChildren } from './types';
 import { anchorsFromPathData, type VectorAnchor } from './vector';
 
@@ -273,9 +274,13 @@ export function booleanNodes(file: PigmaFile, ids: string[], mode: BooleanMode):
   const parentInfo = parentAndIndex(file.document, operands[0]!.id);
   if (!parentInfo) return { file, nodeId: null, skipped, empty: false };
 
+  // The result sits inside its parent, so its position is in the parent's space. The bounds
+  // are world-space: localise them, or a result inside an offset frame lands twice as far out.
+  const origin = applyToPoint(invert(worldTransform(file.document, parentInfo.parent.id)), bounds.x, bounds.y);
+
   // BOOLEAN_OPERATION is a container that also carries its own pathData.
   const node: ContainerNode = {
-    ...createShapeNode(file.document, 'RECTANGLE', bounds.x, bounds.y, Math.max(1, bounds.width), Math.max(1, bounds.height)),
+    ...createShapeNode(file.document, 'RECTANGLE', origin.x, origin.y, Math.max(1, bounds.width), Math.max(1, bounds.height)),
     type: 'BOOLEAN_OPERATION',
     name: booleanLabel(mode),
     booleanOperation: mode,
