@@ -81,32 +81,34 @@ export function layoutText(characters: string, style: TextStyle, maxWidth?: numb
   const transformed = textCaseTransform(characters, style);
   const lineHeight = resolveLineHeight(style);
   const lines: string[] = [];
+  const listed = style.listType === 'ORDERED' || style.listType === 'UNORDERED';
 
   // A list marks each non-empty paragraph; ordered lists count only those.
   let listIndex = 0;
-  const paragraphs = transformed.split('\n').map((paragraph) => {
-    if (style.listType === undefined || style.listType === 'NONE' || paragraph === '') return paragraph;
-    listIndex += 1;
-    return style.listType === 'ORDERED' ? `${listIndex}. ${paragraph}` : `• ${paragraph}`;
-  });
-
-  for (const paragraph of paragraphs) {
+  for (const paragraph of transformed.split('\n')) {
+    const marker = !listed || paragraph === '' ? '' : style.listType === 'ORDERED' ? `${++listIndex}. ` : '• ';
+    // Wrapped lines of a list item start under its text, not under the marker:
+    // the indent is as wide as the marker, in non-breaking spaces so it survives.
+    const indent = marker === '' ? '' : '\u00a0'.repeat(indentWidthOf(marker, style));
     if (!wrap || maxWidth === undefined || maxWidth <= 0) {
-      lines.push(paragraph);
+      lines.push(marker + paragraph);
       continue;
     }
     const words = paragraph.split(' ');
     let current = '';
+    let onFirstLine = true;
     for (const word of words) {
       const candidate = current === '' ? word : `${current} ${word}`;
-      if (measureLine(candidate, style) <= maxWidth || current === '') {
+      const prefix = onFirstLine ? marker : indent;
+      if (measureLine(prefix + candidate, style) <= maxWidth || current === '') {
         current = candidate;
       } else {
-        lines.push(current);
+        lines.push(prefix + current);
         current = word;
+        onFirstLine = false;
       }
     }
-    lines.push(current);
+    lines.push((onFirstLine ? marker : indent) + current);
   }
 
   const width = wrap && maxWidth !== undefined ? maxWidth : Math.max(0, ...lines.map((line) => measureLine(line, style)));
@@ -117,6 +119,13 @@ export function layoutText(characters: string, style: TextStyle, maxWidth?: numb
     width,
     height: lines.length * lineHeight + Math.max(0, lines.length - 1) * spacing,
   };
+}
+
+/** How many spaces wide a marker is, so a wrapped line can hang under the text. */
+function indentWidthOf(marker: string, style: TextStyle): number {
+  const space = measureLine(' ', style);
+  if (space <= 0) return 0;
+  return Math.max(1, Math.round(measureLine(marker, style) / space));
 }
 
 /** Fonts load asynchronously; callers re-measure once this resolves. */
