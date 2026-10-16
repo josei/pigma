@@ -48,17 +48,18 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
-- **Other engines.** Firefox passes the suite (330, 5 clipboard specs skipped), run
-  with `PIGMA_FIREFOX=1`. WebKit passes 329 with 6 skipped (5 clipboard specs and the
+- **Other engines.** Firefox passes the suite (331, 5 clipboard specs skipped), run
+  with `PIGMA_FIREFOX=1`. WebKit passes 330 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
-- **Flatten over frames and groups.** Ctrl/Cmd+E flattens two or more shapes into one
-  path (their union). Flattening a frame or a group is not built: it needs their children
-  merged into one outline.
+- **Flatten a frame.** Ctrl/Cmd+E flattens two or more shapes, and a group of shapes, into
+  one path. A frame is refused: flattening it would lose its fill and clipping, and that
+  needs a decision about what a flattened frame should keep.
 - **Hosted deployment.** The domain is `pigma.design` and resolves, but nothing is
   deployed behind it yet. Development does not need it.
 
 ## Resolved
 
+- Flatten a group of shapes: Ctrl/Cmd+E unions its children, and one undo brings the group back (B74c).
 - Radial gradients had no canvas handles. Centre, right and bottom handles now move the
   centre and set the radii (B75b).
 - Gradient ends could only be set from the panel. A linear gradient's two ends are handles on

@@ -27,7 +27,7 @@ past drawing:
 - MCP bridge (connect, resilience, remote edit + undo round trip) and
   collaboration presence (cursors, follow)
 
-Evidence: **1088 unit tests across 118 files**, **337 browser tests passing / 0 failing**
+Evidence: **1088 unit tests across 118 files**, **339 browser tests passing / 0 failing**
 on Chromium (`CI=true npm run test:browser`; Firefox is an opt-in second engine),
 **15 Rust tests passing**, and a parity script that separates its INTERNAL
 contract rows (**11/11** - Pigma's own values, not evidence about Figma) from its
@@ -114,7 +114,7 @@ the selection in the right-hand panel.
 | `npm run mcp` | the MCP server over stdio |
 | `npm run relay` | the collaboration / MCP relay server |
 
-Current evidence: **1088 unit tests across 118 files**, **337 browser tests
+Current evidence: **1088 unit tests across 118 files**, **339 browser tests
 passing** on Chromium, and **15 Rust tests passing** - see [`docs/ROADMAP.md`](docs/ROADMAP.md) for
 what each milestone
 proves and for the known limitations.

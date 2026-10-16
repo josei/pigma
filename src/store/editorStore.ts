@@ -1618,12 +1618,22 @@ export const useEditor = create<EditorState>((set, get) => ({
   flattenSelection: () => {
     const state = get();
     // A flattened layer is one path with no children, so the union is the operation:
-    // the shapes merge into one outline. Frames and groups are not flattened.
-    const shapes = state.selection.map((id) => findNode(state.file.document, id)).filter(Boolean);
-    if (shapes.length < 2 || shapes.some((node) => hasChildren(node!))) {
-      get().pushToast('Select two or more shapes to flatten (frames and groups are not flattened)');
+    // the shapes merge into one outline. A group flattens through its children, which
+    // have no fill of their own to lose. A frame is refused: its fill and clipping would go.
+    const nodes = state.selection.map((id) => findNode(state.file.document, id)).filter((n) => n !== null);
+    const single = nodes.length === 1 ? nodes[0]! : null;
+    const groupChildren = single && single.type === 'GROUP' ? single.children : null;
+    const refuse = () => get().pushToast('Select two or more shapes, or a group of shapes, to flatten (frames are not flattened)');
+    if (groupChildren) {
+      if (groupChildren.length < 2 || groupChildren.some((child) => hasChildren(child))) return refuse();
+      // Ungroup and union are one gesture: a single undo brings the group back.
+      get().beginTransaction();
+      get().ungroupSelection();
+      get().booleanOp('UNION');
+      get().endTransaction('Flatten');
       return;
     }
+    if (nodes.length < 2 || nodes.some((node) => hasChildren(node))) return refuse();
     get().booleanOp('UNION');
   },
 
