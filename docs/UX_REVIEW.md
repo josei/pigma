@@ -48,8 +48,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
-- **Other engines.** Firefox passes the suite (338, 5 clipboard specs skipped), run
-  with `PIGMA_FIREFOX=1`. WebKit passes 337 with 6 skipped (5 clipboard specs and the
+- **Other engines.** Firefox passes the suite (341, 5 clipboard specs skipped), run
+  with `PIGMA_FIREFOX=1`. WebKit passes 340 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
 - **Flatten a frame where its children are not all shapes.** Ctrl/Cmd+E flattens a frame whose
   children are outlined shapes, clipped to the frame, into one path. A frame with text or
@@ -59,6 +59,9 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- Layer order with several layers selected: bringing them to the front or forward reversed or
+  reshuffled them. A selection now keeps its own order, and steps past unselected layers only
+  (ops.test.ts, B79a). The bracket shortcuts also match by key position, so Shift does not break them (B79c).
 - A flattened layer stayed a live boolean, so it re-evaluated from its operands. Flatten now makes
   it a static vector: its outline stays put (flatten.test.ts, B74a–d).
 - Flatten a frame: Ctrl/Cmd+E turns a frame of shapes into one path, clipped to the frame and

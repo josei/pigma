@@ -487,40 +487,52 @@ export type ReorderMode = 'front' | 'forward' | 'backward' | 'back';
 
 /** Reorder within the parent's children (Figma z-order semantics). */
 export function reorderNodes(file: PigmaFile, ids: string[], mode: ReorderMode): PigmaFile {
-  let document: Node = file.document;
-  const ordered = ids
-    .map((id) => ({ id, index: parentAndIndex(document, id)?.index ?? -1 }))
-    .filter((entry) => entry.index >= 0)
-    .sort((a, b) => (mode === 'front' || mode === 'forward' ? b.index - a.index : a.index - b.index));
-
-  for (const { id } of ordered) {
-    const info = parentAndIndex(document, id);
+  // Group the selection by parent: each parent's children are reordered on their own.
+  const byParent = new Map<string, Set<string>>();
+  for (const id of ids) {
+    const info = parentAndIndex(file.document, id);
     if (!info) continue;
-    const node = info.parent.children[info.index];
-    if (!node) continue;
-    const siblings = info.parent.children.filter((c) => c.id !== id);
-    const target = info.index;
-    let nextIndex = target;
-    switch (mode) {
-      case 'front':
-        nextIndex = siblings.length;
-        break;
-      case 'back':
-        nextIndex = 0;
-        break;
-      case 'forward':
-        nextIndex = Math.min(siblings.length, target + 1);
-        break;
-      case 'backward':
-        nextIndex = Math.max(0, target - 1);
-        break;
-    }
-    if (nextIndex === target) continue;
-    const children = [...siblings];
-    children.splice(nextIndex, 0, node);
-    document = updateNode(document, info.parent.id, (parent) => ({ ...parent, children }) as Node);
+    const group = byParent.get(info.parent.id) ?? new Set<string>();
+    group.add(id);
+    byParent.set(info.parent.id, group);
+  }
+  let document: Node = file.document;
+  for (const [parentId, selected] of byParent) {
+    document = updateNode(document, parentId, (parent) => {
+      if (!hasChildren(parent)) return parent;
+      return { ...parent, children: reorderChildren([...parent.children], selected, mode) } as Node;
+    });
   }
   return touch({ ...file, document: document as PigmaFile['document'] });
+}
+
+/**
+ * Reorder one parent's children. Front and back keep the selection's own order;
+ * forward and backward step each selected layer past the unselected layer beside it,
+ * so a selection never swaps places with itself.
+ */
+function reorderChildren<T extends { id: string }>(children: T[], selected: Set<string>, mode: ReorderMode): T[] {
+  const isSelected = (child: T) => selected.has(child.id);
+  switch (mode) {
+    case 'front':
+      return [...children.filter((child) => !isSelected(child)), ...children.filter(isSelected)];
+    case 'back':
+      return [...children.filter(isSelected), ...children.filter((child) => !isSelected(child))];
+    case 'forward': {
+      const out = [...children];
+      for (let index = out.length - 2; index >= 0; index -= 1) {
+        if (isSelected(out[index]!) && !isSelected(out[index + 1]!)) [out[index], out[index + 1]] = [out[index + 1]!, out[index]!];
+      }
+      return out;
+    }
+    case 'backward': {
+      const out = [...children];
+      for (let index = 1; index < out.length; index += 1) {
+        if (isSelected(out[index]!) && !isSelected(out[index - 1]!)) [out[index], out[index - 1]] = [out[index - 1]!, out[index]!];
+      }
+      return out;
+    }
+  }
 }
 
 /** Align nodes. With a single node, aligns inside its parent container (Figma behaviour). */

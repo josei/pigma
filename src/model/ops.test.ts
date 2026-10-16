@@ -267,6 +267,21 @@ describe('document operations', () => {
     expect(order(reorderNodes(file, [c], 'front'))).toEqual([a, b, c]);
   });
 
+  it('keeps a multi-selection in its own order, and never swaps it with itself', () => {
+    const { file, a, b, c } = setup();
+    const order = (target: typeof file) => container(target.document.children[0]!).children.map((child) => child.id);
+    // Everything selected: nothing moves relative to the rest, and the order holds.
+    expect(order(reorderNodes(file, [a, b, c], 'front'))).toEqual([a, b, c]);
+    expect(order(reorderNodes(file, [a, b, c], 'back'))).toEqual([a, b, c]);
+    expect(order(reorderNodes(file, [a, b, c], 'forward'))).toEqual([a, b, c]);
+    expect(order(reorderNodes(file, [a, b, c], 'backward'))).toEqual([a, b, c]);
+    // Two of three to the front keep their order, on top of the unselected one.
+    expect(order(reorderNodes(file, [a, b], 'front'))).toEqual([c, a, b]);
+    expect(order(reorderNodes(file, [b, c], 'back'))).toEqual([b, c, a]);
+    // Forward steps each selected layer past an unselected neighbour only.
+    expect(order(reorderNodes(file, [a, c], 'forward'))).toEqual([b, a, c]);
+  });
+
   it('aligns nodes to the selection box and to the parent', () => {
     const { file, a, b, c } = setup();
     const left = alignNodes(file, [a, b, c], 'left');

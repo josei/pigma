@@ -148,12 +148,12 @@ export function useKeyboardShortcuts(): void {
         state.duplicateSelection();
         return;
       }
-      if (meta && event.key === ']') {
+      if (meta && event.code === 'BracketRight') {
         event.preventDefault();
         state.reorder(event.shiftKey ? 'front' : 'forward');
         return;
       }
-      if (meta && event.key === '[') {
+      if (meta && event.code === 'BracketLeft') {
         event.preventDefault();
         state.reorder(event.shiftKey ? 'back' : 'backward');
         return;
