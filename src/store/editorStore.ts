@@ -14,7 +14,7 @@ import type {
 } from '../model/types';
 import { hasChildren, isComponentNode } from '../model/types';
 import { firstVisibleFill, gradientEnds, withGradientEnds, withRadialHandle } from '../model/paint';
-import { flattenFrameOp } from '../model/flatten';
+import { flattenFrameOp, toVectorOp } from '../model/flatten';
 import type { Paint } from '../model/types';
 
 /** A draggable point of a gradient: a linear's two ends, or a radial's centre and edges. */
@@ -423,6 +423,8 @@ export interface EditorState {
   booleanOp: (mode: BooleanMode) => void;
   /** Flatten two or more shapes into one path: their union, as a single vector. */
   flattenSelection: () => void;
+  /** Turn the selected boolean into a static vector: its outline no longer depends on its operands. */
+  makeSelectionStatic: () => void;
   /** Switch an existing boolean node to another operation, in place. */
   setBooleanMode: (mode: BooleanMode) => void;
   createComponentSet: () => void;
@@ -1645,15 +1647,25 @@ export const useEditor = create<EditorState>((set, get) => ({
     const refuse = () => get().pushToast('Select two or more shapes, a group of shapes or a frame, to flatten');
     if (groupChildren) {
       if (groupChildren.length < 2 || groupChildren.some((child) => hasChildren(child))) return refuse();
-      // Ungroup and union are one gesture: a single undo brings the group back.
+      // Ungroup, union and make static are one gesture: a single undo brings the group back.
       get().beginTransaction();
       get().ungroupSelection();
       get().booleanOp('UNION');
+      get().makeSelectionStatic();
       get().endTransaction('Flatten');
       return;
     }
     if (nodes.length < 2 || nodes.some((node) => hasChildren(node))) return refuse();
+    get().beginTransaction();
     get().booleanOp('UNION');
+    get().makeSelectionStatic();
+    get().endTransaction('Flatten');
+  },
+
+  makeSelectionStatic: () => {
+    const id = get().selection[0];
+    if (!id) return;
+    get().apply('Flatten', (file) => toVectorOp(file, id));
   },
 
   booleanOp: (mode) => {

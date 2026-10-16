@@ -13,7 +13,7 @@ test('B74a Ctrl+E flattens two overlapping shapes into one layer', async ({ page
     window.__pigmaStore!.getState().file.document.children[0]!.children.map((c: any) => c.type),
   );
   expect(top, 'the shapes were not merged into one layer').toHaveLength(1);
-  expect(top[0]).toBe('BOOLEAN_OPERATION');
+  expect(top[0]).toBe('VECTOR');
 });
 
 test('B74b flatten refuses a single layer, with a reason', async ({ page }) => {
@@ -34,7 +34,7 @@ test('B74c Ctrl+E flattens a group of shapes into one path, and one undo brings 
   const grouped = () => page.evaluate(() => window.__pigmaStore!.getState().file.document.children[0]!.children.map((c: any) => c.type));
   expect(await grouped()).toEqual(['GROUP']);
   await page.keyboard.press('Control+e');
-  expect(await grouped(), 'the group did not flatten into one layer').toEqual(['BOOLEAN_OPERATION']);
+  expect(await grouped(), 'the group did not flatten into one layer').toEqual(['VECTOR']);
   await page.keyboard.press('Control+z');
   expect(await grouped(), 'one undo did not restore the group').toEqual(['GROUP']);
 });
@@ -58,7 +58,7 @@ test('B74d Ctrl+E flattens a frame into one layer that keeps its name, clipped t
     window.__pigmaStore!.getState().file.document.children[0]!.children.map((c: any) => ({ type: c.type, name: c.name, x: c.transform.tx, y: c.transform.ty, w: c.width, h: c.height })),
   );
   expect(layers, 'the frame did not flatten into one layer').toHaveLength(1);
-  expect(layers[0]!.type).toBe('BOOLEAN_OPERATION');
+  expect(layers[0]!.type).toBe('VECTOR');
   expect(layers[0]!.name).toBe('Frame 1');
   // Clipped: the flattened layer stays within the frame, though the ellipse overhung it.
   const eps = 0.5;

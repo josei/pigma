@@ -94,3 +94,19 @@ describe('flatten a frame that is not at the origin', () => {
     expect(bounds.y + bounds.height).toBeLessThanOrEqual(400 + 0.5);
   });
 });
+
+describe('a flattened layer is static', () => {
+  it('is a vector with its outline and no operands, and re-evaluation leaves it alone', async () => {
+    const a = createRectNode(null, 20, 20, 100, 100);
+    const b = createRectNode(null, 60, 60, 100, 100);
+    const { file, frameId } = setup([a, b], false);
+    const result = flattenFrameOp(file, frameId);
+    const layer = findNode(result.file.document, result.nodeId!) as unknown as { type: string; pathData?: string; children?: unknown[] };
+    expect(layer.type).toBe('VECTOR');
+    expect(layer.pathData, 'the outline was lost').toBeTruthy();
+    expect(layer.children, 'a flattened layer still has operands').toBeUndefined();
+    const { refreshBooleans } = await import('./boolean');
+    const again = refreshBooleans(result.file.document);
+    expect(findNode(again, result.nodeId!)).toEqual(layer);
+  });
+});

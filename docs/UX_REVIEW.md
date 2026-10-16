@@ -43,10 +43,6 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Open
 
-- **A flattened frame stays a live boolean.** Its operands (the shapes and the clip rectangle)
-  are kept, so the Boolean section shows "Intersect" and re-running a mode re-evaluates them.
-  Figma's flatten gives a static vector. Making it static needs a boolean that keeps its path
-  without operands, which the live-boolean model does not allow yet.
 - **Shell parity is unmeasured against Figma.** The parity diff compares our own
   constants, so pixel parity is not claimed.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
@@ -63,6 +59,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- A flattened layer stayed a live boolean, so it re-evaluated from its operands. Flatten now makes
+  it a static vector: its outline stays put (flatten.test.ts, B74a–d).
 - Flatten a frame: Ctrl/Cmd+E turns a frame of shapes into one path, clipped to the frame and
   given its paint and name (B74d; unit tests in flatten.test.ts).
 - A boolean inside an offset frame or group landed twice as far from its parent: the result's

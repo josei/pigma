@@ -1,8 +1,8 @@
-import type { ContainerNode, PigmaFile } from './types';
+import type { ContainerNode, PigmaFile, SceneNode } from './types';
 import { booleanNodes, booleanOperandsOf } from './boolean';
 import { createRectNode } from './factory';
 import { applyNodePatchToAll, ungroupNodes } from './ops';
-import { findNode, insertChild } from './tree';
+import { findNode, insertChild, updateNode } from './tree';
 import { hasChildren } from './types';
 
 /** Why a flatten was refused, or the flattened layer. */
@@ -52,6 +52,20 @@ export function flattenFrameOp(file: PigmaFile, frameId: string): FlattenFrameRe
     strokeWeight: container.strokeWeight,
     name: container.name,
   });
+  current = toVectorOp(current, shapeId);
   const lifted = ungroupNodes(current, [frameId]);
   return { file: lifted.file, nodeId: shapeId };
+}
+
+/**
+ * Make a flattened boolean static: its path becomes a vector layer with no operands, so
+ * nothing re-evaluates it. A boolean keeps its operands and is live; flatten is the point
+ * at which the user asks for the outline to stop depending on them.
+ */
+export function toVectorOp(file: PigmaFile, id: string): PigmaFile {
+  const node = findNode(file.document, id);
+  if (!node || node.type !== 'BOOLEAN_OPERATION' || !node.pathData) return file;
+  const { children: _children, booleanOperation: _mode, clipsContent: _clips, ...rest } = node as ContainerNode;
+  const vector = { ...rest, type: 'VECTOR' } as unknown as SceneNode;
+  return { ...file, document: updateNode(file.document, id, () => vector) };
 }
