@@ -51,6 +51,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **Other engines.** Firefox passes the suite (320, 5 clipboard specs skipped), run
   with `PIGMA_FIREFOX=1`. WebKit passes 319 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
+- **Flatten.** Figma can flatten a selection into one vector. Not built: it needs the
+  boolean geometry pipeline extended to frames and groups, which is a larger change.
 - **Hosted deployment.** The domain is `pigma.design` and resolves, but nothing is
   deployed behind it yet. Development does not need it.
 
