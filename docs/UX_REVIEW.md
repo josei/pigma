@@ -48,8 +48,10 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
-- **Other engines.** Firefox passes the suite (324, 5 clipboard specs skipped), run
-  with `PIGMA_FIREFOX=1`. WebKit passes 323 with 6 skipped (5 clipboard specs and the
+- **Gradient geometry.** A linear gradient can be turned (Angle) and each stop can be
+  moved. Not yet: dragging the gradient handles on the canvas, and radial centre/size.
+- **Other engines.** Firefox passes the suite (325, 5 clipboard specs skipped), run
+  with `PIGMA_FIREFOX=1`. WebKit passes 324 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
 - **Flatten.** Figma can flatten a selection into one vector. Not built: it needs the
   boolean geometry pipeline extended to frames and groups, which is a larger change.
@@ -58,6 +60,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- Gradient angle and stop positions could not be set (the previous round's gap). The Angle
+  field turns a linear gradient about the box's centre; each stop has a position (B73c).
 - A gradient row overflowed the panel: its summary text pushed the opacity field out. The
   Fill type select names the gradient, so the summary is gone.
 - Gradient fills could not be made or edited: only imported ones showed, as a summary. A fill or

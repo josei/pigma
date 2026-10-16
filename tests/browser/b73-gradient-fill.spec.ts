@@ -38,3 +38,21 @@ test('B73b a gradient stop colour is editable and sets that stop only', async ({
   // The second stop keeps its own colour and its transparency.
   expect(fill.gradientStops[1].color.a).toBe(0);
 });
+
+test('B73c the angle turns a linear gradient, and a stop position moves its stop', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 160, 120);
+  await tool(page, 'Move').click();
+  await page.locator('select[aria-label="Fill type"]').selectOption('LINEAR');
+  // Turned to 90 degrees, the gradient runs top to bottom: its x axis points down.
+  await page.locator('input[aria-label="Angle"]').fill('90');
+  await page.locator('input[aria-label="Angle"]').press('Enter');
+  const matrix = await page.locator('.canvas__svg linearGradient').first().getAttribute('gradientTransform');
+  const [a, b] = (matrix ?? '').replace(/matrix\(|\)/g, '').trim().split(/\s+/).map(Number);
+  expect(Math.abs((a ?? 1) - 0), 'the gradient did not turn').toBeLessThan(0.01);
+  expect(Math.abs((b ?? 0) - 1), 'the gradient did not turn').toBeLessThan(0.01);
+  // Stop 2 moved to 50%: its offset in the drawn gradient follows.
+  await page.locator('input[aria-label="Stop 2"]').fill('50');
+  await page.locator('input[aria-label="Stop 2"]').press('Enter');
+  await expect.poll(() => page.locator('.canvas__svg linearGradient stop').nth(1).getAttribute('offset')).toBe('50%');
+});

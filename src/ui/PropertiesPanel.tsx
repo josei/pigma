@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './icons';
 import { selectedNodes, useEditor } from '../store/editorStore';
 import type { AlignMode, ReorderMode } from '../model/ops';
-import { firstVisibleFill, paintToCssBackground, rgbaToHex, hexToRgba } from '../model/paint';
+import { firstVisibleFill, gradientAngle, paintToCssBackground, rgbaToHex, hexToRgba, withGradientAngle } from '../model/paint';
 import type { BlendMode, ContainerNode, OverlayPosition, Paint, SceneNode, TextNode, TextStyle } from '../model/types';
 import { OVERLAY_POSITIONS } from '../model/overlay';
 import { limitsOf } from '../model/sizing';
@@ -261,6 +261,38 @@ function PaintRow({
       </div>
       {/* The bind control is a sibling row: sharing the paint row squeezed the
           colour input to zero width. */}
+      {paint?.type === 'GRADIENT_LINEAR' ? (
+        <div className="prop-row">
+          <NumberField
+            label="Angle"
+            value={gradientAngle(paint)}
+            step={1}
+            suffix="°"
+            onCommit={(degrees) => onChange(withGradientAngle(paint, degrees))}
+          />
+        </div>
+      ) : null}
+      {paint?.type === 'GRADIENT_LINEAR' || paint?.type === 'GRADIENT_RADIAL'
+        ? paint.gradientStops.slice(0, 2).map((stop, index) => (
+            <div className="prop-row" key={index}>
+              <NumberField
+                label={`Stop ${index + 1}`}
+                value={Math.round(stop.position * 100)}
+                min={0}
+                max={100}
+                suffix="%"
+                onCommit={(percent) =>
+                  onChange({
+                    ...paint,
+                    gradientStops: paint.gradientStops.map((entry, at) =>
+                      at === index ? { ...entry, position: Math.min(1, Math.max(0, percent / 100)) } : entry,
+                    ),
+                  })
+                }
+              />
+            </div>
+          ))
+        : null}
       {paint && paint.type !== 'IMAGE' ? (
         <div className="prop-row">
           <span className="prop-row__label">{label} type</span>

@@ -115,3 +115,26 @@ export function paintToCssBackground(paint: Paint | null): string {
   }
 }
 
+
+
+/**
+ * A linear gradient's direction, in degrees: 0 runs left to right (the default), and
+ * the angle turns it about the middle of the box.
+ */
+export function gradientAngle(paint: Paint): number {
+  if (paint.type !== 'GRADIENT_LINEAR') return 0;
+  const { a, b } = fromMatrix(paint.gradientTransform ?? [[1, 0, 0], [0, 1, 0]]);
+  return Math.round((Math.atan2(b, a) * 180) / Math.PI);
+}
+
+/** The same gradient turned to `degrees`, still centred on the box. */
+export function withGradientAngle(paint: Paint, degrees: number): Paint {
+  if (paint.type !== 'GRADIENT_LINEAR') return paint;
+  const radians = (degrees * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  // Rotate about (0.5, 0.5): p' = R(p - c) + c.
+  const tx = 0.5 - 0.5 * cos + 0.5 * sin;
+  const ty = 0.5 - 0.5 * sin - 0.5 * cos;
+  return { ...paint, gradientTransform: [[cos, -sin, tx], [sin, cos, ty]] };
+}
