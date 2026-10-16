@@ -6,11 +6,13 @@ async function openComments(page: Page) {
   await page.waitForTimeout(400);
 }
 
-/** Place a comment pin using the Comment canvas tool. */
+/** Place a comment with the Comment canvas tool, and post it with text (a thread needs text). */
 async function placePin(page: Page, dx = 0, dy = 0) {
   await tool(page, 'Comment').click();
   const box = (await page.locator('.canvas').boundingBox())!;
   await page.mouse.click(box.x + box.width / 2 + dx, box.y + box.height / 2 + dy);
+  await page.locator('textarea[aria-label="New comment text"]').fill('Looks right');
+  await page.locator('button[aria-label="Post comment"]').click();
   await page.waitForTimeout(600);
 }
 

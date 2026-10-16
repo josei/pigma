@@ -13,6 +13,10 @@ export function CommentsPanel() {
   const setCommentResolved = useEditor((state) => state.setCommentResolved);
   const deleteComment = useEditor((state) => state.deleteComment);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const pendingComment = useEditor((state) => state.pendingComment);
+  const postComment = useEditor((state) => state.postComment);
+  const cancelComment = useEditor((state) => state.cancelComment);
+  const [composing, setComposing] = useState('');
 
   const threads = commentsForPage(file, pageId);
   const open = threads.filter((thread) => !thread.resolved);
@@ -24,7 +28,56 @@ export function CommentsPanel() {
         <span style={{ color: 'var(--figma-text-tertiary)' }}>{open.length} open</span>
       </div>
       <div className="section__body">
-        {threads.length === 0 ? (
+        {pendingComment ? (
+          // The composer for a comment placed on the canvas: posted as a thread only with text.
+          <div className="prop-stack" data-testid="comment-composer">
+            <textarea
+              className="input"
+              aria-label="New comment text"
+              placeholder="Add a comment"
+              autoFocus
+              rows={3}
+              value={composing}
+              onChange={(event) => setComposing(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  setComposing('');
+                  cancelComment();
+                }
+                if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                  postComment(composing);
+                  setComposing('');
+                }
+              }}
+            />
+            <div className="prop-row">
+              <button
+                type="button"
+                className="button button--primary"
+                aria-label="Post comment"
+                disabled={composing.trim() === ''}
+                onClick={() => {
+                  postComment(composing);
+                  setComposing('');
+                }}
+              >
+                Comment
+              </button>
+              <button
+                type="button"
+                className="button"
+                aria-label="Cancel comment"
+                onClick={() => {
+                  setComposing('');
+                  cancelComment();
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {threads.length === 0 && !pendingComment ? (
           <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
             No comments on this page — pick the Comment tool and click the canvas.
           </p>

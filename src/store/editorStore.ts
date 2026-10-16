@@ -290,6 +290,8 @@ export interface EditorState {
   editsSinceVersion: number;
   /** Comment thread whose popover is open, if any. */
   activeCommentId: string | null;
+  /** A comment being written: placed on the canvas, not yet posted as a thread. */
+  pendingComment: { x: number; y: number; nodeId: string | null } | null;
   theme: ThemeName;
   /** Locally published libraries (M11), newest last. */
   libraries: Library[];
@@ -521,6 +523,10 @@ export interface EditorState {
   setTheme: (theme: ThemeName) => void;
   toggleTheme: () => void;
   addComment: (x: number, y: number, text: string, nodeId?: string | null) => void;
+  /** Place a comment and open its composer; the thread exists only once it is posted. */
+  startComment: (x: number, y: number, nodeId?: string | null) => void;
+  cancelComment: () => void;
+  postComment: (text: string) => void;
   replyToComment: (commentId: string, text: string) => void;
   setCommentResolved: (commentId: string, resolved: boolean) => void;
   deleteComment: (commentId: string) => void;
@@ -833,6 +839,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   previewFile: null,
   editsSinceVersion: 0,
   activeCommentId: null,
+  pendingComment: null,
   theme: 'light',
   libraries: [],
   panelWidths: { left: PANEL_WIDTH_DEFAULT, right: PANEL_WIDTH_DEFAULT },
@@ -2311,6 +2318,24 @@ export const useEditor = create<EditorState>((set, get) => ({
     get().apply('Add comment', () => result.file);
     // Show the new thread straight away.
     set({ activeCommentId: result.commentId, tool: 'select', leftTab: 'comments' });
+  },
+
+  startComment: (x, y, nodeId = null) => {
+    set({ pendingComment: { x, y, nodeId }, activeCommentId: null, tool: 'select', leftTab: 'comments' });
+  },
+
+  cancelComment: () => {
+    set({ pendingComment: null });
+  },
+
+  postComment: (text) => {
+    const state = get();
+    const pending = state.pendingComment;
+    if (!pending || text.trim() === '') return;
+    const result = addCommentOp(state.file, { pageId: state.pageId, x: pending.x, y: pending.y, text, nodeId: pending.nodeId });
+    if (!result.commentId) return;
+    get().apply('Add comment', () => result.file);
+    set({ pendingComment: null, activeCommentId: result.commentId });
   },
 
   replyToComment: (commentId, text) => {

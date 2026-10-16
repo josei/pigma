@@ -524,7 +524,7 @@ export function Canvas() {
     if (tool === 'comment') {
       const state2 = useEditor.getState();
       const hit = hitTestContainer(state2.file, container.id, world);
-      state2.addComment(world.x, world.y, 'New comment', hit ? hit.id : null);
+      state2.startComment(world.x, world.y, hit ? hit.id : null);
       return;
     }
 
@@ -1024,6 +1024,7 @@ export function Canvas() {
   );
   const singleId = selection.length === 1 ? selection[0] : null;
   const singleNode = singleId ? findNode(file.document, singleId) : null;
+  const pendingComment = useEditor((state) => state.pendingComment);
   const multiBounds = selection.length > 1 ? boundsOfNodes(file.document, selection) : null;
 
   const cursor = spaceDown || tool === 'hand' || interaction?.kind === 'pan'
@@ -1492,6 +1493,20 @@ export function Canvas() {
               });
             })()
           : null}
+
+        {pendingComment ? (
+          // The draft pin, dashed, until its comment is posted or cancelled.
+          <circle
+            data-testid="comment-draft"
+            cx={pendingComment.x}
+            cy={pendingComment.y}
+            r={10 / viewport.zoom}
+            fill="none"
+            stroke="#0d99ff"
+            strokeDasharray={`${3 / viewport.zoom} ${2 / viewport.zoom}`}
+            strokeWidth={1.5 / viewport.zoom}
+          />
+        ) : null}
 
         {commentsForPage(file, page.id).map((thread, index) => {
           const size = 20 / viewport.zoom;
