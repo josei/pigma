@@ -413,6 +413,8 @@ export interface EditorState {
   rotateSelection: (id: string, degrees: number, transient?: boolean) => void;
   flip: (axis: FlipAxis) => void;
   booleanOp: (mode: BooleanMode) => void;
+  /** Flatten two or more shapes into one path: their union, as a single vector. */
+  flattenSelection: () => void;
   /** Switch an existing boolean node to another operation, in place. */
   setBooleanMode: (mode: BooleanMode) => void;
   createComponentSet: () => void;
@@ -1582,6 +1584,18 @@ export const useEditor = create<EditorState>((set, get) => ({
     const next = addComponentPropertyOp(get().file, componentId, type, name, defaultValue);
     if (next === get().file) return;
     get().apply(`Add ${type.toLowerCase()} property`, () => next);
+  },
+
+  flattenSelection: () => {
+    const state = get();
+    // A flattened layer is one path with no children, so the union is the operation:
+    // the shapes merge into one outline. Frames and groups are not flattened.
+    const shapes = state.selection.map((id) => findNode(state.file.document, id)).filter(Boolean);
+    if (shapes.length < 2 || shapes.some((node) => hasChildren(node!))) {
+      get().pushToast('Select two or more shapes to flatten (frames and groups are not flattened)');
+      return;
+    }
+    get().booleanOp('UNION');
   },
 
   booleanOp: (mode) => {

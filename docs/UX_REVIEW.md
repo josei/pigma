@@ -50,16 +50,18 @@ other than Chromium. Nothing below should be read as a claim about those.
   they stalled.
 - **Gradient handles on the canvas.** Gradients are set from the panel (Angle, stop
   positions, a radial's centre and size). Dragging handles on the canvas is not built.
-- **Other engines.** Firefox passes the suite (326, 5 clipboard specs skipped), run
-  with `PIGMA_FIREFOX=1`. WebKit passes 325 with 6 skipped (5 clipboard specs and the
+- **Other engines.** Firefox passes the suite (327, 5 clipboard specs skipped), run
+  with `PIGMA_FIREFOX=1`. WebKit passes 327 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
-- **Flatten.** Figma can flatten a selection into one vector. Not built: it needs the
-  boolean geometry pipeline extended to frames and groups, which is a larger change.
+- **Flatten over frames and groups.** Ctrl/Cmd+E flattens two or more shapes into one
+  path (their union). Flattening a frame or a group is not built: it needs their children
+  merged into one outline.
 - **Hosted deployment.** The domain is `pigma.design` and resolves, but nothing is
   deployed behind it yet. Development does not need it.
 
 ## Resolved
 
+- Flatten (Ctrl/Cmd+E) for two or more shapes: they merge into one path (B74a–b).
 - A radial gradient's centre and size could not be set. Centre X/Y and Width/Height are
   fields now (B73d).
 - Gradient angle and stop positions could not be set (the previous round's gap). The Angle

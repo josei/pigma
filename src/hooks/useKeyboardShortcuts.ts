@@ -112,6 +112,12 @@ export function useKeyboardShortcuts(): void {
         state.pasteProperties();
         return;
       }
+      // Figma's Flatten: Cmd/Ctrl+E.
+      if (meta && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'e' && state.selection.length > 0) {
+        event.preventDefault();
+        state.flattenSelection();
+        return;
+      }
       // Figma's Frame selection: Cmd/Ctrl+Alt+G.
       if (meta && event.altKey && event.code === 'KeyG') {
         event.preventDefault();

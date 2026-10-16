@@ -91,6 +91,7 @@ function nodeItems(): ContextItem[] {
       run: () => store().ungroupSelection(),
       ...(anyContainer ? {} : { disabledReason: 'nothing in the selection is a group or frame' }),
     },
+    { label: 'Flatten selection', icon: 'group', shortcut: '⌘E', run: () => store().flattenSelection() },
     { label: 'Union selection', icon: 'group', run: () => store().booleanOp('UNION') },
     { label: 'Subtract selection', icon: 'group', run: () => store().booleanOp('SUBTRACT') },
     { label: 'Intersect selection', icon: 'group', run: () => store().booleanOp('INTERSECT') },
