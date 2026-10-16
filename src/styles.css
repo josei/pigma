@@ -2008,3 +2008,18 @@ input.input.input--alpha {
   width: max-content;
   max-width: 200px;
 }
+
+/* A plugin's name wraps rather than truncating mid-word: the "· built-in" tag is part of
+   the name, and a cut name hid it. The row grows to fit both lines. */
+.plugin-row {
+  height: auto;
+  min-height: var(--control-height);
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.plugin-row .layer-row__name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}

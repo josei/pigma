@@ -48,8 +48,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
-- **Other engines.** Firefox passes the suite (332, 5 clipboard specs skipped), run
-  with `PIGMA_FIREFOX=1`. WebKit passes 331 with 6 skipped (5 clipboard specs and the
+- **Other engines.** Firefox passes the suite (333, 5 clipboard specs skipped), run
+  with `PIGMA_FIREFOX=1`. WebKit passes 332 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
 - **Flatten a frame.** Ctrl/Cmd+E flattens two or more shapes, and a group of shapes, into
   one path. A frame is refused: flattening it would lose its fill and clipping, and that
@@ -59,6 +59,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- Plugin names were cut mid-word, which hid the "built-in" tag on two of the three built-ins.
+  They wrap now (B77a).
 - Left-panel tooltips were centred on their row, so a long one ran over the rail and was clipped.
   They start at the panel's edge and wrap (B76a).
 - Flatten a group of shapes: Ctrl/Cmd+E unions its children, and one undo brings the group back (B74c).
