@@ -48,6 +48,8 @@ function PageRows() {
                 className="layer-row__rename-input"
                 autoFocus
                 value={draft}
+                // Figma selects the whole name on rename, so typing replaces it.
+                onFocus={(event) => event.currentTarget.select()}
                 onChange={(event) => setDraft(event.target.value)}
                 onBlur={() => {
                   renamePage(page.id, draft.trim() || page.name);
