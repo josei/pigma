@@ -58,6 +58,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- A gradient row overflowed the panel: its summary text pushed the opacity field out. The
+  Fill type select names the gradient, so the summary is gone.
 - Gradient fills could not be made or edited: only imported ones showed, as a summary. A fill or
   stroke can be Solid, Linear or Radial now, with a colour per stop (B73a–b).
 - Inspect: the "Ready for development" button and the copy buttons were clipped in the

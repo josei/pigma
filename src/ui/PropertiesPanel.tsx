@@ -2,8 +2,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './icons';
 import { selectedNodes, useEditor } from '../store/editorStore';
 import type { AlignMode, ReorderMode } from '../model/ops';
-import { firstVisibleFill, paintToCssBackground, rgbaToHex, hexToRgba, type GradientSpec } from '../model/paint';
-import { gradientSpec } from '../model/paint';
+import { firstVisibleFill, paintToCssBackground, rgbaToHex, hexToRgba } from '../model/paint';
 import type { BlendMode, ContainerNode, OverlayPosition, Paint, SceneNode, TextNode, TextStyle } from '../model/types';
 import { OVERLAY_POSITIONS } from '../model/overlay';
 import { limitsOf } from '../model/sizing';
@@ -190,7 +189,6 @@ function PaintRow({
 }) {
   const color = paint?.type === 'SOLID' ? paint.color : { r: 0, g: 0, b: 0 };
   const alpha = paint?.type === 'SOLID' ? paint.opacity ?? 1 : 1;
-  const gradient = paint && paint.type !== 'SOLID' ? gradientSpec(paint, 'preview') : null;
 
   return (
     <>
@@ -227,7 +225,6 @@ function PaintRow({
                 }
               />
             ))}
-            {gradient ? <GradientSummary spec={gradient} /> : null}
           </>
         ) : paint ? (
           <>
@@ -308,14 +305,6 @@ function HexField({ label, value, onCommit }: { label: string; value: string; on
         if (event.key === 'Escape') setDraft(null);
       }}
     />
-  );
-}
-
-function GradientSummary({ spec }: { spec: GradientSpec }) {
-  return (
-    <span className="prop-row__label" style={{ whiteSpace: 'nowrap' }}>
-      {spec.kind.toLowerCase()} · {spec.stops.length} stops
-    </span>
   );
 }
 
