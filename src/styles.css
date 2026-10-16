@@ -1989,3 +1989,9 @@ input.input.input--alpha {
   top: calc(100% + 4px);
   transform: none;
 }
+
+/* A section's title keeps its width: the controls beside it wrap, the title never shrinks. */
+.section__header > span:first-child {
+  flex: none;
+  white-space: nowrap;
+}

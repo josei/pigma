@@ -68,7 +68,8 @@ export function InspectPanel() {
             </span>
           </div>
           <div className="section__body">
-            <div className="prop-grid prop-grid--2">
+            {/* Stacked, not two columns: "Ready for development" is wider than half a panel. */}
+            <div className="prop-stack">
               <button
                 type="button"
                 className="button"
@@ -188,7 +189,7 @@ export function InspectPanel() {
           >
             {code || 'Nothing to generate.'}
           </pre>
-          <div className="prop-grid prop-grid--2" style={{ marginTop: 6 }}>
+          <div className="prop-stack" style={{ marginTop: 6 }}>
             <button type="button" className="button" aria-label="Copy code" onClick={() => copy(code, tabLabel)}>
               Copy {tabLabel}
             </button>

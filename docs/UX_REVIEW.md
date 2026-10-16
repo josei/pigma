@@ -48,8 +48,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
-- **Other engines.** Firefox passes the suite (321, 5 clipboard specs skipped), run
-  with `PIGMA_FIREFOX=1`. WebKit passes 320 with 6 skipped (5 clipboard specs and the
+- **Other engines.** Firefox passes the suite (322, 5 clipboard specs skipped), run
+  with `PIGMA_FIREFOX=1`. WebKit passes 321 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
 - **Flatten.** Figma can flatten a selection into one vector. Not built: it needs the
   boolean geometry pipeline extended to frames and groups, which is a larger change.
@@ -58,6 +58,9 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- Inspect: the "Ready for development" button and the copy buttons were clipped in the
+  two-column grid, and the "Code" header was truncated. They stack now, and the header keeps
+  its width (B72a, which fails on the old layout).
 - Tooltips in the right panel were centred above their button: at the window edge they ran
   out of the window, and near the top of the scrolling panel the header clipped them. They
   open below the button, from its right edge (B71a).
