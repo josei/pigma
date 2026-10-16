@@ -1995,3 +1995,16 @@ input.input.input--alpha {
   flex: none;
   white-space: nowrap;
 }
+
+/* Tooltips in the left panel open below their control and start at the panel's left edge:
+   centred, a long tip on a row near the rail ran over the rail and was clipped. */
+.app__left [data-tooltip]::after {
+  left: 0;
+  right: auto;
+  bottom: auto;
+  top: calc(100% + 4px);
+  transform: none;
+  white-space: normal;
+  width: max-content;
+  max-width: 200px;
+}
