@@ -37,3 +37,16 @@ test('B78c Post stays disabled while the comment is empty', async ({ page }) => 
   await page.locator('textarea[aria-label="New comment text"]').fill('   ');
   await expect(page.locator('button[aria-label="Post comment"]')).toBeDisabled();
 });
+
+/** A draft comment belongs to its page: switching pages drops it, so it cannot land on another page. */
+test('B78d a draft comment does not follow the user to another page', async ({ page }) => {
+  await boot(page, { blank: true });
+  await page.locator('button[aria-label="Add page"]').click();
+  await page.locator('.page-row').nth(0).click();
+  await placeAtCentre(page);
+  await expect(page.locator('[data-testid="comment-draft"]')).toHaveCount(1);
+  await page.locator('.rail__button[aria-label="Layers"]').click();
+  await page.locator('.page-row').nth(1).click();
+  await expect(page.locator('[data-testid="comment-draft"]'), 'the draft pin followed the user to another page').toHaveCount(0);
+  expect(await threads(page)).toBe(0);
+});

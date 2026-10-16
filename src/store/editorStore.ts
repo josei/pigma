@@ -2511,7 +2511,8 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   setPage: (pageId) => {
     if (!get().file.document.children.some((page) => page.id === pageId)) return;
-    set({ pageId, selection: [], enteredContainerId: null, editingTextId: null });
+    // A draft comment belongs to the page it was placed on: switching pages drops it.
+    set({ pageId, selection: [], enteredContainerId: null, editingTextId: null, pendingComment: null });
   },
 
   addPage: () => {
