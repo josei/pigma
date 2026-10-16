@@ -138,3 +138,38 @@ export function withGradientAngle(paint: Paint, degrees: number): Paint {
   const ty = 0.5 - 0.5 * sin - 0.5 * cos;
   return { ...paint, gradientTransform: [[cos, -sin, tx], [sin, cos, ty]] };
 }
+
+/**
+ * A radial gradient's placement, as percentages of its box: the centre, and the width
+ * and height of the ellipse it spans (100% reaches the box's edges). Stored as the
+ * transform `matrix(sx 0 0 sy tx ty)` in normalized box space.
+ */
+export interface RadialPlacement {
+  centreX: number;
+  centreY: number;
+  width: number;
+  height: number;
+}
+
+export function radialPlacement(paint: Paint): RadialPlacement {
+  const fallback = { centreX: 50, centreY: 50, width: 100, height: 100 };
+  if (paint.type !== 'GRADIENT_RADIAL' || !paint.gradientTransform) return fallback;
+  const [[sx, , tx], [, sy, ty]] = paint.gradientTransform;
+  return {
+    centreX: Math.round(((tx ?? 0) + 0.5 * (sx ?? 1)) * 100),
+    centreY: Math.round(((ty ?? 0) + 0.5 * (sy ?? 1)) * 100),
+    width: Math.round((sx ?? 1) * 100),
+    height: Math.round((sy ?? 1) * 100),
+  };
+}
+
+export function withRadialPlacement(paint: Paint, placement: Partial<RadialPlacement>): Paint {
+  if (paint.type !== 'GRADIENT_RADIAL') return paint;
+  const current = radialPlacement(paint);
+  const next = { ...current, ...placement };
+  const sx = next.width / 100;
+  const sy = next.height / 100;
+  const tx = next.centreX / 100 - 0.5 * sx;
+  const ty = next.centreY / 100 - 0.5 * sy;
+  return { ...paint, gradientTransform: [[sx, 0, tx], [0, sy, ty]] };
+}

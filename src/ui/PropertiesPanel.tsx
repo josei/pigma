@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './icons';
 import { selectedNodes, useEditor } from '../store/editorStore';
 import type { AlignMode, ReorderMode } from '../model/ops';
-import { firstVisibleFill, gradientAngle, paintToCssBackground, rgbaToHex, hexToRgba, withGradientAngle } from '../model/paint';
+import { firstVisibleFill, gradientAngle, paintToCssBackground, radialPlacement, rgbaToHex, hexToRgba, withGradientAngle, withRadialPlacement } from '../model/paint';
 import type { BlendMode, ContainerNode, OverlayPosition, Paint, SceneNode, TextNode, TextStyle } from '../model/types';
 import { OVERLAY_POSITIONS } from '../model/overlay';
 import { limitsOf } from '../model/sizing';
@@ -261,6 +261,20 @@ function PaintRow({
       </div>
       {/* The bind control is a sibling row: sharing the paint row squeezed the
           colour input to zero width. */}
+      {paint?.type === 'GRADIENT_RADIAL'
+        ? (['centreX', 'centreY', 'width', 'height'] as const).map((key) => (
+            <div className="prop-row" key={key}>
+              <NumberField
+                label={{ centreX: 'Centre X', centreY: 'Centre Y', width: 'Width', height: 'Height' }[key]}
+                value={radialPlacement(paint)[key]}
+                min={key === 'width' || key === 'height' ? 1 : 0}
+                max={key === 'width' || key === 'height' ? 1000 : 100}
+                suffix="%"
+                onCommit={(value) => onChange(withRadialPlacement(paint, { [key]: value }))}
+              />
+            </div>
+          ))
+        : null}
       {paint?.type === 'GRADIENT_LINEAR' ? (
         <div className="prop-row">
           <NumberField

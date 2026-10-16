@@ -56,3 +56,18 @@ test('B73c the angle turns a linear gradient, and a stop position moves its stop
   await page.locator('input[aria-label="Stop 2"]').press('Enter');
   await expect.poll(() => page.locator('.canvas__svg linearGradient stop').nth(1).getAttribute('offset')).toBe('50%');
 });
+
+test('B73d a radial gradient can be moved and resized', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 160, 120);
+  await tool(page, 'Move').click();
+  await page.locator('select[aria-label="Fill type"]').selectOption('RADIAL');
+  // Centre X at 25%: the gradient's transform moves its origin by a quarter of the box, left of the default.
+  await page.locator('input[aria-label="Centre X"]').fill('25');
+  await page.locator('input[aria-label="Centre X"]').press('Enter');
+  await expect.poll(() => page.locator('.canvas__svg radialGradient').first().getAttribute('gradientTransform')).toContain('-0.25');
+  // Width at 50%: the ellipse's x scale halves.
+  await page.locator('input[aria-label="Width"]').fill('50');
+  await page.locator('input[aria-label="Width"]').press('Enter');
+  await expect.poll(() => page.locator('.canvas__svg radialGradient').first().getAttribute('gradientTransform')).toContain('matrix(0.5 ');
+});
