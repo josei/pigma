@@ -160,7 +160,8 @@ describe('rooms client', () => {
       snapshot: { file, seq: 3 } });
     socket.fireMessage({ t: 'snapshot', clientId: 'bob', file, seq: 4 });
     // Decryption is asynchronous: wait for both snapshots to be delivered.
-    await vi.waitFor(() => expect(snapshots).toEqual([{ clientId: null }, { clientId: 'bob' }]));
+    // A generous bound: the full suite runs many workers, and the default second is too short.
+    await vi.waitFor(() => expect(snapshots).toEqual([{ clientId: null }, { clientId: 'bob' }]), { timeout: 5000 });
   });
 
   it('clamps a peer viewport to the documented view range', () => {

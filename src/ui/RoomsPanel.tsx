@@ -157,6 +157,26 @@ export function RoomsPanel() {
                 onChange={(event) => setRoomId(event.target.value)}
               />
             </div>
+            {keyInvalid ? (
+              <p role="alert" style={{ margin: 0, color: 'var(--figma-danger)' }} data-testid="room-key-error">
+                That key is not a valid room key. Paste the whole share link from the room.
+              </p>
+            ) : null}
+            {!keyInvalid && !canJoin ? (
+              <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
+                Rooms are encrypted. Click Share to create one, or paste the key from a share link.
+              </p>
+            ) : null}
+            <div className="prop-row">
+              <span className="prop-row__label">Key</span>
+              <input
+                className="input"
+                aria-label="Room key"
+                placeholder="from a share link"
+                value={keyText}
+                onChange={(event) => setKeyText(event.target.value)}
+              />
+            </div>
             <div className="prop-row">
               <button
                 type="button"
@@ -220,26 +240,6 @@ export function RoomsPanel() {
                 </button>
               </div>
             ) : null}
-            {keyInvalid ? (
-              <p role="alert" style={{ margin: 0, color: 'var(--figma-danger)' }} data-testid="room-key-error">
-                That key is not a valid room key. Paste the whole share link from the room.
-              </p>
-            ) : null}
-            {!keyInvalid && !canJoin ? (
-              <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
-                Rooms are encrypted. Click Share to create one, or paste the key from a share link.
-              </p>
-            ) : null}
-            <div className="prop-row">
-              <span className="prop-row__label">Key</span>
-              <input
-                className="input"
-                aria-label="Room key"
-                placeholder="from a share link"
-                value={keyText}
-                onChange={(event) => setKeyText(event.target.value)}
-              />
-            </div>
             <details className="advanced" data-testid="rooms-advanced">
               <summary>Advanced</summary>
             <div className="prop-row">
