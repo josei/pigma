@@ -58,8 +58,9 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
-- Tooltips in the right panel were centred on their button, so a button at the window's
-  right edge pushed its tooltip out of the window. They anchor to the button's right edge now (B71a).
+- Tooltips in the right panel were centred above their button: at the window edge they ran
+  out of the window, and near the top of the scrolling panel the header clipped them. They
+  open below the button, from its right edge (B71a).
 - Renaming a page: the name was not selected on rename, so typing appended to it. It is
   selected now, as for layers (B70a).
 - No plaintext rooms: the "Join in plaintext" option is gone. The relay refuses any

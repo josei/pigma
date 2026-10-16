@@ -1979,10 +1979,13 @@ input.input.input--alpha {
 }
 
 
-/* Tooltips in the right-hand panel hang from their button's right edge: centred on a
-   button at the window edge, the bubble ran past the viewport and was clipped. */
+/* Tooltips in the right-hand panel open below their button and hang from its right
+   edge. Centred and above, a button at the window edge ran past the viewport, and a
+   button near the top of the scrolling panel had its bubble clipped by that scroller. */
 .app__right [data-tooltip]::after {
   left: auto;
   right: 0;
+  bottom: auto;
+  top: calc(100% + 4px);
   transform: none;
 }

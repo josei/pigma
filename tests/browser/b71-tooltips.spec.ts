@@ -11,8 +11,10 @@ test('B71a right-panel tooltips anchor to the right edge, so they are not clippe
   await expect(add).toBeVisible();
   const style = await add.evaluate((el) => {
     const after = getComputedStyle(el, '::after');
-    return { right: after.right, transform: after.transform };
+    return { right: after.right, top: after.top, transform: after.transform };
   });
   expect(style.right, 'right-panel tooltip is still centred on its button').toBe('0px');
   expect(style.transform).toBe('none');
+  // Below the button, not above: above, the scrolling panel clips it.
+  expect(style.top, 'right-panel tooltip still opens upward into the clipped header').not.toBe('auto');
 });
