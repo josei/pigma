@@ -149,6 +149,34 @@ function NumberField({
   );
 }
 
+type PaintKind = 'SOLID' | 'LINEAR' | 'RADIAL';
+
+/**
+ * Switch a fill or stroke between solid and a two-stop gradient. A new gradient runs
+ * from the current colour to the same colour, transparent; a new solid takes the first stop's colour.
+ */
+function retypePaint(paint: Paint, kind: string): Paint {
+  if (kind === 'SOLID') {
+    const first = paint.type === 'SOLID' ? paint.color : paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL' ? paint.gradientStops[0]?.color ?? { r: 0, g: 0, b: 0 } : { r: 0, g: 0, b: 0 };
+    return { type: 'SOLID', color: { r: first.r, g: first.g, b: first.b }, opacity: 1 };
+  }
+  if (paint.type === 'SOLID' || paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL') {
+    const base = paint.type === 'SOLID' ? paint.color : paint.gradientStops[0]?.color ?? { r: 0, g: 0, b: 0 };
+    if (paint.type !== 'SOLID' && (kind === 'LINEAR' ? 'GRADIENT_LINEAR' : 'GRADIENT_RADIAL') === paint.type) return paint;
+    return {
+      type: kind === 'RADIAL' ? 'GRADIENT_RADIAL' : 'GRADIENT_LINEAR',
+      gradientStops: [
+        { position: 0, color: { r: base.r, g: base.g, b: base.b, a: 1 } },
+        { position: 1, color: { r: base.r, g: base.g, b: base.b, a: 0 } },
+      ],
+      gradientTransform: [[1, 0, 0], [0, 1, 0]],
+      opacity: paint.opacity ?? 1,
+      visible: paint.visible,
+    };
+  }
+  return paint;
+}
+
 function PaintRow({
   label,
   paint,
@@ -180,10 +208,31 @@ function PaintRow({
             />
             <HexField label={label} value={rgbaToHex(color)} onCommit={(hex) => onChange({ ...paint, color: hexToRgba(hex) })} />
           </>
+        ) : paint?.type === 'GRADIENT_LINEAR' || paint?.type === 'GRADIENT_RADIAL' ? (
+          <>
+            {paint.gradientStops.slice(0, 2).map((stop, index) => (
+              <input
+                key={index}
+                className="color-well"
+                type="color"
+                aria-label={`${label} stop ${index + 1} colour`}
+                value={rgbaToHex(stop.color)}
+                onChange={(event) =>
+                  onChange({
+                    ...paint,
+                    gradientStops: paint.gradientStops.map((entry, at) =>
+                      at === index ? { ...entry, color: { ...hexToRgba(event.target.value), a: entry.color.a ?? 1 } } : entry,
+                    ),
+                  })
+                }
+              />
+            ))}
+            {gradient ? <GradientSummary spec={gradient} /> : null}
+          </>
         ) : paint ? (
           <>
             <span className="color-well color-well--static" style={{ background: paintToCssBackground(paint) }} />
-            {gradient ? <GradientSummary spec={gradient} /> : <span className="prop-row__label">image</span>}
+            <span className="prop-row__label">image</span>
           </>
         ) : (
           <span className="prop-row__label" style={{ flex: 1 }}>None</span>
@@ -215,6 +264,21 @@ function PaintRow({
       </div>
       {/* The bind control is a sibling row: sharing the paint row squeezed the
           colour input to zero width. */}
+      {paint && paint.type !== 'IMAGE' ? (
+        <div className="prop-row">
+          <span className="prop-row__label">{label} type</span>
+          <select
+            className="input"
+            aria-label={`${label} type`}
+            value={paint.type === 'SOLID' ? 'SOLID' : paint.type === 'GRADIENT_RADIAL' ? 'RADIAL' : 'LINEAR'}
+            onChange={(event) => onChange(retypePaint(paint, event.target.value as PaintKind))}
+          >
+            <option value="SOLID">Solid</option>
+            <option value="LINEAR">Linear</option>
+            <option value="RADIAL">Radial</option>
+          </select>
+        </div>
+      ) : null}
       {variableProperty ? <VariableBindRow property={variableProperty} label={label} /> : null}
     </>
   );
