@@ -1978,3 +1978,11 @@ input.input.input--alpha {
   min-width: 24px;
 }
 
+
+/* Tooltips in the right-hand panel hang from their button's right edge: centred on a
+   button at the window edge, the bubble ran past the viewport and was clipped. */
+.app__right [data-tooltip]::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
