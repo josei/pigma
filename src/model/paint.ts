@@ -173,3 +173,28 @@ export function withRadialPlacement(paint: Paint, placement: Partial<RadialPlace
   const ty = next.centreY / 100 - 0.5 * sy;
   return { ...paint, gradientTransform: [[sx, 0, tx], [0, sy, ty]] };
 }
+
+
+/**
+ * The two ends of a linear gradient in normalized box space (0..1 on each axis). The
+ * default gradient runs from the left edge's middle to the right edge's middle.
+ */
+export function gradientEnds(paint: Paint): { start: { x: number; y: number }; end: { x: number; y: number } } | null {
+  if (paint.type !== 'GRADIENT_LINEAR') return null;
+  const m = paint.gradientTransform ?? [[1, 0, 0], [0, 1, 0]];
+  const at = (x: number, y: number) => ({
+    x: (m[0]?.[0] ?? 1) * x + (m[0]?.[1] ?? 0) * y + (m[0]?.[2] ?? 0),
+    y: (m[1]?.[0] ?? 0) * x + (m[1]?.[1] ?? 1) * y + (m[1]?.[2] ?? 0),
+  });
+  return { start: at(0, 0.5), end: at(1, 0.5) };
+}
+
+/** Move the gradient's ends to these normalized points; the direction is their difference. */
+export function withGradientEnds(paint: Paint, start: { x: number; y: number }, end: { x: number; y: number }): Paint {
+  if (paint.type !== 'GRADIENT_LINEAR') return paint;
+  const a = end.x - start.x;
+  const b = end.y - start.y;
+  const c = -b;
+  const d = a;
+  return { ...paint, gradientTransform: [[a, c, start.x - c * 0.5], [b, d, start.y - d * 0.5]] };
+}

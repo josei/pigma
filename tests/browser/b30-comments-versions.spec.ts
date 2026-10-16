@@ -115,7 +115,8 @@ test('B30f restoring a version is exactly one undoable entry', async ({ page }) 
   await openFilePanel(page);
   await page.locator('input[aria-label="Version name"]').fill('v1');
   await page.locator('button[aria-label="Save version"]').click();
-  await page.waitForTimeout(700);
+  // Wait for the version to appear, not for a fixed delay (a timed wait flaked under load).
+  await expect(page.locator('button[aria-label="Restore v1"]')).toHaveCount(1);
 
   // 2. Delete it, so v2 is VISIBLY different (this is what makes the assertions
   //    below meaningful - the previous version branched on whether anything
@@ -125,13 +126,12 @@ test('B30f restoring a version is exactly one undoable entry', async ({ page }) 
   const box = (await page.locator('.canvas').boundingBox())!;
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await page.keyboard.press('Delete');
-  await page.waitForTimeout(400);
-  expect(await shapeCount(page), 'the shape was not deleted').toBe(0);
+  await expect.poll(() => shapeCount(page), 'the shape was not deleted').toBe(0);
 
   await openFilePanel(page);
   await page.locator('input[aria-label="Version name"]').fill('v2');
   await page.locator('button[aria-label="Save version"]').click();
-  await page.waitForTimeout(700);
+  await expect(page.locator('button[aria-label="Restore v2"]')).toHaveCount(1);
 
   // 3. Restore v1: the shape must come back.
   // Scope to v1 explicitly: the timeline lists every snapshot and each row has
@@ -139,11 +139,9 @@ test('B30f restoring a version is exactly one undoable entry', async ({ page }) 
   const restore = page.locator('button[aria-label="Restore v1"]');
   await expect(restore, 'no Restore v1 control on the timeline').toHaveCount(1);
   await restore.click();
-  await page.waitForTimeout(800);
-  expect(await shapeCount(page), 'restoring did not bring the shape back').toBe(withShape);
+  await expect.poll(() => shapeCount(page), 'restoring did not bring the shape back').toBe(withShape);
 
   // 4. Exactly ONE undoable entry: a single Ctrl+Z empties the canvas again.
   await page.keyboard.press('Control+z');
-  await page.waitForTimeout(600);
-  expect(await shapeCount(page), 'restore was not a single undoable entry').toBe(0);
+  await expect.poll(() => shapeCount(page), 'restore was not a single undoable entry').toBe(0);
 });

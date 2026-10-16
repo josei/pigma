@@ -48,10 +48,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
-- **Gradient handles on the canvas.** Gradients are set from the panel (Angle, stop
-  positions, a radial's centre and size). Dragging handles on the canvas is not built.
-- **Other engines.** Firefox passes the suite (327, 5 clipboard specs skipped), run
-  with `PIGMA_FIREFOX=1`. WebKit passes 327 with 6 skipped (5 clipboard specs and the
+- **Other engines.** Firefox passes the suite (329, 5 clipboard specs skipped), run
+  with `PIGMA_FIREFOX=1`. WebKit passes 328 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
 - **Flatten over frames and groups.** Ctrl/Cmd+E flattens two or more shapes into one
   path (their union). Flattening a frame or a group is not built: it needs their children
@@ -61,6 +59,10 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- Gradient ends could only be set from the panel. A linear gradient's two ends are handles on
+  the canvas now, and dragging one moves it (B75a).
+- Flaky Firefox spec (B30f): it waited on fixed delays. It now waits on the conditions it
+  checks. The earlier unidentified Firefox flake was not reproduced in two clean runs.
 - Flatten (Ctrl/Cmd+E) for two or more shapes: they merge into one path (B74a–b).
 - A radial gradient's centre and size could not be set. Centre X/Y and Width/Height are
   fields now (B73d).

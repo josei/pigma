@@ -13,6 +13,7 @@ import type {
   TextStyle,
 } from '../model/types';
 import { hasChildren, isComponentNode } from '../model/types';
+import { firstVisibleFill, gradientEnds, withGradientEnds } from '../model/paint';
 import { absoluteBounds, boundsOfNodes, findNode, insertChild, parentAndIndex, removeNode, updateNode } from '../model/tree';
 import {
   alignNodes,
@@ -447,6 +448,8 @@ export interface EditorState {
   updateStyleFromSelection: (styleId: string) => void;
   createVector: (path: VectorPath, offset: { x: number; y: number }) => void;
   setVectorPath: (id: string, path: VectorPath, transient?: boolean) => void;
+  /** Drag one end of a linear gradient fill to a normalized box point. */
+  setGradientEnd: (id: string, which: 'start' | 'end', point: { x: number; y: number }, transient?: boolean) => void;
   setSelectedAnchor: (index: number | null) => void;
   /** Remove the selected anchor (Delete while editing a vector). */
   deleteSelectedAnchor: () => boolean;
@@ -1414,6 +1417,22 @@ export const useEditor = create<EditorState>((set, get) => ({
     state.setVectorPath(id, next);
     set({ selectedAnchor: null });
     return true;
+  },
+
+  setGradientEnd: (id, which, point, transient = false) => {
+    const state = get();
+    const node = findNode(state.file.document, id);
+    const fill = node && 'fills' in node ? firstVisibleFill(node.fills) : null;
+    const ends = fill ? gradientEnds(fill) : null;
+    if (!fill || !ends) return;
+    const next = withGradientEnds(fill, which === 'start' ? point : ends.start, which === 'end' ? point : ends.end);
+    const fills = (node as { fills: NonNullable<ReturnType<typeof firstVisibleFill>>[] }).fills.map((paint) => (paint === fill ? next : paint));
+    const file = applyNodePatchToAll(state.file, [id], { fills });
+    if (transient) {
+      set({ file });
+      return;
+    }
+    get().apply('Set gradient', () => file);
   },
 
   setVectorPath: (id, path, transient = false) => {

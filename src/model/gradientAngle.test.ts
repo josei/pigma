@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gradientAngle, radialPlacement, withGradientAngle, withRadialPlacement } from './paint';
+import { gradientAngle, gradientEnds, radialPlacement, withGradientAngle, withGradientEnds, withRadialPlacement } from './paint';
 import type { GradientPaint } from './types';
 
 const linear: GradientPaint = {
@@ -47,5 +47,20 @@ describe('radial placement', () => {
   it('round-trips a moved centre and a resized ellipse', () => {
     const moved = withRadialPlacement(radial, { centreX: 25, centreY: 70, width: 60, height: 40 });
     expect(radialPlacement(moved)).toEqual({ centreX: 25, centreY: 70, width: 60, height: 40 });
+  });
+});
+
+describe('gradient ends', () => {
+  it('reads the default ends at the middle of the left and right edges', () => {
+    expect(gradientEnds(linear)).toEqual({ start: { x: 0, y: 0.5 }, end: { x: 1, y: 0.5 } });
+  });
+
+  it('round-trips moved ends', () => {
+    const moved = withGradientEnds(linear, { x: 0.2, y: 0.3 }, { x: 0.8, y: 0.9 });
+    const ends = gradientEnds(moved)!;
+    expect(ends.start.x).toBeCloseTo(0.2, 9);
+    expect(ends.start.y).toBeCloseTo(0.3, 9);
+    expect(ends.end.x).toBeCloseTo(0.8, 9);
+    expect(ends.end.y).toBeCloseTo(0.9, 9);
   });
 });

@@ -8,6 +8,7 @@ import { gridBands } from '../model/constraints';
 import type { LayoutGrid } from '../model/types';
 import { hasChildren } from '../model/types';
 import { applyToPoint, invert, transformToCss } from '../model/matrix';
+import { firstVisibleFill, gradientEnds } from '../model/paint';
 import type { ContainerNode, PigmaFile, Rect, SceneNode, Transform } from '../model/types';
 import { cornerRadii } from '../render/SceneRenderer';
 import { createLineNode, createSectionNode, createTextNode } from '../model/factory';
@@ -53,6 +54,7 @@ type Interaction =
   | { kind: 'rotate'; id: string; base: PigmaFile; center: Point; startAngle: number; startRotation: number }
   | { kind: 'scale'; handle: ResizeHandle; base: PigmaFile; ids: string[]; bounds: Rect; startWorld: Point }
   | { kind: 'draw'; start: Point; current: Point }
+  | { kind: 'gradient'; id: string; which: 'start' | 'end'; inverse: Transform; width: number; height: number }
   | { kind: 'anchor'; id: string; index: number; base: VectorPath; startWorld: Point; inverse: Transform; path: VectorPath };
 
 /**
@@ -751,6 +753,14 @@ export function Canvas() {
         }
         break;
       }
+      case 'gradient': {
+        // Work in the node's own box: the handle's position is a 0..1 point on it.
+        const local = applyToPoint(live.inverse, world.x, world.y);
+        const point = { x: local.x / live.width, y: local.y / live.height };
+        useEditor.getState().setGradientEnd(live.id, live.which, point, true);
+        setBadge({ text: `${Math.round(local.x)}, ${Math.round(local.y)}`, x: event.clientX, y: event.clientY });
+        break;
+      }
       case 'draw': {
         applyInteraction({ kind: 'draw', start: live.start, current: world });
         const rect = rectForDrag(live.start, world, event.altKey);
@@ -792,6 +802,10 @@ export function Canvas() {
         }
         state.select(ids, current.additive ? 'add' : 'replace');
       }
+    }
+
+    if (current.kind === 'gradient') {
+      state.endTransaction('Set gradient');
     }
 
     if (current.kind === 'anchor') {
@@ -1431,6 +1445,45 @@ export function Canvas() {
                 }}
               />
             ))
+          : null}
+
+        {singleId && singleNode && 'fills' in singleNode && tool === 'select' && firstVisibleFill(singleNode.fills)?.type === 'GRADIENT_LINEAR'
+          ? (() => {
+              // The two ends of a linear gradient, drawn on the node and dragged to move them.
+              const paint = firstVisibleFill(singleNode.fills)!;
+              const ends = gradientEnds(paint);
+              if (!ends) return null;
+              const matrix = worldTransform(file.document, singleId);
+              const size = 5 / viewport.zoom;
+              return (['start', 'end'] as const).map((which) => {
+                const world = applyToPoint(matrix, ends[which].x * singleNode.width, ends[which].y * singleNode.height);
+                return (
+                  <circle
+                    key={`gradient-${which}`}
+                    cx={world.x}
+                    cy={world.y}
+                    r={size}
+                    fill={which === 'start' ? '#ffffff' : '#0d99ff'}
+                    stroke="#0d99ff"
+                    strokeWidth={1.5 / viewport.zoom}
+                    style={{ pointerEvents: 'all', cursor: 'move' }}
+                    onPointerDown={(event) => {
+                      event.stopPropagation();
+                      const state = useEditor.getState();
+                      state.beginTransaction();
+                      applyInteraction({
+                        kind: 'gradient',
+                        id: singleId,
+                        which,
+                        inverse: invert(matrix),
+                        width: singleNode.width,
+                        height: singleNode.height,
+                      });
+                    }}
+                  />
+                );
+              });
+            })()
           : null}
 
         {commentsForPage(file, page.id).map((thread, index) => {
