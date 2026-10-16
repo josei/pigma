@@ -255,6 +255,8 @@ export interface EditorState {
   /** Canvas aids: pixel grid, rulers, and what dragging snaps to. */
   showGrid: boolean;
   showRulers: boolean;
+  /** Width and height change together (the W/H lock). An editor setting, not document data. */
+  lockProportions: boolean;
   /**
    * Draw GREEN outlines around masks on the canvas. Figma gates this behind
    * `View > Mask outlines` and draws it green so it cannot be confused with the
@@ -576,6 +578,7 @@ export interface EditorState {
   toggleMask: (ids?: string[]) => void;
   toggleGrid: () => void;
   toggleRulers: () => void;
+  toggleLockProportions: () => void;
   toggleMaskOutlines: () => void;
   toggleSnapToObjects: () => void;
   toggleSnapToGrid: () => void;
@@ -806,6 +809,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   devMode: false,
   showGrid: false,
   showRulers: true,
+  lockProportions: false,
   showMaskOutlines: false,
   snapToObjects: true,
   snapToGrid: false,
@@ -2650,6 +2654,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   },
   toggleGrid: () => set({ showGrid: !get().showGrid }),
   toggleRulers: () => set({ showRulers: !get().showRulers }),
+  toggleLockProportions: () => set({ lockProportions: !get().lockProportions }),
   toggleMaskOutlines: () => set({ showMaskOutlines: !get().showMaskOutlines }),
   toggleSnapToObjects: () => set({ snapToObjects: !get().snapToObjects }),
   toggleSnapToGrid: () => set({ snapToGrid: !get().snapToGrid }),

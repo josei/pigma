@@ -364,14 +364,29 @@ function TransformSection({ node }: { node: SceneNode }) {
           <NumberField label="X" value={bounds?.x ?? 0} onCommit={(x) => updateSelected({ x }, 'Set X')} />
           <NumberField label="Y" value={bounds?.y ?? 0} onCommit={(y) => updateSelected({ y }, 'Set Y')} />
         </div>
-        <div className="prop-grid prop-grid--2">
-          <NumberField label="W" value={node.width} min={1} onCommit={(width) => updateSelected({ width }, 'Set width')} />
+        <div className="prop-grid prop-grid--proportions">
+          <NumberField
+            label="W"
+            value={node.width}
+            min={1}
+            onCommit={(width) => {
+              // With the lock on, the height follows the width at the current ratio.
+              const locked = useEditor.getState().lockProportions && node.width > 0;
+              const height = locked ? Math.max(1, Math.round((width * node.height) / node.width)) : undefined;
+              updateSelected(height === undefined ? { width } : { width, height }, 'Set width');
+            }}
+          />
           <NumberField
             label="H"
             value={node.height}
             min={node.type === 'LINE' ? 0 : 1}
-            onCommit={(height) => updateSelected({ height }, 'Set height')}
+            onCommit={(height) => {
+              const locked = useEditor.getState().lockProportions && node.height > 0;
+              const width = locked ? Math.max(1, Math.round((height * node.width) / node.height)) : undefined;
+              updateSelected(width === undefined ? { height } : { width, height }, 'Set height');
+            }}
           />
+          <LockProportionsButton />
         </div>
         <div className="prop-grid prop-grid--2">
           <NumberField
@@ -2419,5 +2434,23 @@ function PrototypeSection({ node }: { node: SceneNode | null }) {
         </div>
       </div>
     </>
+  );
+}
+
+/** The W/H lock: while on, editing one dimension moves the other at the same ratio. */
+function LockProportionsButton() {
+  const locked = useEditor((state) => state.lockProportions);
+  const toggle = useEditor((state) => state.toggleLockProportions);
+  return (
+    <button
+      type="button"
+      className={`icon-button${locked ? ' icon-button--active' : ''}`}
+      aria-label="Lock proportions"
+      aria-pressed={locked}
+      data-tooltip="Lock width and height ratio"
+      onClick={() => toggle()}
+    >
+      <Icon name="lock" size={12} />
+    </button>
   );
 }

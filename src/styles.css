@@ -798,6 +798,11 @@ select {
   grid-template-columns: 1fr 1fr;
 }
 
+/* W, H and the proportions lock: the lock is a fixed 24px column, the fields share the rest. */
+.prop-grid--proportions {
+  grid-template-columns: 1fr 1fr 24px;
+}
+
 /* Rows whose label needs the full width (Figma stacks these too). */
 .prop-stack {
   display: flex;
