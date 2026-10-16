@@ -13,7 +13,11 @@ import type {
   TextStyle,
 } from '../model/types';
 import { hasChildren, isComponentNode } from '../model/types';
-import { firstVisibleFill, gradientEnds, withGradientEnds } from '../model/paint';
+import { firstVisibleFill, gradientEnds, withGradientEnds, withRadialHandle } from '../model/paint';
+import type { Paint } from '../model/types';
+
+/** A draggable point of a gradient: a linear's two ends, or a radial's centre and edges. */
+export type GradientHandle = 'start' | 'end' | 'centre' | 'right' | 'bottom';
 import { absoluteBounds, boundsOfNodes, findNode, insertChild, parentAndIndex, removeNode, updateNode } from '../model/tree';
 import {
   alignNodes,
@@ -449,7 +453,7 @@ export interface EditorState {
   createVector: (path: VectorPath, offset: { x: number; y: number }) => void;
   setVectorPath: (id: string, path: VectorPath, transient?: boolean) => void;
   /** Drag one end of a linear gradient fill to a normalized box point. */
-  setGradientEnd: (id: string, which: 'start' | 'end', point: { x: number; y: number }, transient?: boolean) => void;
+  setGradientEnd: (id: string, which: GradientHandle, point: { x: number; y: number }, transient?: boolean) => void;
   setSelectedAnchor: (index: number | null) => void;
   /** Remove the selected anchor (Delete while editing a vector). */
   deleteSelectedAnchor: () => boolean;
@@ -1423,9 +1427,15 @@ export const useEditor = create<EditorState>((set, get) => ({
     const state = get();
     const node = findNode(state.file.document, id);
     const fill = node && 'fills' in node ? firstVisibleFill(node.fills) : null;
-    const ends = fill ? gradientEnds(fill) : null;
-    if (!fill || !ends) return;
-    const next = withGradientEnds(fill, which === 'start' ? point : ends.start, which === 'end' ? point : ends.end);
+    if (!fill) return;
+    let next: Paint | null = null;
+    if (which === 'centre' || which === 'right' || which === 'bottom') {
+      if (fill.type === 'GRADIENT_RADIAL') next = withRadialHandle(fill, which, point);
+    } else {
+      const ends = gradientEnds(fill);
+      if (ends) next = withGradientEnds(fill, which === 'start' ? point : ends.start, which === 'end' ? point : ends.end);
+    }
+    if (!next) return;
     const fills = (node as { fills: NonNullable<ReturnType<typeof firstVisibleFill>>[] }).fills.map((paint) => (paint === fill ? next : paint));
     const file = applyNodePatchToAll(state.file, [id], { fills });
     if (transient) {

@@ -198,3 +198,30 @@ export function withGradientEnds(paint: Paint, start: { x: number; y: number }, 
   const d = a;
   return { ...paint, gradientTransform: [[a, c, start.x - c * 0.5], [b, d, start.y - d * 0.5]] };
 }
+
+/** The three handles of a radial gradient, in normalized box space: centre, right and bottom edges. */
+export function radialHandles(paint: Paint): { centre: { x: number; y: number }; right: { x: number; y: number }; bottom: { x: number; y: number } } | null {
+  if (paint.type !== 'GRADIENT_RADIAL') return null;
+  const placement = radialPlacement(paint);
+  const cx = placement.centreX / 100;
+  const cy = placement.centreY / 100;
+  return {
+    centre: { x: cx, y: cy },
+    right: { x: cx + placement.width / 200, y: cy },
+    bottom: { x: cx, y: cy + placement.height / 200 },
+  };
+}
+
+/**
+ * Drag one radial handle: the centre moves the gradient, a side handle sets that axis's
+ * radius (so the ellipse's full width or height is twice the distance to the edge).
+ */
+export function withRadialHandle(paint: Paint, which: 'centre' | 'right' | 'bottom', point: { x: number; y: number }): Paint {
+  if (paint.type !== 'GRADIENT_RADIAL') return paint;
+  const current = radialPlacement(paint);
+  const centreX = which === 'centre' ? point.x * 100 : current.centreX;
+  const centreY = which === 'centre' ? point.y * 100 : current.centreY;
+  const width = which === 'right' ? Math.max(1, Math.abs(point.x * 100 - current.centreX) * 2) : current.width;
+  const height = which === 'bottom' ? Math.max(1, Math.abs(point.y * 100 - current.centreY) * 2) : current.height;
+  return withRadialPlacement(paint, { centreX: Math.round(centreX * 10) / 10, centreY: Math.round(centreY * 10) / 10, width: Math.round(width), height: Math.round(height) });
+}

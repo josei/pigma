@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { activeContainer, activePage, useEditor, type Viewport } from '../store/editorStore';
+import { activeContainer, activePage, useEditor, type GradientHandle, type Viewport } from '../store/editorStore';
 import { SceneSvg } from '../render/SceneRenderer';
 import { absoluteBounds, boundsOfNodes, findNode, findParent, findPath, hitTestBox, worldTransform } from '../model/tree';
 import { autoLayoutOf } from '../model/autoLayout';
@@ -8,7 +8,7 @@ import { gridBands } from '../model/constraints';
 import type { LayoutGrid } from '../model/types';
 import { hasChildren } from '../model/types';
 import { applyToPoint, invert, transformToCss } from '../model/matrix';
-import { firstVisibleFill, gradientEnds } from '../model/paint';
+import { firstVisibleFill, gradientEnds, radialHandles } from '../model/paint';
 import type { ContainerNode, PigmaFile, Rect, SceneNode, Transform } from '../model/types';
 import { cornerRadii } from '../render/SceneRenderer';
 import { createLineNode, createSectionNode, createTextNode } from '../model/factory';
@@ -54,7 +54,7 @@ type Interaction =
   | { kind: 'rotate'; id: string; base: PigmaFile; center: Point; startAngle: number; startRotation: number }
   | { kind: 'scale'; handle: ResizeHandle; base: PigmaFile; ids: string[]; bounds: Rect; startWorld: Point }
   | { kind: 'draw'; start: Point; current: Point }
-  | { kind: 'gradient'; id: string; which: 'start' | 'end'; inverse: Transform; width: number; height: number }
+  | { kind: 'gradient'; id: string; which: GradientHandle; inverse: Transform; width: number; height: number }
   | { kind: 'anchor'; id: string; index: number; base: VectorPath; startWorld: Point; inverse: Transform; path: VectorPath };
 
 /**
@@ -1447,23 +1447,30 @@ export function Canvas() {
             ))
           : null}
 
-        {singleId && singleNode && 'fills' in singleNode && tool === 'select' && firstVisibleFill(singleNode.fills)?.type === 'GRADIENT_LINEAR'
+        {singleId && singleNode && 'fills' in singleNode && tool === 'select' && (firstVisibleFill(singleNode.fills)?.type === 'GRADIENT_LINEAR' || firstVisibleFill(singleNode.fills)?.type === 'GRADIENT_RADIAL')
           ? (() => {
-              // The two ends of a linear gradient, drawn on the node and dragged to move them.
+              // A gradient's handles, drawn on the node and dragged to change it: a linear's two
+              // ends; a radial's centre (moves it) and right and bottom edges (set its radii).
               const paint = firstVisibleFill(singleNode.fills)!;
-              const ends = gradientEnds(paint);
-              if (!ends) return null;
+              const points: Array<{ which: GradientHandle; at: { x: number; y: number } }> = paint.type === 'GRADIENT_RADIAL'
+                ? (Object.entries(radialHandles(paint) ?? {}) as Array<[GradientHandle, { x: number; y: number }]>).map(([which, at]) => ({ which, at }))
+                : (() => {
+                    const ends = gradientEnds(paint);
+                    return ends ? [{ which: 'start' as const, at: ends.start }, { which: 'end' as const, at: ends.end }] : [];
+                  })();
               const matrix = worldTransform(file.document, singleId);
               const size = 5 / viewport.zoom;
-              return (['start', 'end'] as const).map((which) => {
-                const world = applyToPoint(matrix, ends[which].x * singleNode.width, ends[which].y * singleNode.height);
+              return points.map(({ which, at }) => {
+                const world = applyToPoint(matrix, at.x * singleNode.width, at.y * singleNode.height);
                 return (
                   <circle
                     key={`gradient-${which}`}
+                    data-testid="gradient-handle"
+                    data-handle={which}
                     cx={world.x}
                     cy={world.y}
                     r={size}
-                    fill={which === 'start' ? '#ffffff' : '#0d99ff'}
+                    fill={which === 'start' || which === 'centre' ? '#ffffff' : '#0d99ff'}
                     stroke="#0d99ff"
                     strokeWidth={1.5 / viewport.zoom}
                     style={{ pointerEvents: 'all', cursor: 'move' }}

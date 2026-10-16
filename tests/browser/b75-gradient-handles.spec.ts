@@ -7,7 +7,7 @@ test('B75a dragging the end handle of a linear gradient changes its direction', 
   await drawShape(page, 'Rectangle', 200, 120);
   await tool(page, 'Move').click();
   await page.locator('select[aria-label="Fill type"]').selectOption('LINEAR');
-  const end = page.locator('.canvas__overlay circle[fill="#0d99ff"]').first();
+  const end = page.locator('[data-testid="gradient-handle"][data-handle="end"]');
   await expect(end).toBeVisible();
   const before = await page.evaluate(() => (window.__pigmaStore!.getState().file.document.children[0]!.children[0] as any).fills[0].gradientTransform);
   const box = (await end.boundingBox())!;
@@ -23,4 +23,32 @@ test('B75a dragging the end handle of a linear gradient changes its direction', 
   // the x part keeps its length.
   expect(after[1][0], 'the end did not move down').toBeCloseTo(0.5, 1);
   expect(after[0][0], 'the end moved sideways').toBeCloseTo(1, 1);
+});
+
+/** A radial gradient has a centre handle (moves it) and edge handles (set its width and height). */
+test('B75b dragging a radial gradient handle moves its centre and widens it', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 200, 120);
+  await tool(page, 'Move').click();
+  await page.locator('select[aria-label="Fill type"]').selectOption('RADIAL');
+  const centre = page.locator('[data-testid="gradient-handle"][data-handle="centre"]');
+  await expect(centre).toBeVisible();
+  const c = (await centre.boundingBox())!;
+  await page.mouse.move(c.x + c.width / 2, c.y + c.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(c.x + c.width / 2 + 44, c.y + c.height / 2 + 20, { steps: 6 });
+  await page.mouse.up();
+  const cx = Number(await page.locator('input[aria-label="Centre X"]').inputValue());
+  const cy = Number(await page.locator('input[aria-label="Centre Y"]').inputValue());
+  expect(cx, 'the centre handle did not move the gradient').toBeGreaterThan(60);
+  expect(cy).toBeGreaterThan(55);
+  // The right-edge handle is blue; dragging it outward widens the gradient.
+  const edge = page.locator('[data-testid="gradient-handle"][data-handle="right"]');
+  const e = (await edge.boundingBox())!;
+  await page.mouse.move(e.x + e.width / 2, e.y + e.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(e.x + e.width / 2 + 60, e.y + e.height / 2, { steps: 6 });
+  await page.mouse.up();
+  const width = Number(await page.locator('input[aria-label="Width"]').inputValue());
+  expect(width, 'the edge handle did not widen the gradient').toBeGreaterThan(110);
 });

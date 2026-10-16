@@ -48,8 +48,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
-- **Other engines.** Firefox passes the suite (329, 5 clipboard specs skipped), run
-  with `PIGMA_FIREFOX=1`. WebKit passes 328 with 6 skipped (5 clipboard specs and the
+- **Other engines.** Firefox passes the suite (330, 5 clipboard specs skipped), run
+  with `PIGMA_FIREFOX=1`. WebKit passes 329 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
 - **Flatten over frames and groups.** Ctrl/Cmd+E flattens two or more shapes into one
   path (their union). Flattening a frame or a group is not built: it needs their children
@@ -59,6 +59,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- Radial gradients had no canvas handles. Centre, right and bottom handles now move the
+  centre and set the radii (B75b).
 - Gradient ends could only be set from the panel. A linear gradient's two ends are handles on
   the canvas now, and dragging one moves it (B75a).
 - Flaky Firefox spec (B30f): it waited on fixed delays. It now waits on the conditions it

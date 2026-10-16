@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gradientAngle, gradientEnds, radialPlacement, withGradientAngle, withGradientEnds, withRadialPlacement } from './paint';
+import { gradientAngle, gradientEnds, radialHandles, radialPlacement, withGradientAngle, withGradientEnds, withRadialHandle, withRadialPlacement } from './paint';
 import type { GradientPaint } from './types';
 
 const linear: GradientPaint = {
@@ -62,5 +62,21 @@ describe('gradient ends', () => {
     expect(ends.start.y).toBeCloseTo(0.3, 9);
     expect(ends.end.x).toBeCloseTo(0.8, 9);
     expect(ends.end.y).toBeCloseTo(0.9, 9);
+  });
+});
+
+describe('radial handles', () => {
+  const radial = { ...linear, type: 'GRADIENT_RADIAL' as const };
+
+  it('places the handles at the centre and the middle of each side', () => {
+    expect(radialHandles(radial)).toEqual({ centre: { x: 0.5, y: 0.5 }, right: { x: 1, y: 0.5 }, bottom: { x: 0.5, y: 1 } });
+  });
+
+  it('moves the centre, and sets an axis radius from the side handle', () => {
+    const moved = withRadialHandle(radial, 'centre', { x: 0.3, y: 0.6 });
+    expect(radialPlacement(moved)).toMatchObject({ centreX: 30, centreY: 60, width: 100, height: 100 });
+    const widened = withRadialHandle(radial, 'right', { x: 0.75, y: 0.5 });
+    expect(radialPlacement(widened).width).toBe(50);
+    expect(radialPlacement(widened).height).toBe(100);
   });
 });
