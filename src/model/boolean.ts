@@ -4,7 +4,7 @@ import { createShapeNode } from './factory';
 import { findNode, insertChild, parentAndIndex, removeNode, updateNode, worldTransform } from './tree';
 import { applyToPoint, invert } from './matrix';
 import { hasChildren } from './types';
-import { anchorsFromPathData, type VectorAnchor } from './vector';
+import { subpathsFromPathData, type VectorAnchor, type VectorPath } from './vector';
 
 /**
  * Boolean operations (union / subtract / intersect / exclude).
@@ -111,22 +111,11 @@ function localOutline(node: SceneNode): Ring[] | null {
       return null;
     case 'VECTOR':
     case 'BOOLEAN_OPERATION': {
-      const path = node.pathData ? anchorsFromPathData(node.pathData) : null;
-      if (!path) return null;
-      const ring: Ring = [];
-      const anchors = path.anchors;
-      const segments = path.closed ? anchors.length : anchors.length - 1;
-      const first = anchors[0];
-      if (!first) return null;
-      ring.push([first.x, first.y]);
-      for (let index = 0; index < segments; index += 1) {
-        const from = anchors[index];
-        const to = anchors[(index + 1) % anchors.length];
-        if (!from || !to) continue;
-        if (from.out || to.in) ring.push(...sampleCubic(from, to));
-        else ring.push([to.x, to.y]);
-      }
-      return [ring];
+      // One ring per subpath: a contour is a region of its own, and they combine even-odd.
+      const paths = node.pathData ? subpathsFromPathData(node.pathData) : null;
+      if (!paths) return null;
+      const rings = paths.map(ringOfPath);
+      return rings.every((ring): ring is Ring => ring !== null) ? rings : null;
     }
     default:
       // Text and anything without an outline cannot be boolean-ed.
@@ -134,16 +123,46 @@ function localOutline(node: SceneNode): Ring[] | null {
   }
 }
 
+/** A subpath as a polygon ring, its curves sampled. `null` for an empty subpath. */
+function ringOfPath(path: VectorPath): Ring | null {
+  const anchors = path.anchors;
+  const segments = path.closed ? anchors.length : anchors.length - 1;
+  const first = anchors[0];
+  if (!first) return null;
+  const ring: Ring = [[first.x, first.y]];
+  for (let index = 0; index < segments; index += 1) {
+    const from = anchors[index];
+    const to = anchors[(index + 1) % anchors.length];
+    if (!from || !to) continue;
+    if (from.out || to.in) ring.push(...sampleCubic(from, to));
+    else ring.push([to.x, to.y]);
+  }
+  return ring;
+}
+
 /** World-space polygons for a node (flattened). */
-export function nodePolygons(root: AnyNode, id: string): Ring[] | null {
+export function nodePolygons(root: AnyNode, id: string): Ring[][] | null {
   const node = findNode(root, id);
   if (!node || node.type === 'DOCUMENT' || node.type === 'CANVAS') return null;
   const outline = localOutline(node as SceneNode);
   if (!outline) return null;
   const m = worldTransform(root, id);
-  return outline.map((ring) =>
-    ring.map(([x, y]) => [m.a * x + m.c * y + m.tx, m.b * x + m.d * y + m.ty] as [number, number]),
+  return evenOddPolygons(
+    outline.map((ring) => ring.map(([x, y]) => [m.a * x + m.c * y + m.tx, m.b * x + m.d * y + m.ty] as [number, number])),
   );
+}
+
+/**
+ * Combine contours even-odd: each is XOR-ed in turn, so a contour inside another is a
+ * hole and separate contours are separate regions. A glyph's counters come out right.
+ */
+function evenOddPolygons(rings: Ring[]): Ring[][] {
+  let result = [] as unknown as MultiPolygon;
+  for (const ring of rings) {
+    if (ring.length < 3) continue;
+    result = polygonClipping.xor(result, [[ring]]);
+  }
+  return result as unknown as Ring[][];
 }
 
 function polygonsToPathData(polygons: Ring[][]): string {
@@ -195,7 +214,7 @@ export interface BooleanGeometry {
 
 /** Compute the combined geometry of `ids` under `mode`, without touching the tree. */
 export function booleanGeometry(file: PigmaFile, ids: string[], mode: BooleanMode): BooleanGeometry {
-  const operands: Array<{ id: string; polygons: Ring[] }> = [];
+  const operands: Array<{ id: string; polygons: Ring[][] }> = [];
   const skipped: string[] = [];
   for (const id of ids) {
     const polygons = nodePolygons(file.document, id);
@@ -207,7 +226,7 @@ export function booleanGeometry(file: PigmaFile, ids: string[], mode: BooleanMod
   }
   if (operands.length < 2) return { pathData: '', bounds: null, empty: false, skipped };
 
-  const inputs = operands.map((operand) => [operand.polygons] as MultiPolygon);
+  const inputs = operands.map((operand) => operand.polygons as unknown as MultiPolygon);
   let result: MultiPolygon;
   try {
     const [first, ...rest] = inputs as [MultiPolygon, ...MultiPolygon[]];
@@ -233,7 +252,7 @@ export function booleanGeometry(file: PigmaFile, ids: string[], mode: BooleanMod
 
   const polygons = result as unknown as Ring[][];
   const empty = polygons.length === 0;
-  const bounds = boundsOfPolygons(polygons) ?? boundsOfPolygons(operands.map((operand) => operand.polygons));
+  const bounds = boundsOfPolygons(polygons) ?? boundsOfPolygons(operands.flatMap((operand) => operand.polygons));
   if (!bounds) return { pathData: '', bounds: null, empty: false, skipped };
   const localised = polygons.map((polygon) => polygon.map((ring) => ring.map(([x, y]) => [x - bounds.x, y - bounds.y] as [number, number])));
   return { pathData: empty ? '' : polygonsToPathData(localised), bounds, empty, skipped };
@@ -337,7 +356,7 @@ export function evaluateBooleanNode(node: ContainerNode): ContainerNode | null {
 
   // World transforms *within this node* are the children's local transforms, so
   // the geometry comes back in the node's own coordinate space.
-  const polygons: Array<{ id: string; rings: Ring[] }> = [];
+  const polygons: Array<{ id: string; rings: Ring[][] }> = [];
   for (const child of children) {
     const rings = nodePolygons(node, child.id);
     if (!rings || rings.length === 0) continue;
@@ -346,7 +365,7 @@ export function evaluateBooleanNode(node: ContainerNode): ContainerNode | null {
   if (polygons.length < 2) return null;
 
   const mode = node.booleanOperation;
-  const inputs = polygons.map((operand) => [operand.rings] as MultiPolygon);
+  const inputs = polygons.map((operand) => operand.rings as unknown as MultiPolygon);
   let result: MultiPolygon;
   try {
     const [first, ...rest] = inputs as [MultiPolygon, ...MultiPolygon[]];
@@ -373,7 +392,7 @@ export function evaluateBooleanNode(node: ContainerNode): ContainerNode | null {
   }
 
   const shapes = result as unknown as Ring[][];
-  const bounds = boundsOfPolygons(shapes) ?? boundsOfPolygons(polygons.map((operand) => operand.rings));
+  const bounds = boundsOfPolygons(shapes) ?? boundsOfPolygons(polygons.flatMap((operand) => operand.rings));
   if (!bounds) return null;
   const localised = shapes.map((polygon) =>
     polygon.map((ring) => ring.map(([x, y]) => [x - bounds.x, y - bounds.y] as [number, number])),

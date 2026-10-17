@@ -4,6 +4,7 @@ import { createRectNode } from './factory';
 import { applyNodePatchToAll, ungroupNodes } from './ops';
 import { findNode, insertChild, updateNode } from './tree';
 import { hasChildren } from './types';
+import { textOutline } from '../render/textOutline';
 
 /** Why a flatten was refused, or the flattened layer. */
 export type FlattenFrameResult = { file: PigmaFile; nodeId: string; reason?: undefined } | { file: PigmaFile; nodeId: null; reason: string };
@@ -11,7 +12,8 @@ export type FlattenFrameResult = { file: PigmaFile; nodeId: string; reason?: und
 /**
  * Flatten a frame into one path layer: the union of its shapes, clipped to the frame when
  * the frame clips its content, and given the frame's fill and stroke and name. The frame
- * itself is removed. Frames whose children are not all outlined shapes are refused.
+ * itself is removed. Text children are flattened to their outlines (Inter Regular, see
+ * textOutline.ts). Frames with groups, lines or empty text are refused.
  */
 export function flattenFrameOp(file: PigmaFile, frameId: string): FlattenFrameResult {
   const refuse = (reason: string): FlattenFrameResult => ({ file, nodeId: null, reason });
@@ -19,12 +21,20 @@ export function flattenFrameOp(file: PigmaFile, frameId: string): FlattenFrameRe
   if (!frame || frame.type !== 'FRAME') return refuse('Select a frame to flatten');
   const container = frame as ContainerNode;
   if (container.children.length === 0) return refuse('The frame has no shapes to flatten');
-  if (container.children.some((child) => hasChildren(child))) return refuse('A frame flattens when its children are shapes');
-  const childIds = container.children.map((child) => child.id);
-  const { usable } = booleanOperandsOf(file, childIds);
-  if (usable.length !== childIds.length) return refuse('Every shape in the frame needs an outline (text and lines cannot be flattened)');
+  if (container.children.some((child) => hasChildren(child))) return refuse('A frame flattens when its children are shapes or text');
 
+  // Text becomes its outline first, so it joins the union like any other shape.
   let current = file;
+  for (const child of container.children) {
+    if (child.type !== 'TEXT') continue;
+    const outlined = outlineTextOp(current, child.id);
+    if (!outlined) return refuse('A text layer in the frame is empty, so it has no outline');
+    current = outlined;
+  }
+  const childIds = container.children.map((child) => child.id);
+  const { usable } = booleanOperandsOf(current, childIds);
+  if (usable.length !== childIds.length) return refuse('Every layer in the frame needs an outline (lines cannot be flattened)');
+
   let shapeId: string;
   if (usable.length === 1) {
     shapeId = usable[0]!;
@@ -55,6 +65,20 @@ export function flattenFrameOp(file: PigmaFile, frameId: string): FlattenFrameRe
   current = toVectorOp(current, shapeId);
   const lifted = ungroupNodes(current, [frameId]);
   return { file: lifted.file, nodeId: shapeId };
+}
+
+/**
+ * Replace a text layer with its outline as a vector, keeping its id and place in the
+ * tree. `null` when the text has no glyphs to draw.
+ */
+export function outlineTextOp(file: PigmaFile, id: string): PigmaFile | null {
+  const node = findNode(file.document, id);
+  if (!node || node.type !== 'TEXT') return null;
+  const pathData = textOutline(node);
+  if (pathData === null) return null;
+  const { characters: _characters, style: _style, ...rest } = node;
+  const vector = { ...rest, type: 'VECTOR', pathData, windingRule: 'NONZERO' } as unknown as SceneNode;
+  return { ...file, document: updateNode(file.document, id, () => vector) };
 }
 
 /**

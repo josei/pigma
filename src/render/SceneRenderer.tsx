@@ -10,7 +10,7 @@ import type {
   TextNode,
 } from '../model/types';
 import { hasChildren } from '../model/types';
-import type { TextStyle, Transform } from '../model/types';
+import type { Transform } from '../model/types';
 import { transformToCss } from '../model/matrix';
 import { findNode } from '../model/tree';
 import { gradientSpec } from '../model/paint';
@@ -23,7 +23,7 @@ import {
 } from './paintRender';
 import { resolveNodeVariables } from '../model/variables';
 import { resolvedProperties, resolvePropertyReferences } from '../model/variants';
-import { firstBaselineOffset, layoutText } from './textMetrics';
+import { firstBaselineOffset, layoutText, letterSpacingOf, textLinesOf } from './textMetrics';
 
 /** Deterministic def ids: the def collector and the node renderer must agree. */
 function sanitize(id: string): string {
@@ -148,14 +148,6 @@ export function starPath(
     segments.push(`A ${cut.toFixed(3)} ${cut.toFixed(3)} 0 0 1 ${exit.x.toFixed(3)} ${exit.y.toFixed(3)}`);
   }
   return `${segments.join(' ')} Z`;
-}
-
-/** Visible text lines for a node, applying wrapping and truncation rules. */
-export function textLinesOf(node: TextNode): string[] {
-  const autoResize = node.style.textAutoResize ?? 'WIDTH_AND_HEIGHT';
-  if (autoResize === 'TRUNCATE') return [truncate(node.characters, node.style, node.width)];
-  const wrap = autoResize === 'HEIGHT' || autoResize === 'NONE';
-  return layoutText(node.characters, node.style, node.width, wrap).lines;
 }
 
 /** SVG path for a node's geometry (shared with the vector PDF exporter). */
@@ -806,25 +798,6 @@ function StrokeShapes({ node, path }: { node: SceneNode; path: string | null }) 
   );
 }
 
-function truncate(characters: string, style: TextNode['style'], maxWidth: number): string {
-  const single = characters.replace(/\n/g, ' ');
-  if (layoutText(single, style).width <= maxWidth) return single;
-  let result = single;
-  while (result.length > 1 && layoutText(`${result}…`, style).width > maxWidth) {
-    result = result.slice(0, -1);
-  }
-  return `${result}…`;
-}
-
-/** Letter spacing in user units (percentages resolve against the font size). */
-export function letterSpacingOf(style: TextStyle): number {
-  const spacing = style.letterSpacing;
-  if (!spacing) return 0;
-  const value = spacing.unit === 'PERCENT' ? (spacing.value / 100) * style.fontSize : spacing.value;
-  // Rounded so the SVG attribute (and the PDF Tc) never carry float noise.
-  return Math.round(value * 1000) / 1000;
-}
-
 function TextContent({ node }: { node: TextNode }) {
   const autoResize = node.style.textAutoResize ?? 'WIDTH_AND_HEIGHT';
   const wrap = autoResize === 'HEIGHT' || autoResize === 'NONE';
@@ -847,7 +820,7 @@ function TextContent({ node }: { node: TextNode }) {
         : 0;
   const paragraphSpacing = node.style.paragraphSpacing ?? 0;
   const decoration = node.style.textDecoration ?? 'NONE';
-  const lines = autoResize === 'TRUNCATE' ? [truncate(node.characters, node.style, node.width)] : layout.lines;
+  const lines = textLinesOf(node);
 
   return (
     <text

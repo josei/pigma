@@ -5,7 +5,7 @@ import { fromMatrix, multiply, roundTo } from '../model/matrix';
 import { cornerRadii, shapePath } from './SceneRenderer';
 import { pathToPdf } from './pdfPath';
 import { layoutText, measureLine } from './textMetrics';
-import { letterSpacingOf, textLinesOf } from './SceneRenderer';
+import { letterSpacingOf, textLinesOf } from './textMetrics';
 import { resolveNodeVariables } from '../model/variables';
 import { rasterGradient } from './paintRender';
 

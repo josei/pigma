@@ -161,8 +161,9 @@ describe('rooms client', () => {
     socket.fireMessage({ t: 'snapshot', clientId: 'bob', file, seq: 4 });
     // Decryption is asynchronous: wait for both snapshots to be delivered.
     // A generous bound: the full suite runs many workers, and the default second is too short.
-    await vi.waitFor(() => expect(snapshots).toEqual([{ clientId: null }, { clientId: 'bob' }]), { timeout: 5000 });
-  });
+    // The test's own budget is longer than the wait, so the wait's failure message is what shows.
+    await vi.waitFor(() => expect(snapshots).toEqual([{ clientId: null }, { clientId: 'bob' }]), { timeout: 10_000 });
+  }, 20_000);
 
   it('clamps a peer viewport to the documented view range', () => {
     // An extreme offset must not jerk a follower's view into the void.

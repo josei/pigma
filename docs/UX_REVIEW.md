@@ -51,14 +51,18 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **Other engines.** Firefox passes the suite (341, 5 clipboard specs skipped), run
   with `PIGMA_FIREFOX=1`. WebKit passes 340 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
-- **Flatten a frame where its children are not all shapes.** Ctrl/Cmd+E flattens a frame whose
-  children are outlined shapes, clipped to the frame, into one path. A frame with text or
-  groups inside is refused: those children need their own flattening first.
 - **Hosted deployment.** The domain is `pigma.design` and resolves, but nothing is
   deployed behind it yet. Development does not need it.
 
 ## Resolved
 
+- A vector with several contours (a glyph's counters, a compound shape, a boolean result with a
+  hole) was read as one contour, so holes filled in and separate pieces joined. Each subpath is a
+  contour now, and contours combine even-odd, so a counter is a hole (boolean-geometry.test.ts).
+  This made flattened text garbled before the fix.
+- Flatten a frame with text: text is outlined (Inter Regular, `textOutline.ts`) and joins the
+  union like any shape, so a frame of text and shapes becomes one path (flatten.test.ts,
+  textOutline.test.ts, B80a). Groups and lines inside a frame are still refused.
 - Layer order with several layers selected: bringing them to the front or forward reversed or
   reshuffled them. A selection now keeps its own order, and steps past unselected layers only
   (ops.test.ts, B79a). The bracket shortcuts also match by key position, so Shift does not break them (B79c).

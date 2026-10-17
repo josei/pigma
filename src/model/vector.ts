@@ -144,6 +144,22 @@ export function anchorsFromPathData(pathData: string): VectorPath | null {
   return { anchors, closed };
 }
 
+/**
+ * Split path data into its subpaths: every `M` starts one, so a glyph with a counter
+ * or a compound shape yields one path per contour. `null` if any part cannot be read.
+ */
+export function subpathsFromPathData(pathData: string): VectorPath[] | null {
+  const pieces = pathData.split(/(?=[Mm])/).filter((piece) => piece.trim() !== '');
+  if (pieces.length === 0) return null;
+  const paths: VectorPath[] = [];
+  for (const piece of pieces) {
+    const path = anchorsFromPathData(piece);
+    if (!path) return null;
+    paths.push(path);
+  }
+  return paths;
+}
+
 export function vectorBounds(anchors: VectorAnchor[]): Rect {
   if (anchors.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
   const xs = anchors.flatMap((anchor) => [anchor.x, anchor.x + (anchor.in?.x ?? 0), anchor.x + (anchor.out?.x ?? 0)]);

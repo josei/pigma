@@ -1,4 +1,4 @@
-import type { TextStyle } from '../model/types';
+import type { TextNode, TextStyle } from '../model/types';
 
 /**
  * Text measurement used by both the on-canvas renderer and the JSON/SVG
@@ -132,4 +132,31 @@ function indentWidthOf(marker: string, style: TextStyle): number {
 export function whenFontsReady(callback: () => void): void {
   if (typeof document === 'undefined' || !('fonts' in document)) return;
   void document.fonts.ready.then(callback);
+}
+
+/** Visible text lines for a node, applying wrapping and truncation rules. */
+export function textLinesOf(node: TextNode): string[] {
+  const autoResize = node.style.textAutoResize ?? 'WIDTH_AND_HEIGHT';
+  if (autoResize === 'TRUNCATE') return [truncate(node.characters, node.style, node.width)];
+  const wrap = autoResize === 'HEIGHT' || autoResize === 'NONE';
+  return layoutText(node.characters, node.style, node.width, wrap).lines;
+}
+
+function truncate(characters: string, style: TextNode['style'], maxWidth: number): string {
+  const single = characters.replace(/\n/g, ' ');
+  if (layoutText(single, style).width <= maxWidth) return single;
+  let result = single;
+  while (result.length > 1 && layoutText(`${result}…`, style).width > maxWidth) {
+    result = result.slice(0, -1);
+  }
+  return `${result}…`;
+}
+
+/** Letter spacing in user units (percentages resolve against the font size). */
+export function letterSpacingOf(style: TextStyle): number {
+  const spacing = style.letterSpacing;
+  if (!spacing) return 0;
+  const value = spacing.unit === 'PERCENT' ? (spacing.value / 100) * style.fontSize : spacing.value;
+  // Rounded so the SVG attribute (and the PDF Tc) never carry float noise.
+  return Math.round(value * 1000) / 1000;
 }

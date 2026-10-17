@@ -65,7 +65,8 @@ describe('boolean geometry', () => {
     const { file, firstId } = scene();
     const outline = nodePolygons(file.document, firstId)!;
     expect(outline).toHaveLength(1);
-    expect(outline[0]).toHaveLength(ELLIPSE_SAMPLES);
+    // 64 samples, and polygon-clipping repeats the first point to close the ring.
+    expect(outline[0]![0]).toHaveLength(ELLIPSE_SAMPLES + 1);
 
     const vector = { ...createRectNode(file.document, 0, 0, 100, 100), type: 'VECTOR' as const, fills: [], pathData: 'M 0 0 C 0 100 100 100 100 0 Z' };
     const page = file.document.children[0]!;
@@ -73,7 +74,7 @@ describe('boolean geometry', () => {
     const curved = nodePolygons(file.document, vector.id)!;
     // The start anchor, CURVE_SAMPLES points for the cubic, then one point for
     // the closing segment `Z` adds: 1 + 64 + 1.
-    expect(curved[0]).toHaveLength(2 + CURVE_SAMPLES);
+    expect(curved[0]![0]).toHaveLength(2 + CURVE_SAMPLES);
   });
 
   it('produces a polygon, not a curve', () => {
@@ -153,5 +154,31 @@ describe('boolean geometry', () => {
     const svg = renderSvgDocument(file, [operation as never]);
     expect(svg).toContain('<path');
     expect(svg, 'the boolean outline renders as a path, not an ellipse').not.toContain('<ellipse');
+  });
+});
+
+describe('a vector with several contours', () => {
+  /** A vector node holding `pathData`, on the page. */
+  function vectorWith(pathData: string) {
+    const file = emptyFile('Contours');
+    const page = file.document.children[0]!;
+    const node = { ...createRectNode(file.document, 0, 0, 100, 100), type: 'VECTOR' as const, fills: [], pathData };
+    page.children = [node];
+    return { file, id: node.id };
+  }
+
+  it('keeps a counter as a hole, not a filled region', () => {
+    // A square with a square cut out: the glyph 'O' in miniature.
+    const { file, id } = vectorWith('M0 0 L100 0 L100 100 L0 100 Z M25 25 L75 25 L75 75 L25 75 Z');
+    const polygons = nodePolygons(file.document, id)!;
+    expect(polygons, 'the counter became a second, filled region').toHaveLength(1);
+    expect(polygons[0], 'the counter is not a hole in the outer contour').toHaveLength(2);
+  });
+
+  it('keeps separate contours as separate regions', () => {
+    // Two squares side by side, like the stem and dot of an 'i'.
+    const { file, id } = vectorWith('M0 0 L10 0 L10 10 L0 10 Z M20 0 L30 0 L30 10 L20 10 Z');
+    const polygons = nodePolygons(file.document, id)!;
+    expect(polygons).toHaveLength(2);
   });
 });

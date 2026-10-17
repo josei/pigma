@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { flattenFrameOp } from './flatten';
-import { createFrameNode, createRectNode, createTextNode } from './factory';
+import { createFrameNode, createGroupNode, createRectNode, createTextNode } from './factory';
 import { absoluteBounds, findNode } from './tree';
 import { emptyFile } from './validate';
 import type { ContainerNode, PigmaFile, SceneNode } from './types';
@@ -58,12 +58,26 @@ describe('flatten a frame', () => {
     expect(bounds.x + bounds.width).toBeGreaterThan(200);
   });
 
-  it('refuses an empty frame, a frame with text, and a frame with nothing inside it', () => {
+  it('refuses an empty frame, a frame with empty text, and a frame with a line', () => {
     const empty = setup([], true);
     expect(flattenFrameOp(empty.file, empty.frameId).reason).toMatch(/no shapes/);
-    const text = createTextNode(null, 0, 0, 'Hi');
-    const withText = setup([text, createRectNode(null, 0, 0, 40, 40)], true);
-    expect(flattenFrameOp(withText.file, withText.frameId).reason).toMatch(/outline/);
+    const blank = createTextNode(null, 0, 0, '');
+    const withBlank = setup([blank, createRectNode(null, 0, 0, 40, 40)], true);
+    expect(flattenFrameOp(withBlank.file, withBlank.frameId).reason).toMatch(/empty/);
+    const group = createGroupNode([createRectNode(null, 0, 0, 10, 10)]);
+    const withGroup = setup([group], true);
+    expect(flattenFrameOp(withGroup.file, withGroup.frameId).reason).toMatch(/shapes or text/);
+  });
+
+  it('flattens text into its outline, so a frame of text and shapes becomes one path', () => {
+    const text = createTextNode(null, 20, 20, 'Hi', { fontSize: 24 });
+    const { file, frameId } = setup([text, createRectNode(null, 0, 150, 200, 20)], true);
+    const result = flattenFrameOp(file, frameId);
+    expect(result.reason).toBeUndefined();
+    const layer = findNode(result.file.document, result.nodeId!) as SceneNode & { pathData?: string };
+    expect(layer.type).toBe('VECTOR');
+    expect(layer.pathData, 'the text did not become a path').toMatch(/^M/);
+    expect(findNode(result.file.document, text.id), 'the text layer survived the flatten').toBeNull();
   });
 
   it('refuses something that is not a frame', () => {

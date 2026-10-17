@@ -26,14 +26,15 @@ describe('boolean operations', () => {
     const { file, aId } = setup();
     const polygons = nodePolygons(file.document, aId)!;
     expect(polygons).toHaveLength(1);
-    expect(polygons[0]).toHaveLength(4);
-    expect(polygons[0]![0]).toEqual([0, 0]);
-    expect(polygons[0]![2]).toEqual([100, 100]);
+    // polygon-clipping closes each ring by repeating its first point: 4 corners + 1.
+    expect(polygons[0]![0]).toHaveLength(5);
+    expect(polygons[0]![0]![0]).toEqual([0, 0]);
+    expect(polygons[0]![0]![2]).toEqual([100, 100]);
 
     const page = file.document.children[0]!;
     const ellipse = createEllipseNode(null, 0, 0, 100, 50);
     page.children = [ellipse];
-    expect(nodePolygons(file.document, ellipse.id)![0]!.length).toBe(64);
+    expect(nodePolygons(file.document, ellipse.id)![0]![0]!.length).toBe(65);
   });
 
   it('applies the node transform to the flattened outline', () => {
@@ -49,7 +50,7 @@ describe('boolean operations', () => {
       },
     };
     const polygons = nodePolygons(moved.document, aId)!;
-    expect(polygons[0]![0]).toEqual([40, 25]);
+    expect(polygons[0]![0]![0]).toEqual([40, 25]);
   });
 
   it('unions two overlapping squares into one outline', () => {
