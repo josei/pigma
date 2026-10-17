@@ -43,16 +43,17 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Open
 
-- **Shell parity is unmeasured against Figma.** The parity diff compares our own
-  constants, so pixel parity is not claimed.
+- **Shell parity is unmeasured against Figma (done by proxy).** The parity diff compares our own
+  constants, so pixel parity is not claimed. See `docs/DECISIONS.md`.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
 - **Other engines.** Firefox passes the suite (343, 5 clipboard specs skipped), run
   with `PIGMA_FIREFOX=1`. WebKit passes 342 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
-- **Hosted deployment.** The domain is `pigma.design` and resolves, but nothing is
-  deployed behind it yet. Development does not need it.
+- **Hosted deployment (owner decision).** The domain is `pigma.design` and resolves, but nothing is
+  deployed behind it. Publishing is outward-facing, so it waits for the owner's go-ahead; the
+  hosted mode is built and tested. See `docs/DECISIONS.md`.
 
 ## Resolved
 
@@ -60,7 +61,9 @@ other than Chromium. Nothing below should be read as a claim about those.
   hole) was read as one contour, so holes filled in and separate pieces joined. Each subpath is a
   contour now, and contours combine even-odd, so a counter is a hole (boolean-geometry.test.ts).
   This made flattened text garbled before the fix.
-- Flatten a frame with text: text is outlined (Inter Regular, `textOutline.ts`) and joins the
+- Text outlines: bold text is outlined in Inter Bold, and underline and strikethrough are drawn
+  (textOutline.test.ts). Only non-Latin glyphs outside Inter's Latin subset remain as missing-glyph boxes.
+- Flatten a frame with text: text is outlined (Inter Regular or Bold, `textOutline.ts`) and joins the
   union like any shape, so a frame of text and shapes becomes one path (flatten.test.ts,
   textOutline.test.ts, B80a). Groups and lines inside a frame are still refused.
 - Layer order with several layers selected: bringing them to the front or forward reversed or

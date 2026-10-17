@@ -24,6 +24,11 @@ declare module 'opentype.js' {
 
   export interface Font {
     unitsPerEm: number;
+    /** Decoration metrics, in font units (negative underline position is below the baseline). */
+    tables: {
+      post: { underlinePosition: number; underlineThickness: number };
+      os2: { yStrikeoutPosition: number; yStrikeoutSize: number };
+    };
     charToGlyph(char: string): Glyph;
   }
 

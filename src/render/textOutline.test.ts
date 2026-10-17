@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createTextNode } from '../model/factory';
 import type { TextNode } from '../model/types';
-import { commandsToPathData, interRegularBytes, textOutline } from './textOutline';
+import { commandsToPathData, faceFor, interBytes, textOutline } from './textOutline';
 import { firstBaselineOffset } from './textMetrics';
 
 /** Bounds of a path made of M/L/C/Z. Control points count, so this is exact for straight glyphs. */
@@ -17,11 +17,58 @@ function textOf(characters: string, style: Partial<TextNode['style']> = {}, widt
   return { ...node, width };
 }
 
-describe('the bundled font', () => {
-  it('is Inter Regular, a WOFF that the outliner parses', () => {
-    const bytes = interRegularBytes();
-    expect(new TextDecoder().decode(bytes.slice(0, 4))).toBe('wOFF');
-    expect(new Uint8Array(bytes).length).toBeGreaterThan(20_000);
+describe('the bundled fonts', () => {
+  it('are Inter Regular and Inter Bold, both WOFFs', () => {
+    for (const face of ['regular', 'bold'] as const) {
+      const bytes = interBytes(face);
+      expect(new TextDecoder().decode(bytes.slice(0, 4))).toBe('wOFF');
+      expect(new Uint8Array(bytes).length).toBeGreaterThan(20_000);
+    }
+    expect(interBytes('bold').byteLength).not.toBe(interBytes('regular').byteLength);
+  });
+
+  it('picks Bold for weights 600 and up, and Regular otherwise', () => {
+    expect(faceFor({ fontSize: 16, fontFamily: 'Inter', fontWeight: 700 } as TextNode['style'])).toBe('bold');
+    expect(faceFor({ fontSize: 16, fontFamily: 'Inter', fontWeight: 600 } as TextNode['style'])).toBe('bold');
+    expect(faceFor({ fontSize: 16, fontFamily: 'Inter', fontWeight: 400 } as TextNode['style'])).toBe('regular');
+    expect(faceFor({ fontSize: 16, fontFamily: 'Inter', fontStyle: 'Bold' } as TextNode['style'])).toBe('bold');
+  });
+
+  it('outlines bold text wider than regular text of the same characters', () => {
+    const regular = boundsOf(textOutline(textOf('HHHH'))!);
+    const bold = boundsOf(textOutline(textOf('HHHH', { fontWeight: 700 }))!);
+    expect(bold.maxX).toBeGreaterThan(regular.maxX);
+  });
+});
+
+describe('text decoration', () => {
+  it('underlines a line with a bar whose top is the font underline position', () => {
+    const plain = textOf('H');
+    const underlined = textOf('H', { textDecoration: 'UNDERLINE' });
+    const baseline = firstBaselineOffset(plain.style);
+    // Inter Regular: underline top at -348 units, thickness 140, on a 2048 em.
+    const barBottom = baseline + ((348 + 140) / 2048) * 16;
+    expect(boundsOf(textOutline(underlined)!).maxY).toBeCloseTo(barBottom, 2);
+    expect(boundsOf(textOutline(plain)!).maxY).toBeCloseTo(baseline, 2);
+  });
+
+  it('strikes through a line at the font strikeout position', () => {
+    const struck = textOf('H', { textDecoration: 'STRIKETHROUGH' });
+    const baseline = firstBaselineOffset(struck.style);
+    const barTop = baseline - (671 / 2048) * 16;
+    const path = textOutline(struck)!;
+    // The bar's top edge is one of the path's y coordinates.
+    const ys = (path.match(/-?\d+(\.\d+)?/g) ?? []).map(Number).filter((_, index) => index % 2 === 1);
+    expect(ys.some((y) => Math.abs(y - barTop) < 0.01)).toBe(true);
+  });
+
+  it('draws no bar under text with no decoration', () => {
+    expect(textOutline(textOf('H'))!.match(/M/g)).toHaveLength(1);
+    expect(textOutline(textOf('H', { textDecoration: 'UNDERLINE' }))!.match(/M/g)).toHaveLength(2);
+  });
+
+  it('does not draw a bar under an empty line', () => {
+    expect(textOutline(textOf('', { textDecoration: 'UNDERLINE' }))).toBeNull();
   });
 });
 
