@@ -69,6 +69,15 @@ describe('flatten a frame', () => {
     expect(flattenFrameOp(withGroup.file, withGroup.frameId).reason).toMatch(/shapes or text/);
   });
 
+  it('refuses a frame with text the outline cannot draw, and leaves the tree alone', () => {
+    const georgia = createTextNode(null, 0, 0, 'Hi', { fontFamily: 'Georgia' });
+    const { file, frameId } = setup([georgia, createRectNode(null, 0, 150, 200, 20)], true);
+    const result = flattenFrameOp(file, frameId);
+    expect(result.reason).toMatch(/Inter text only/);
+    expect(result.file).toBe(file);
+    expect(findNode(result.file.document, georgia.id), 'the text was changed by a refused flatten').not.toBeNull();
+  });
+
   it('flattens text into its outline, so a frame of text and shapes becomes one path', () => {
     const text = createTextNode(null, 20, 20, 'Hi', { fontSize: 24 });
     const { file, frameId } = setup([text, createRectNode(null, 0, 150, 200, 20)], true);

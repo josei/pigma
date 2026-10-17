@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createTextNode } from '../model/factory';
 import type { TextNode } from '../model/types';
-import { commandsToPathData, faceFor, interBytes, textOutline } from './textOutline';
+import { commandsToPathData, faceFor, interBytes, outlineRefusal, textOutline } from './textOutline';
 import { firstBaselineOffset } from './textMetrics';
 
 /** Bounds of a path made of M/L/C/Z. Control points count, so this is exact for straight glyphs. */
@@ -132,5 +132,21 @@ describe('commandsToPathData', () => {
       { type: 'Z' },
     ]);
     expect(data).toBe('M0 0 C6.667 0 10 3.333 10 10 Z');
+  });
+});
+
+describe('outlineRefusal', () => {
+  it('allows Inter text, including the list markers and the ellipsis Inter has', () => {
+    expect(outlineRefusal(textOf('Hello • café… €'))).toBeNull();
+    expect(outlineRefusal(textOf('a\nb'))).toBeNull();
+  });
+
+  it('refuses a layer in another family, and says what to change', () => {
+    expect(outlineRefusal(textOf('Hi', { fontFamily: 'Georgia' }))).toMatch(/Inter text only.*"Georgia".*Set the font to Inter/);
+  });
+
+  it('refuses a character Inter has no glyph for, and names it', () => {
+    expect(outlineRefusal(textOf('日本'))).toMatch(/no glyph for "日"/);
+    expect(outlineRefusal(textOf('ж'))).toMatch(/no glyph for "ж"/);
   });
 });

@@ -118,6 +118,26 @@ function bar(x: number, top: number, width: number, thickness: number): PathComm
 }
 
 /**
+ * Why a text layer cannot be outlined, or `null` when it can. Outlines are drawn in
+ * Inter, so a layer in another family, or with a character Inter lacks, is refused
+ * rather than silently drawn in a different face.
+ */
+export function outlineRefusal(node: TextNode): string | null {
+  const family = node.style.fontFamily.trim().toLowerCase();
+  if (family !== 'inter') {
+    return `Flatten outlines Inter text only: "${node.style.fontFamily}" is not Inter. Set the font to Inter first.`;
+  }
+  const font = interFont(faceFor(node.style));
+  for (const char of new Set(Array.from(node.characters))) {
+    if (char === '\n') continue;
+    if (font.charToGlyph(char).index === 0) {
+      return `Inter has no glyph for "${char}", so this text cannot be outlined.`;
+    }
+  }
+  return null;
+}
+
+/**
  * The outline of a text layer, in its own coordinates, or `null` when it has no
  * glyphs to draw (empty text).
  */

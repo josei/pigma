@@ -1,10 +1,10 @@
-import type { ContainerNode, PigmaFile, SceneNode } from './types';
+import type { ContainerNode, PigmaFile, SceneNode, TextNode } from './types';
 import { booleanNodes, booleanOperandsOf } from './boolean';
 import { createRectNode } from './factory';
 import { applyNodePatchToAll, ungroupNodes } from './ops';
 import { findNode, insertChild, updateNode } from './tree';
 import { hasChildren } from './types';
-import { textOutline } from '../render/textOutline';
+import { outlineRefusal, textOutline } from '../render/textOutline';
 
 /** Why a flatten was refused, or the flattened layer. */
 export type FlattenFrameResult = { file: PigmaFile; nodeId: string; reason?: undefined } | { file: PigmaFile; nodeId: null; reason: string };
@@ -27,6 +27,9 @@ export function flattenFrameOp(file: PigmaFile, frameId: string): FlattenFrameRe
   let current = file;
   for (const child of container.children) {
     if (child.type !== 'TEXT') continue;
+    const node = findNode(current.document, child.id) as TextNode;
+    const why = outlineRefusal(node);
+    if (why) return refuse(why);
     const outlined = outlineTextOp(current, child.id);
     if (!outlined) return refuse('A text layer in the frame is empty, so it has no outline');
     current = outlined;

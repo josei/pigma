@@ -18,6 +18,8 @@ declare module 'opentype.js' {
   }
 
   export interface Glyph {
+    /** Glyph index in the font; 0 is the missing-glyph box, used when the font lacks a character. */
+    index: number;
     advanceWidth: number;
     getPath(x: number, y: number, fontSize: number): Path;
   }

@@ -62,7 +62,8 @@ other than Chromium. Nothing below should be read as a claim about those.
   contour now, and contours combine even-odd, so a counter is a hole (boolean-geometry.test.ts).
   This made flattened text garbled before the fix.
 - Text outlines: bold text is outlined in Inter Bold, and underline and strikethrough are drawn
-  (textOutline.test.ts). Only non-Latin glyphs outside Inter's Latin subset remain as missing-glyph boxes.
+  (textOutline.test.ts). Flatten refuses text outside Inter, or with characters Inter lacks, and
+  names the cause instead of drawing a different face (B81a, textOutline.test.ts).
 - Flatten a frame with text: text is outlined (Inter Regular or Bold, `textOutline.ts`) and joins the
   union like any shape, so a frame of text and shapes becomes one path (flatten.test.ts,
   textOutline.test.ts, B80a). Groups and lines inside a frame are still refused.
