@@ -43,7 +43,7 @@ export interface RelayOptions {
   mcpPath: string;
   /** Require a session token on the MCP endpoint (never advertised as a value). */
   mcpToken?: string;
-  /** Lifetime of a minted per-session token (hosted). Default 30 minutes. */
+  /** Lifetime of a minted per-session token (hosted). Default: never expires; revoke instead. */
   tokenTtlMs?: number;
   /** Exit when the parent process goes away (default on; see `--no-orphan-guard`). */
   orphanGuard: boolean;

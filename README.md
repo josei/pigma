@@ -86,6 +86,8 @@ what is verified today.
   prove each claim.
 - [`docs/MCP.md`](docs/MCP.md) — the MCP surface.
 - [`docs/UI_CONTRACT.md`](docs/UI_CONTRACT.md) — the UI class/token contract.
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) — open questions settled without a
+  person, with the options and the reason for each choice.
 
 ## Getting started
 

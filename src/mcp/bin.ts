@@ -50,7 +50,7 @@ export interface CliOptions {
   name: string;
   /** Hosted mode: require a minted, short-lived, revocable session token. */
   hosted: boolean;
-  /** Session token lifetime in ms (hosted mode). Default 30 minutes. */
+  /** Session token lifetime in ms (hosted mode). Default: never expires; revoke instead. */
   tokenTtlMs?: number;
   /** Operator secret that allows minting from a non-loopback peer. */
   mintSecret?: string;
