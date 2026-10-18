@@ -102,6 +102,18 @@ function gridCell(child: SceneNode, columnCount: number, rowCount: number): { co
   };
 }
 
+/**
+ * How many rows a grid uses: the declared ones, or more when auto-placement or a
+ * manual anchor needs them. Shared by the layout pass and the panel's row count.
+ */
+export function gridRowCount(children: SceneNode[], layout: AutoLayout): number {
+  const columnCount = Math.max(1, (layout.gridColumns ?? []).length);
+  // Auto-placement can need more rows than declared; a manual anchor can too.
+  const neededRows = children.reduce((max, child) => Math.max(max, Math.round(child.gridRowAnchorIndex ?? 0) + Math.max(1, Math.round(child.gridRowSpan ?? 1))), 0);
+  const autoRows = Math.max(1, Math.ceil(children.length / columnCount));
+  return Math.max(1, (layout.gridRows ?? []).length, neededRows, autoRows);
+}
+
 /** Lay out one grid container. Returns the same node when nothing moved. */
 function layoutGridContainer<T extends AnyNode>(node: T, layout: AutoLayout): T {
   if (!hasChildren(node)) return node;
@@ -114,10 +126,7 @@ function layoutGridContainer<T extends AnyNode>(node: T, layout: AutoLayout): T 
   const declaredColumns = layout.gridColumns ?? [];
   const declaredRows = layout.gridRows ?? [];
   const columnCount = Math.max(1, declaredColumns.length);
-  // Auto-placement can need more rows than declared; a manual anchor can too.
-  const neededRows = children.reduce((max, child) => Math.max(max, Math.round(child.gridRowAnchorIndex ?? 0) + Math.max(1, Math.round(child.gridRowSpan ?? 1))), 0);
-  const autoRows = Math.max(1, Math.ceil(children.length / columnCount));
-  const rowCount = Math.max(1, declaredRows.length, neededRows, autoRows);
+  const rowCount = gridRowCount(children, layout);
 
   // Width hugs when the primary axis is AUTO (a grid has no orientation, so the
   // two sizing modes are read as width and height), and height likewise.

@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { emptyFile } from './validate';
 import { parseFile, serializeFile } from './serialize';
 import { createFrameNode, createRectNode } from './factory';
-import { reflowTree } from './autoLayout';
+import { gridRowCount, reflowTree } from './autoLayout';
 import { settleDocument } from './settle';
 import { findNode } from './tree';
 import type { AutoLayout, ContainerNode, GridTrackSize, PigmaFile, SceneNode } from './types';
@@ -115,6 +115,15 @@ describe('grid auto layout', () => {
     expect(laid[1]!.transform.ty, 'the spanning child did not drop to row 1').toBeCloseTo(100, 3);
     expect(laid[2]!.transform.ty, 'dense did not reuse the hole in row 0').toBeCloseTo(0, 3);
     expect(laid[2]!.transform.tx).toBeCloseTo(100, 3);
+  });
+
+  it('counts the rows a grid uses, including the implicit ones the children need', () => {
+    // Two columns, three children, no declared rows: the children wrap onto two rows.
+    const { file, id } = grid(300, 200, 3, { gridColumns: [FLEX(1), FLEX(1)] });
+    const frame = findNode(file.document, id) as ContainerNode;
+    expect(gridRowCount(frame.children as SceneNode[], frame.autoLayout as AutoLayout)).toBe(2);
+    // A declared list longer than the children keeps its rows.
+    expect(gridRowCount(frame.children as SceneNode[], { ...(frame.autoLayout as AutoLayout), gridRows: [FLEX(1), FLEX(1), FLEX(1)] })).toBe(3);
   });
 
   it('re-lays-out when the frame is resized', () => {

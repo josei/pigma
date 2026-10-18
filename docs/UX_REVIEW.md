@@ -57,6 +57,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- Grid: the Rows count showed only the declared rows, so three children wrapping onto a second row read
+  as one row. The panel now shows the rows the grid uses (`gridRowCount`, B57f).
 - Keyboard: F6 focuses the tools toolbar (B82b). The main menu no longer shows ⇧D beside the theme
   entry, since Shift+D is Dev Mode (B82a). Ctrl+Space keyboard box selection is a recorded decision
   (docs/DECISIONS.md).

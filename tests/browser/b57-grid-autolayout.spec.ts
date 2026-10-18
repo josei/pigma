@@ -204,3 +204,11 @@ test('B57e the Placement control switches a grid between sparse and dense, and t
   });
   expect(sparse, 'switching back to Sparse did not clear Dense').toBe(false);
 });
+
+test('B57f the Rows count shows the rows the grid uses, not just the declared ones', async ({ page }) => {
+  await frameWithChildren(page, 3);
+  await setDirection(page, 'Grid');
+  // Two columns and three children: the children wrap onto a second row, which is implicit.
+  const rows = page.locator('.prop-row', { has: page.locator('.prop-row__label', { hasText: /^Rows$/ }) });
+  await expect(rows.locator('.prop-row__value')).toHaveText('2');
+});

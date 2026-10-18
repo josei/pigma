@@ -9,7 +9,7 @@ import { limitsOf } from '../model/sizing';
 import { cropOf, imageFillsOf } from '../model/image';
 import { decodeImageFile } from './imageInput';
 import { hasChildren } from '../model/types';
-import { defaultAutoLayout } from '../model/autoLayout';
+import { defaultAutoLayout, gridRowCount } from '../model/autoLayout';
 import { EFFECT_TYPES, effectLabel, isBlur, isShadow, type EffectKind } from '../model/effects';
 import { CONSTRAINT_TYPES, constraintLabel } from '../model/constraints';
 import { VariableBindInline, VariableBindRow } from './VariablesPanel';
@@ -1325,7 +1325,7 @@ const SIZING_OPTIONS: Array<{ value: 'FIXED' | 'AUTO'; label: string }> = [
  * is deliberately its own control — the Constraints section's layout GUIDES draw
  * over a frame without moving anything.
  */
-function GridTracks({ layout, onChange }: { layout: AutoLayout; onChange: (patch: Partial<AutoLayout>) => void }) {
+function GridTracks({ layout, rowCount, onChange }: { layout: AutoLayout; rowCount: number; onChange: (patch: Partial<AutoLayout>) => void }) {
   const track = (list: GridTrackSize[] | undefined, index: number): GridTrackSize => list?.[index] ?? { type: 'FLEX', value: 1 };
   const edit = (key: 'gridColumns' | 'gridRows', list: GridTrackSize[] | undefined, index: number, patch: Partial<GridTrackSize>) => {
     const next = [...(list ?? [])];
@@ -1346,7 +1346,8 @@ function GridTracks({ layout, onChange }: { layout: AutoLayout; onChange: (patch
     <div className="prop-stack" data-testid="grid-tracks">
       {rows.map(({ key, label, gapKey, gapLabel }) => {
         const list = layout[key];
-        const count = Math.max(1, list?.length ?? 1);
+        // Rows the grid really uses, declared or implicit; a column count is its declared list.
+        const count = key === 'gridRows' ? rowCount : Math.max(1, list?.length ?? 1);
         return (
           <div key={key}>
             <div className="prop-row">
@@ -1443,7 +1444,7 @@ function AutoLayoutSection({ node }: { node: SceneNode }) {
         {layout.layoutMode === 'GRID' ? (
           // Grid TRACKS, not the layout GUIDES in the Constraints section: this
           // decides where children go, a guide is only drawn over them.
-          <GridTracks layout={layout} onChange={setAutoLayout} />
+          <GridTracks layout={layout} rowCount={gridRowCount(node.children as SceneNode[], layout)} onChange={setAutoLayout} />
         ) : null}
         {active && layout.layoutMode !== 'GRID' ? (
           <>
