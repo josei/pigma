@@ -239,6 +239,12 @@ export interface AutoLayout {
   gridRowGuids?: string[];
   gridColumnGap?: number;
   gridRowGap?: number;
+  /**
+   * Auto-placement order. Sparse (the default) walks forward from the last placed
+   * child, so a hole a spanning child leaves behind stays empty. Dense restarts the
+   * search at the first cell for each child, so later children fill those holes.
+   */
+  gridDense?: boolean;
 }
 
 export type TextAlignHorizontal = 'LEFT' | 'CENTER' | 'RIGHT' | 'JUSTIFIED';

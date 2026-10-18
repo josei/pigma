@@ -104,6 +104,19 @@ describe('grid auto layout', () => {
     expect(placed[2]!.transform.ty, 'and wraps to the next row').toBeCloseTo(100, 3);
   });
 
+  it('dense placement fills a hole a spanning child leaves behind', () => {
+    // Three 1fr columns and two 1fr rows. Child 0 takes cell (0,0); child 1 spans the
+    // whole row, so it drops to row 1 and row 0 keeps a hole at columns 1-2. Child 2 is
+    // one cell wide: dense puts it in that hole, where sparse would walk past it.
+    const { file, id } = grid(300, 200, 3, { gridColumns: [FLEX(1), FLEX(1), FLEX(1)], gridRows: [FLEX(1), FLEX(1)], gridDense: true });
+    const frame = findNode(file.document, id) as ContainerNode;
+    (frame.children[1] as SceneNode).gridColumnSpan = 3;
+    const laid = childrenOf({ ...file, document: reflowTree(file.document) }, id);
+    expect(laid[1]!.transform.ty, 'the spanning child did not drop to row 1').toBeCloseTo(100, 3);
+    expect(laid[2]!.transform.ty, 'dense did not reuse the hole in row 0').toBeCloseTo(0, 3);
+    expect(laid[2]!.transform.tx).toBeCloseTo(100, 3);
+  });
+
   it('re-lays-out when the frame is resized', () => {
     const { file, id } = grid(300, 100, 2, { gridColumns: [FIXED(100), FLEX(1)], gridColumnGap: 0 });
     const wide = reflowTree(file.document);

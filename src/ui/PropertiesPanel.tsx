@@ -1398,6 +1398,15 @@ function GridTracks({ layout, onChange }: { layout: AutoLayout; onChange: (patch
           </div>
         );
       })}
+      <Segmented
+        label="Placement"
+        value={layout.gridDense ? 'DENSE' : 'SPARSE'}
+        options={[
+          { value: 'SPARSE', label: 'Sparse' },
+          { value: 'DENSE', label: 'Dense' },
+        ]}
+        onChange={(value) => onChange({ gridDense: value === 'DENSE' })}
+      />
     </div>
   );
 }

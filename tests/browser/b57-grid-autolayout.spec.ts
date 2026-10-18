@@ -181,3 +181,26 @@ test('B57d the track editor is a DIFFERENT control from the layout guides', asyn
   expect(after.mode).toBe('HORIZONTAL');
   expect(after.guides, 'the guide list changed when the direction did').toBe(afterGuides.guides);
 });
+
+test('B57e the Placement control switches a grid between sparse and dense, and the frame stores it', async ({ page }) => {
+  await frameWithChildren(page, 3);
+  await setDirection(page, 'Grid');
+  const placement = page.locator('[role="group"][aria-label="Placement"]');
+  await expect(placement.locator('button', { hasText: 'Sparse' })).toBeVisible();
+
+  await placement.locator('button', { hasText: 'Dense' }).click();
+  await page.waitForTimeout(300);
+  const dense = await page.evaluate(() => {
+    const frame = (window.__pigmaStore!.getState() as any).file.document.children[0].children.find((n: any) => n.type === 'FRAME');
+    return frame.autoLayout.gridDense as boolean | undefined;
+  });
+  expect(dense, 'the Dense choice was not stored on the frame').toBe(true);
+
+  await placement.locator('button', { hasText: 'Sparse' }).click();
+  await page.waitForTimeout(300);
+  const sparse = await page.evaluate(() => {
+    const frame = (window.__pigmaStore!.getState() as any).file.document.children[0].children.find((n: any) => n.type === 'FRAME');
+    return frame.autoLayout.gridDense as boolean | undefined;
+  });
+  expect(sparse, 'switching back to Sparse did not clear Dense').toBe(false);
+});

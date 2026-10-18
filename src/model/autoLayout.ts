@@ -155,7 +155,7 @@ function layoutGridContainer<T extends AnyNode>(node: T, layout: AutoLayout): T 
     // span larger than the grid, or a fully pinned grid) the child takes the
     // cursor cell anyway, so placement always terminates.
     let placedAt: { column: number; row: number } | null = null;
-    let probe = cursor;
+    let probe = layout.gridDense ? { column: 0, row: 0 } : cursor;
     for (let tries = 0; tries < columnCount * rowCount + columnCount; tries += 1) {
       if (holds(probe.column, probe.row)) {
         placedAt = probe;
