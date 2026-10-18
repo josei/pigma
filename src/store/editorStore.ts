@@ -815,6 +815,23 @@ function countInstances(node: Node, componentId: string): number {
 
 let toastCounter = 0;
 
+/**
+ * A layer that lands in a frame or section is moved to the parent's top-left corner when
+ * it does not fit inside, because the parent clips what lies outside it: left where it
+ * was, it would vanish. Groups do not clip and are left alone.
+ */
+function fitIntoFrame(file: PigmaFile, nodeId: string, parentId: string): PigmaFile {
+  const parent = findNode(file.document, parentId);
+  if (!parent || (parent.type !== 'FRAME' && parent.type !== 'SECTION')) return file;
+  const child = absoluteBounds(file.document, nodeId);
+  const frame = absoluteBounds(file.document, parentId);
+  if (!child || !frame) return file;
+  const inside =
+    child.x >= frame.x && child.y >= frame.y && child.x + child.width <= frame.x + frame.width && child.y + child.height <= frame.y + frame.height;
+  if (inside) return file;
+  return translateWorld(file, [nodeId], frame.x - child.x, frame.y - child.y);
+}
+
 export const useEditor = create<EditorState>((set, get) => ({
   file: initialFile,
   pageId: firstPageId(initialFile),
@@ -1368,7 +1385,7 @@ export const useEditor = create<EditorState>((set, get) => ({
         const container = findNode(file.document, targetId);
         if (!container || (container.type !== 'FRAME' && container.type !== 'SECTION')) return file;
         if (instanceAncestryOf(file.document, targetId)) return file;
-        return { ...file, document: moveNode(file.document, nodeId, targetId) };
+        return fitIntoFrame({ ...file, document: moveNode(file.document, nodeId, targetId) }, nodeId, targetId);
       }
       // Beside a row: the layer joins that row's parent, at the row's place.
       const { root } = removeNode(file.document, nodeId);
@@ -1377,7 +1394,7 @@ export const useEditor = create<EditorState>((set, get) => ({
       // An instance's children are owned by its component: nothing is dropped into them.
       if (at.parent.type === 'INSTANCE' || instanceAncestryOf(file.document, targetId)) return file;
       const index = placement === 'after' ? at.index + 1 : at.index;
-      return { ...file, document: moveNode(file.document, nodeId, at.parent.id, index) };
+      return fitIntoFrame({ ...file, document: moveNode(file.document, nodeId, at.parent.id, index) }, nodeId, at.parent.id);
     });
   },
   moveSelection: (dx, dy, transient = false) => {

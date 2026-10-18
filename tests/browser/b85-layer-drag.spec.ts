@@ -91,4 +91,11 @@ test('B85c a layer dropped onto the middle of a frame goes inside it', async ({ 
   const after = await topLevel();
   expect(after.map((n) => n.type), 'the ellipse did not leave the top level').toEqual(['FRAME']);
   expect(after[0]!.kids).toEqual(['ELLIPSE']);
+  // Moved to fit: the ellipse is inside the frame's bounds, so the frame's clip does not hide it.
+  const fits = await page.evaluate(() => {
+    const frame = (window.__pigmaStore!.getState().file.document.children[0]!.children as any[])[0];
+    const ellipse = frame.children[0];
+    return ellipse.transform.tx >= 0 && ellipse.transform.ty >= 0 && ellipse.transform.tx + ellipse.width <= frame.width && ellipse.transform.ty + ellipse.height <= frame.height;
+  });
+  expect(fits, 'the ellipse was left outside its frame, where the frame clips it').toBe(true);
 });
