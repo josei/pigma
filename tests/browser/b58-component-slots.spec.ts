@@ -130,3 +130,40 @@ test('B58b a component with no such property offers no such control', async ({ p
   // ...but no property control, because there is no property to control.
   expect(labels, `an instance without properties offered a swap control: ${JSON.stringify(labels)}`).not.toContain('Swap target');
 });
+
+test('B58c the swap picker lists the property\'s suggested components first, then the rest', async ({ page }) => {
+  await boot(page, { blank: true });
+  const source = await makeComponent(page, RED, -160);
+  await addSwapProperty(page, 'Swap target');
+  const replacement = await makeComponent(page, BLUE, 160);
+  const third = await makeComponent(page, RED, 320);
+  const replacementId = await idOf(page, replacement);
+
+  // Suggest the replacement on the property that the source component owns.
+  await page.evaluate((preferred) => {
+    window.__pigmaStore!.getState().apply('Suggest', (file) => {
+      const fix = (node: any): any => {
+        const defs = node.componentPropertyDefinitions;
+        if (node.type === 'COMPONENT' && defs?.['Swap target']) {
+          return { ...node, componentPropertyDefinitions: { ...defs, 'Swap target': { ...defs['Swap target'], preferredValues: [{ type: 'COMPONENT', key: preferred }] } } };
+        }
+        return node.children ? { ...node, children: node.children.map(fix) } : node;
+      };
+      return { ...file, document: fix(file.document) };
+    });
+  }, replacementId);
+
+  await insertInstance(page, source);
+  const groups = await page.evaluate(() => {
+    const select = document.querySelector('select[aria-label="Swap target"]') as HTMLSelectElement | null;
+    if (!select) return [];
+    return [...select.querySelectorAll('optgroup')].map((group) => ({
+      label: group.label,
+      options: [...group.querySelectorAll('option')].map((option) => option.textContent ?? ''),
+    }));
+  });
+  expect(groups.map((group) => group.label), `unexpected groups: ${JSON.stringify(groups)}`).toEqual(['Suggested', 'All components']);
+  expect(groups[0]!.options, 'the suggested group is not exactly the preferred component').toEqual([replacement]);
+  expect(groups[1]!.options, 'the rest of the library is missing from the picker').toEqual(expect.arrayContaining([source, third]));
+  expect(groups[1]!.options).not.toContain(replacement);
+});

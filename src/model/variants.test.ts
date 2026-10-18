@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addComponentProperty,
+  componentKey,
   componentLibrary,
   componentSetOf,
   createComponentSet,
@@ -14,6 +15,7 @@ import {
   setInstanceProperty,
   setInstanceVariant,
   setPropertyReference,
+  suggestedComponents,
   variantOptions,
 } from './variants';
 import { createRectNode, createTextNode } from './factory';
@@ -157,5 +159,47 @@ describe('variants and component properties', () => {
     expect(set.type).toBe('COMPONENT_SET');
     expect(set.componentPropertyDefinitions).toMatchObject({ Size: { variantOptions: ['Small', 'Large'] } });
     expect((set.children as SceneNode[]).map((child) => child.name)).toEqual(['Size=Small', 'Size=Large']);
+  });
+});
+
+describe('suggested components for an INSTANCE_SWAP property', () => {
+  /** A file with three components; `keys` maps a component id to its imported library key. */
+  function library(keys: Record<string, string> = {}) {
+    const file = emptyFile('Swap');
+    const page = file.document.children[0]!;
+    const ids = ['Icon / Mail', 'Icon / Star', 'Icon / Heart'].map((name) => {
+      const rect = createRectNode(file.document, 0, 0, 16, 16);
+      const component = { ...rect, type: 'COMPONENT' as const, name, children: [] } as unknown as ComponentNode;
+      page.children = [...page.children, component];
+      return component.id;
+    });
+    file.meta = { components: Object.fromEntries(Object.entries(keys).map(([id, key]) => [id, { key }])) };
+    return { file, ids };
+  }
+
+  it('names a component by its imported library key, and by its id when it has none', () => {
+    const { file, ids } = library({});
+    expect(componentKey(file, ids[0]!)).toBe(ids[0]);
+    const keyed = library({});
+    keyed.file.meta = { components: { [keyed.ids[1]!]: { key: 'abc123' } } };
+    expect(componentKey(keyed.file, keyed.ids[1]!)).toBe('abc123');
+    expect(componentKey(keyed.file, keyed.ids[0]!)).toBe(keyed.ids[0]);
+  });
+
+  it('suggests exactly the components the preferred keys name, and matches imported keys too', () => {
+    const { file, ids } = library({});
+    // A Pigma component is named by its id; an imported one by its library key.
+    file.meta = { components: { [ids[0]!]: { key: 'lib-mail' } } };
+    const suggested = suggestedComponents(file, [
+      { type: 'COMPONENT', key: 'lib-mail' },
+      { type: 'COMPONENT', key: ids[2]! },
+    ]);
+    expect(suggested.map((entry) => entry.id)).toEqual([ids[0], ids[2]]);
+  });
+
+  it('suggests nothing when the property has no preferred values', () => {
+    const { file } = library({});
+    expect(suggestedComponents(file, undefined)).toEqual([]);
+    expect(suggestedComponents(file, [])).toEqual([]);
   });
 });

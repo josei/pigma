@@ -273,6 +273,30 @@ export function componentLibrary(file: PigmaFile): Array<{ id: string; name: str
 }
 
 /**
+ * The key a preferred-value entry names a component by. An imported Figma file keeps
+ * each component's library key in its metadata; a component authored in Pigma has
+ * none, so it is named by its own id.
+ */
+export function componentKey(file: PigmaFile, id: string): string {
+  const components = (file.meta?.components ?? {}) as Record<string, { key?: unknown }>;
+  const key = components[id]?.key;
+  return typeof key === 'string' && key !== '' ? key : id;
+}
+
+/**
+ * The components a property suggests (its `preferredValues`), in library order. The
+ * INSTANCE_SWAP picker lists these first; every other component stays selectable.
+ */
+export function suggestedComponents(
+  file: PigmaFile,
+  preferred: Array<{ type: 'COMPONENT' | 'COMPONENT_SET'; key: string }> | undefined,
+): Array<{ id: string; name: string }> {
+  if (!preferred || preferred.length === 0) return [];
+  const wanted = new Set(preferred.map((entry) => entry.key));
+  return componentLibrary(file).filter((entry) => wanted.has(componentKey(file, entry.id)) || wanted.has(entry.id));
+}
+
+/**
  * The component nodes that ARE slots.
  *
  * A slot is a SLOT property bound to a frame through

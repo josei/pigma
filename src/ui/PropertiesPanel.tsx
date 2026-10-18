@@ -28,6 +28,7 @@ import type { PrototypeAction } from '../model/types';
 import type { PrototypeActionKind } from '../model/prototype';
 import {
   componentLibrary,
+  suggestedComponents,
   componentPropertiesOf,
   propertyOwnerOf,
   slotTargetsOf,
@@ -1698,9 +1699,24 @@ function VariantsSection({ node }: { node: SceneNode }) {
                 onChange={(event) => setInstanceProperty(node.id, name, event.target.value)}
               >
                 <option value="">None</option>
-                {componentLibrary(file).map((entry) => (
-                  <option key={entry.id} value={entry.id}>{entry.name}</option>
-                ))}
+                {(() => {
+                  // Suggested components first (the property's preferredValues), then the rest.
+                  const suggested = suggestedComponents(file, definition.preferredValues);
+                  const suggestedIds = new Set(suggested.map((entry) => entry.id));
+                  const others = componentLibrary(file).filter((entry) => !suggestedIds.has(entry.id));
+                  return (
+                    <>
+                      {suggested.length > 0 ? (
+                        <optgroup label="Suggested">
+                          {suggested.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
+                        </optgroup>
+                      ) : null}
+                      <optgroup label={suggested.length > 0 ? 'All components' : 'Components'}>
+                        {others.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
+                      </optgroup>
+                    </>
+                  );
+                })()}
               </select>
             ) : null}
             {definition.type === 'SLOT' ? (
