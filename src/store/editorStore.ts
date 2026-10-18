@@ -121,6 +121,7 @@ import {
   addFlow as addFlowOp,
   addInteraction as addInteractionOp,
   defaultInteraction,
+  setVariableAction,
   removeFlow as removeFlowOp,
   removeInteraction as removeInteractionOp,
   renameFlow as renameFlowOp,
@@ -560,6 +561,8 @@ export interface EditorState {
     kind?: PrototypeActionKind,
     transition?: PrototypeAction['transition'],
   ) => void;
+  /** On click, set a boolean or number variable (prototype variables, slice 2). */
+  addVariableInteraction: (nodeId: string, variableId: string, value: boolean | number) => void;
   updateInteraction: (nodeId: string, index: number, patch: Partial<PrototypeInteraction>) => void;
   removeInteraction: (nodeId: string, index: number) => void;
   addFlow: (startNodeId: string, name?: string) => void;
@@ -2519,6 +2522,12 @@ export const useEditor = create<EditorState>((set, get) => ({
       editsSinceVersion: 0,
     });
     get().pushToast(`Restored ${entry ? entry.name : 'version'}`, 'success');
+  },
+
+  addVariableInteraction: (nodeId, variableId, value) => {
+    get().apply('Add interaction', (file) =>
+      addInteractionOp(file, nodeId, { trigger: { type: 'ON_CLICK' }, actions: [setVariableAction(variableId, value)] }),
+    );
   },
 
   addInteraction: (nodeId, destinationId, kind, transition) => {

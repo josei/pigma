@@ -39,3 +39,47 @@ test('B89a a click that sets a variable holds its value for the presentation', a
   await page.waitForTimeout(200);
   await expect(page.locator('.present'), 'the click did not set the variable').toHaveAttribute('data-variables', '{"open":true}');
 });
+
+/**
+ * Slice 2: the authoring UI. A Set variable link is made in the Prototype tab, with the
+ * variable chosen from the file's variables, and playback then sets it on the click.
+ */
+test('B90a a Set variable link is authored in the Prototype tab and sets the variable on click', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Frame', 300, 220, 0, 0);
+  await drawShape(page, 'Rectangle', 80, 60, 0, 0);
+  const frameId = await page.evaluate(() => (window.__pigmaStore!.getState().file.document.children[0]!.children as any[])[0].id as string);
+  // A boolean variable to set.
+  const variableId = await page.evaluate(() => {
+    const store = window.__pigmaStore!.getState() as any;
+    store.addVariableCollection();
+    const collectionId = Object.keys((window.__pigmaStore!.getState() as any).file.variableCollections ?? {})[0]!;
+    window.__pigmaStore!.getState().addVariable(collectionId, 'BOOLEAN');
+    return Object.keys((window.__pigmaStore!.getState() as any).file.variables ?? {})[0]!;
+  });
+  // Select the rectangle, the trigger's layer.
+  await page.locator('.app__left .layer-row', { hasText: 'Rectangle' }).first().click();
+
+  await page.locator('.tab', { hasText: 'Prototype' }).click();
+  await page.locator('select[aria-label="Action kind"]').selectOption('SET_VARIABLE');
+  await page.locator('select[aria-label="Variable to set"]').selectOption(variableId);
+  await page.locator('select[aria-label="Variable value"]').selectOption('false');
+  await page.locator('.button', { hasText: 'Apply link' }).click();
+  await page.waitForTimeout(250);
+
+  const stored = await page.evaluate(() => {
+    const doc = (window.__pigmaStore!.getState() as any).file.document;
+    const found = (node: any): any => (node.interactions?.length ? node : (node.children ?? []).map(found).find(Boolean));
+    return found(doc.children[0]);
+  });
+  expect(stored?.interactions?.[0]?.actions?.[0], 'the link was not stored').toMatchObject({ type: 'SET_VARIABLE', variableValue: false });
+
+  // Play it: the click sets the variable, which the presentation then holds.
+  await page.evaluate((id) => window.__pigmaStore!.getState().setPrototypeStart(id), frameId);
+  await tool(page, 'Present').click();
+  await page.waitForTimeout(500);
+  await expect(page.locator('.present')).toHaveAttribute('data-variables', '{}');
+  await page.locator('.present__hotspot').first().click();
+  await page.waitForTimeout(200);
+  await expect(page.locator('.present')).toHaveAttribute('data-variables', `{"${variableId}":false}`);
+});

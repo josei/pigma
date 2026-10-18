@@ -44,6 +44,7 @@ import { staleLibraryInstances } from '../model/library';
 import type { AutoLayout, ComponentPropertyDefinition, Constraints, GridTrackSize, LayoutGrid } from '../model/types';
 import type { Effect } from '../model/types';
 import { absoluteBounds, findNode } from '../model/tree';
+import { variablesOf } from '../model/variables';
 import { roundTo as round } from '../model/matrix';
 
 /** Numeric field with Figma-style drag-to-scrub and keyboard commit. */
@@ -1841,6 +1842,7 @@ const ACTION_KINDS: Array<{ value: PrototypeActionKind; label: string }> = [
   { value: 'BACK', label: 'Back' },
   { value: 'CLOSE', label: 'Close' },
   { value: 'URL', label: 'Open URL' },
+  { value: 'SET_VARIABLE', label: 'Set variable' },
 ];
 
 /**
@@ -2104,6 +2106,13 @@ function PrototypeSection({ node }: { node: SceneNode | null }) {
   const [quickSmart, setQuickSmart] = useState(false);
   const [quickDuration, setQuickDuration] = useState(300);
   const [quickUrl, setQuickUrl] = useState('https://');
+  // Set variable: the variable to set, and its value (true/false, or a number).
+  const [quickVariable, setQuickVariable] = useState('');
+  const [quickValue, setQuickValue] = useState('true');
+  const addVariableInteraction = useEditor((state) => state.addVariableInteraction);
+  const variables = Object.values(variablesOf(file));
+  const settable = variables.filter((variable) => variable.resolvedType === 'BOOLEAN' || variable.resolvedType === 'FLOAT');
+  const chosenVariable = settable.find((variable) => variable.id === quickVariable);
 
   const page = file.document.children.find((child) => child.id === pageId);
   const destinations = prototypeDestinations(file, pageId);
@@ -2146,6 +2155,38 @@ function PrototypeSection({ node }: { node: SceneNode | null }) {
                   ))}
                 </select>
               </div>
+              {quickKind === 'SET_VARIABLE' ? (
+                <>
+                  <div className="prop-row">
+                    <span className="prop-row__label" style={{ minWidth: 60 }}>Variable</span>
+                    <select
+                      className="input"
+                      aria-label="Variable to set"
+                      value={quickVariable}
+                      onChange={(event) => setQuickVariable(event.target.value)}
+                    >
+                      <option value="">Choose a variable</option>
+                      {settable.map((variable) => (
+                        <option key={variable.id} value={variable.id}>{variable.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {chosenVariable?.resolvedType === 'BOOLEAN' ? (
+                    <div className="prop-row">
+                      <span className="prop-row__label" style={{ minWidth: 60 }}>Value</span>
+                      <select className="input" aria-label="Variable value" value={quickValue} onChange={(event) => setQuickValue(event.target.value)}>
+                        <option value="true">True</option>
+                        <option value="false">False</option>
+                      </select>
+                    </div>
+                  ) : chosenVariable?.resolvedType === 'FLOAT' ? (
+                    <div className="prop-row">
+                      <span className="prop-row__label" style={{ minWidth: 60 }}>Value</span>
+                      <input className="input" type="number" aria-label="Variable value" value={quickValue} onChange={(event) => setQuickValue(event.target.value)} />
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
               {quickKind === 'NAVIGATE' || quickKind === 'OVERLAY' || quickKind === 'SWAP_STATE' ? (
                 <div className="prop-row">
                   <span className="prop-row__label" style={{ minWidth: 60 }}>Target</span>
@@ -2209,9 +2250,20 @@ function PrototypeSection({ node }: { node: SceneNode | null }) {
                     ? quickTarget === ''
                     : quickKind === 'URL'
                       ? quickUrl.trim() === ''
-                      : false
+                      : quickKind === 'SET_VARIABLE'
+                        ? chosenVariable === undefined || (chosenVariable.resolvedType === 'FLOAT' && quickValue.trim() === '')
+                        : false
                 }
                 onClick={() => {
+                  if (quickKind === 'SET_VARIABLE' && chosenVariable) {
+                    // A boolean reads its choice; a number reads the typed value.
+                    const value = chosenVariable.resolvedType === 'BOOLEAN' ? quickValue === 'true' : Number(quickValue);
+                    addVariableInteraction(node.id, chosenVariable.id, value);
+                    setQuickVariable('');
+                    setQuickValue('true');
+                    setQuickKind('NAVIGATE');
+                    return;
+                  }
                   // Smart animate is offered here too, not only after the link
                   // exists: a layer that matches by name animates between frames.
                   // Deliberately NAVIGATE-only: a SWAP_STATE has no transition

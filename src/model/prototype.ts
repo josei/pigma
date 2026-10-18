@@ -48,6 +48,8 @@ export function actionLabel(action: PrototypeAction): string {
       return 'Open URL';
     case 'NODE':
       return action.overlay ? 'Open overlay' : 'Navigate to';
+    case 'SET_VARIABLE':
+      return 'Set variable';
     default:
       return action.type;
   }
@@ -93,7 +95,7 @@ export function removeInteraction(file: PigmaFile, nodeId: string, index: number
  * playback changes the instance in place. Without it here a swap could only be
  * imported, never authored.
  */
-export type PrototypeActionKind = 'NAVIGATE' | 'OVERLAY' | 'SWAP_STATE' | 'BACK' | 'CLOSE' | 'URL';
+export type PrototypeActionKind = 'NAVIGATE' | 'OVERLAY' | 'SWAP_STATE' | 'BACK' | 'CLOSE' | 'URL' | 'SET_VARIABLE';
 
 /** Build the action for a kind, so the quick-link row and the editor agree. */
 export function actionOfKind(
@@ -112,9 +114,17 @@ export function actionOfKind(
       return { type: 'CLOSE' };
     case 'URL':
       return { type: 'URL', url: url ?? 'https://' };
+    case 'SET_VARIABLE':
+      // A variable action needs its variable and value: see setVariableAction.
+      return { type: 'SET_VARIABLE' };
     default:
       return { type: 'NODE', destinationId: destinationId ?? null, navigation: 'NAVIGATE' };
   }
+}
+
+/** A SET_VARIABLE action: the variable to set, and the boolean or number to set it to. */
+export function setVariableAction(variableId: string, value: boolean | number): PrototypeAction {
+  return { type: 'SET_VARIABLE', variableId, variableValue: value };
 }
 
 /**

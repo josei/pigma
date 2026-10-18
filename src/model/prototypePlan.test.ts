@@ -9,7 +9,7 @@
  * is no longer on screen, which is why the other reading is not implementable.
  */
 import { describe, expect, it } from 'vitest';
-import { actionOfKind, planActions, setVariableFromAction } from './prototype';
+import { actionLabel, actionOfKind, planActions, setVariableAction, setVariableFromAction } from './prototype';
 import { createFrameNode } from './factory';
 import { emptyFile } from './validate';
 import { parseFile, serializeFile } from './serialize';
@@ -97,5 +97,16 @@ describe('SET_VARIABLE actions', () => {
     const restored = parseFile(serializeFile(file));
     const kept = (restored.file!.document.children[0]!.children[0] as typeof frame).interactions![0]!.actions[0]!;
     expect(kept).toEqual({ type: 'SET_VARIABLE', variableId: 'v', variableValue: false });
+  });
+});
+
+describe('authoring a SET_VARIABLE link', () => {
+  it('builds the action with its variable and value, and labels it for the list', () => {
+    expect(setVariableAction('v1', false)).toEqual({ type: 'SET_VARIABLE', variableId: 'v1', variableValue: false });
+    expect(actionLabel(setVariableAction('v1', 4))).toBe('Set variable');
+  });
+
+  it('offers the kind in the panel, and builds a bare action for it until a variable is chosen', () => {
+    expect(actionOfKind('SET_VARIABLE')).toEqual({ type: 'SET_VARIABLE' });
   });
 });
