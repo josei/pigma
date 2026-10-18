@@ -38,3 +38,24 @@ test('B88b Make slot is disabled, with the reason, for a frame that is not insid
   await expect(slot).toHaveClass(/menu__item--disabled/);
   await expect(slot).toHaveAttribute('data-disabled-reason', /Select a frame inside a component/);
 });
+
+test('B88c an instance of a component with a slot offers the slot in its properties', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Frame', 200, 160, -200, 0);
+  await drawShape(page, 'Frame', 100, 80, -200, 0);
+  await page.locator('.app__left .layer-row', { hasText: 'Frame' }).first().click();
+  await tool(page, 'Create component').click();
+  await page.waitForTimeout(350);
+  await page.locator('.app__left .layer-row__chevron').first().click();
+  await page.waitForTimeout(200);
+  await page.locator('.app__left .layer-row').nth(1).click({ button: 'right' });
+  await page.locator('.menu__item', { hasText: 'Make slot' }).click();
+  await page.waitForTimeout(300);
+
+  // Insert an instance of the component, from Assets.
+  await page.locator('.rail__button[aria-label="Assets"]').click();
+  await page.locator('.app__left .layer-row', { hasText: 'Frame' }).first().dblclick();
+  await page.waitForTimeout(450);
+  await page.locator('.rail__button[aria-label="Layers"]').click();
+  await expect(page.locator('[data-testid="slot-row-Slot"]'), 'the instance does not offer its slot').toBeVisible();
+});
