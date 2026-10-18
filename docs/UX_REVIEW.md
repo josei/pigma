@@ -57,6 +57,9 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- A conditional interaction lost its condition on save and reload: the file loader rebuilt interactions
+  from trigger and actions only. A well-formed condition now survives the load, and a malformed one is
+  dropped (prototypePlan.test.ts).
 - A Set variable interaction showed as Navigate to in the Prototype list, because the action select had no
   option for it. It now shows as Set variable (B92a).
 - An interaction can be made conditional on a variable, from an Only when row in the Prototype tab (B92a).

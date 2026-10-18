@@ -130,3 +130,33 @@ describe('conditional interactions', () => {
     expect(interactionRuns(when('open', false), {})).toBe(false);
   });
 });
+
+describe('conditional interactions in the file format', () => {
+  it('drops a malformed condition on load, and keeps the interaction', () => {
+    const file = emptyFile('Malformed');
+    const frame = createFrameNode(file.document, 0, 0, 100, 100, { name: 'Trigger' });
+    frame.interactions = [{ trigger: { type: 'ON_CLICK' }, actions: [{ type: 'BACK' }], condition: { variableId: 7, value: 'yes' } } as never];
+    file.document.children[0]!.children = [frame];
+    const restored = parseFile(serializeFile(file));
+    const kept = (restored.file!.document.children[0]!.children[0] as typeof frame).interactions![0]!;
+    expect(kept.condition).toBeUndefined();
+    expect(kept.actions).toEqual([{ type: 'BACK' }]);
+  });
+
+  it('round-trips a condition with its interaction', () => {
+    const file = emptyFile('Conditions');
+    const frame = createFrameNode(file.document, 0, 0, 100, 100, { name: 'Trigger' });
+    frame.interactions = [
+      {
+        trigger: { type: 'ON_CLICK' },
+        actions: [{ type: 'SET_VARIABLE', variableId: 'open', variableValue: true }],
+        condition: { variableId: 'count', value: 2 },
+      },
+    ];
+    file.document.children[0]!.children = [frame];
+    const restored = parseFile(serializeFile(file));
+    const kept = (restored.file!.document.children[0]!.children[0] as typeof frame).interactions![0]!;
+    expect(kept.condition).toEqual({ variableId: 'count', value: 2 });
+    expect(kept.actions[0]).toEqual({ type: 'SET_VARIABLE', variableId: 'open', variableValue: true });
+  });
+});

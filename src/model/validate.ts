@@ -317,12 +317,19 @@ function normalizeAutoLayout(value: unknown): AutoLayout | undefined {
 
 function normalizeInteractions(value: unknown): Node['interactions'] {
   if (!Array.isArray(value)) return undefined;
-  const out = value.filter(isRecord).map((item) => ({
-    trigger: isRecord(item.trigger)
-      ? { type: str(item.trigger.type, 'ON_CLICK') as 'ON_CLICK', ...item.trigger }
-      : { type: 'ON_CLICK' as const },
-    actions: Array.isArray(item.actions) ? (item.actions.filter(isRecord) as never[]) : [],
-  }));
+  const out = value.filter(isRecord).map((item) => {
+    // A condition survives a save and reload only if it is well formed: a variable and a boolean or number.
+    const condition = isRecord(item.condition) && typeof item.condition.variableId === 'string' && (typeof item.condition.value === 'boolean' || typeof item.condition.value === 'number')
+      ? { variableId: item.condition.variableId, value: item.condition.value }
+      : undefined;
+    return {
+      trigger: isRecord(item.trigger)
+        ? { type: str(item.trigger.type, 'ON_CLICK') as 'ON_CLICK', ...item.trigger }
+        : { type: 'ON_CLICK' as const },
+      actions: Array.isArray(item.actions) ? (item.actions.filter(isRecord) as never[]) : [],
+      ...(condition ? { condition } : {}),
+    };
+  });
   return out as Node['interactions'];
 }
 
