@@ -9,11 +9,11 @@
  * is no longer on screen, which is why the other reading is not implementable.
  */
 import { describe, expect, it } from 'vitest';
-import { actionLabel, actionOfKind, planActions, setVariableAction, setVariableFromAction } from './prototype';
+import { actionLabel, actionOfKind, interactionRuns, planActions, setVariableAction, setVariableFromAction } from './prototype';
 import { createFrameNode } from './factory';
 import { emptyFile } from './validate';
 import { parseFile, serializeFile } from './serialize';
-import type { PrototypeAction } from './types';
+import type { PrototypeAction, PrototypeInteraction } from './types';
 
 describe('prototype action sequences', () => {
   it('runs a supported multi-action sequence in order', () => {
@@ -108,5 +108,25 @@ describe('authoring a SET_VARIABLE link', () => {
 
   it('offers the kind in the panel, and builds a bare action for it until a variable is chosen', () => {
     expect(actionOfKind('SET_VARIABLE')).toEqual({ type: 'SET_VARIABLE' });
+  });
+});
+
+describe('conditional interactions', () => {
+  const link: PrototypeInteraction = { trigger: { type: 'ON_CLICK' }, actions: [{ type: 'BACK' }] };
+  const when = (variableId: string, value: boolean | number): PrototypeInteraction => ({ ...link, condition: { variableId, value } });
+
+  it('always runs an interaction with no condition', () => {
+    expect(interactionRuns(link, {})).toBe(true);
+  });
+
+  it('runs a conditional interaction only while its variable holds the named value', () => {
+    expect(interactionRuns(when('open', true), { open: true })).toBe(true);
+    expect(interactionRuns(when('open', true), { open: false })).toBe(false);
+    expect(interactionRuns(when('count', 2), { count: 2 })).toBe(true);
+    expect(interactionRuns(when('count', 2), { count: 3 })).toBe(false);
+  });
+
+  it('matches nothing while the variable is unset', () => {
+    expect(interactionRuns(when('open', false), {})).toBe(false);
   });
 });

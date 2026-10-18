@@ -293,3 +293,13 @@ export function setVariableFromAction(values: PresentationVariables, action: Pro
   if (typeof value !== 'boolean' && typeof value !== 'number') return values;
   return { ...values, [action.variableId]: value };
 }
+
+/**
+ * Whether an interaction runs now: unconditional ones always do; a conditional one only
+ * while its variable holds the value it names. A variable not yet set matches nothing.
+ */
+export function interactionRuns(interaction: PrototypeInteraction, values: PresentationVariables): boolean {
+  const condition = interaction.condition;
+  if (!condition) return true;
+  return values[condition.variableId] === condition.value;
+}

@@ -83,3 +83,41 @@ test('B90a a Set variable link is authored in the Prototype tab and sets the var
   await page.waitForTimeout(200);
   await expect(page.locator('.present')).toHaveAttribute('data-variables', `{"${variableId}":false}`);
 });
+
+/**
+ * Slice 3: a conditional interaction is a hotspot only while its variable holds the value
+ * it names. A click that sets the variable shows the conditional hotspot.
+ */
+test('B91a a conditional hotspot appears only after a click sets its variable', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Frame', 300, 220, 0, 0);
+  await drawShape(page, 'Rectangle', 80, 60, -80, -60);
+  await drawShape(page, 'Ellipse', 80, 60, 80, 60);
+  const ids = await page.evaluate(() => {
+    const frame = (window.__pigmaStore!.getState().file.document.children[0]!.children as any[])[0];
+    return { frame: frame.id as string, rect: frame.children[0].id as string, ellipse: frame.children[1].id as string };
+  });
+  // The rectangle sets `open` to true on a click; the ellipse is a link that runs only once `open` is true.
+  await page.evaluate(([rect, ellipse, frame]) => {
+    window.__pigmaStore!.getState().apply('Links', (file) => {
+      const fix = (node: any): any => {
+        if (node.id === rect) return { ...node, interactions: [{ trigger: { type: 'ON_CLICK' }, actions: [{ type: 'SET_VARIABLE', variableId: 'open', variableValue: true }] }] };
+        if (node.id === ellipse) return { ...node, interactions: [{ trigger: { type: 'ON_CLICK' }, actions: [{ type: 'SET_VARIABLE', variableId: 'done', variableValue: true }], condition: { variableId: 'open', value: true } }] };
+        return node.children ? { ...node, children: node.children.map(fix) } : node;
+      };
+      return { ...file, document: fix(file.document) };
+    });
+    window.__pigmaStore!.getState().setPrototypeStart(frame ?? null);
+  }, [ids.rect, ids.ellipse, ids.frame]);
+
+  await tool(page, 'Present').click();
+  await page.waitForTimeout(500);
+  // Before the click: the rectangle's link shows; the conditional ellipse's does not.
+  await expect(page.locator('.present__hotspot[aria-label*="Rectangle"]')).toHaveCount(1);
+  await expect(page.locator('.present__hotspot[aria-label*="Ellipse"]'), 'a conditional hotspot showed before its condition held').toHaveCount(0);
+
+  await page.locator('.present__hotspot[aria-label*="Rectangle"]').click();
+  await page.waitForTimeout(250);
+  await expect(page.locator('.present__hotspot[aria-label*="Ellipse"]'), 'the conditional hotspot did not appear').toHaveCount(1);
+});
+

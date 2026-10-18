@@ -322,6 +322,11 @@ export interface PrototypeInteraction {
     delay?: number;
   };
   actions: PrototypeAction[];
+  /**
+   * A conditional interaction runs (and shows as a hotspot) only while the variable
+   * holds this value during the presentation. Absent: it always runs.
+   */
+  condition?: { variableId: string; value: boolean | number };
 }
 
 export interface BaseNode {

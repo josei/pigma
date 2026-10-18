@@ -5,8 +5,8 @@ import { overlayBox } from '../model/overlay';
 import { useEditor, type OverlayEntry } from '../store/editorStore';
 import { boundsOf } from '../model/matrix';
 import { findNode, worldTransform } from '../model/tree';
-import { interactionsOf, planActions, setVariableFromAction, type PresentationVariables } from '../model/prototype';
-import type { PigmaFile, PrototypeAction, SceneNode } from '../model/types';
+import { interactionRuns, interactionsOf, planActions, setVariableFromAction, type PresentationVariables } from '../model/prototype';
+import type { PigmaFile, PrototypeAction, PrototypeInteraction, SceneNode } from '../model/types';
 
 /**
  * Presentation mode.
@@ -21,6 +21,7 @@ interface Hotspot {
   node: SceneNode;
   label: string;
   actions: PrototypeAction[];
+  interaction: PrototypeInteraction;
 }
 
 function collectHotspots(file: PigmaFile, frameId: string): Hotspot[] {
@@ -30,7 +31,7 @@ function collectHotspots(file: PigmaFile, frameId: string): Hotspot[] {
   const visit = (node: SceneNode) => {
     for (const interaction of interactionsOf(node)) {
       if (interaction.actions.length === 0) continue;
-      hotspots.push({ node, label: `${node.name} · ${interaction.trigger.type}`, actions: interaction.actions });
+      hotspots.push({ node, label: `${node.name} · ${interaction.trigger.type}`, actions: interaction.actions, interaction });
     }
     if ('children' in node && Array.isArray(node.children)) (node.children as SceneNode[]).forEach(visit);
   };
@@ -225,7 +226,8 @@ export function Presentation() {
    */
   const renderHotspots = (frame: SceneNode) => {
     const origin = frameBounds(frame);
-    return collectHotspots(file, frame.id).map((hotspot) => {
+    // A conditional interaction is shown only while its condition holds.
+    return collectHotspots(file, frame.id).filter((hotspot) => interactionRuns(hotspot.interaction, variables)).map((hotspot) => {
       const box = boundsOf(worldTransform(file.document, hotspot.node.id), hotspot.node.width, hotspot.node.height);
       const trigger = hotspot.label.split(' · ')[1] ?? 'ON_CLICK';
       return (
