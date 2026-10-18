@@ -408,6 +408,11 @@ export interface EditorState {
   clearAutoLayout: () => void;
   resetOverrides: (instanceId: string) => void;
   updateSelectedTextStyle: (patch: Partial<TextStyle>, label?: string) => void;
+  /**
+   * Move one layer before or after a sibling, in DATA order (the layers panel shows
+   * children reversed). Only within the same parent: a drop elsewhere is refused.
+   */
+  moveLayer: (nodeId: string, targetId: string, placement: 'before' | 'after') => void;
   moveSelection: (dx: number, dy: number, transient?: boolean) => void;
   moveSelectionTo: (entries: Array<{ id: string; x: number; y: number }>, transient?: boolean) => void;
   syncTextSizes: () => void;
@@ -1350,6 +1355,20 @@ export const useEditor = create<EditorState>((set, get) => ({
     });
   },
 
+  moveLayer: (nodeId, targetId, placement) => {
+    if (nodeId === targetId) return;
+    get().apply('Move layer', (file) => {
+      const from = parentAndIndex(file.document, nodeId);
+      const target = parentAndIndex(file.document, targetId);
+      if (!from || !target || from.parent.id !== target.parent.id) return file;
+      const { root, removed } = removeNode(file.document, nodeId);
+      if (!removed) return file;
+      const at = parentAndIndex(root, targetId);
+      if (!at) return file;
+      const index = placement === 'after' ? at.index + 1 : at.index;
+      return { ...file, document: insertChild(root, at.parent.id, removed, index) };
+    });
+  },
   moveSelection: (dx, dy, transient = false) => {
     const state = get();
     const ids = state.selection.filter((id) => {

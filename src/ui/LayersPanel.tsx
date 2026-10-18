@@ -41,6 +41,9 @@ function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRe
   const renameNode = useEditor((state) => state.renameNode);
   const setEnteredContainer = useEditor((state) => state.setEnteredContainer);
   const [draft, setDraft] = useState(node.name);
+  // Which edge of this row a dragged layer would land on, as the panel shows it.
+  const [dropEdge, setDropEdge] = useState<'above' | 'below' | null>(null);
+  const moveLayer = useEditor((state) => state.moveLayer);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -63,8 +66,27 @@ function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRe
   return (
     <>
       <div
-        className={`layer-row${selected ? ' layer-row--selected' : ''}${node.visible ? '' : ' layer-row--hidden'}`}
+        className={`layer-row${selected ? ' layer-row--selected' : ''}${node.visible ? '' : ' layer-row--hidden'}${dropEdge ? ` layer-row--drop-${dropEdge}` : ''}`}
         style={{ paddingLeft: 8 + depth * 12 }}
+        draggable={!renamingId}
+        onDragStart={(event) => {
+          event.dataTransfer.setData('text/plain', node.id);
+          event.dataTransfer.effectAllowed = 'move';
+        }}
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes('text/plain')) return;
+          event.preventDefault();
+          const rect = event.currentTarget.getBoundingClientRect();
+          setDropEdge(event.clientY < rect.top + rect.height / 2 ? 'above' : 'below');
+        }}
+        onDragLeave={() => setDropEdge(null)}
+        onDrop={(event) => {
+          event.preventDefault();
+          const from = event.dataTransfer.getData('text/plain');
+          // The panel lists children reversed: a row above this one is LATER in the data.
+          if (from) moveLayer(from, node.id, dropEdge === 'above' ? 'after' : 'before');
+          setDropEdge(null);
+        }}
         onClick={(event) => select([node.id], event.shiftKey || event.metaKey || event.ctrlKey ? 'toggle' : 'replace')}
         // Right-click selects the row first (unless it is already part of the
         // selection), so the context menu acts on what was clicked, as in Figma.

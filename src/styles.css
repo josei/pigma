@@ -554,6 +554,15 @@ select {
   background: var(--figma-selected-bg);
 }
 
+/* Where a dragged layer would land: a brand-coloured line on the row's top or bottom edge. */
+.layer-row--drop-above {
+  box-shadow: inset 0 2px 0 var(--figma-brand);
+}
+
+.layer-row--drop-below {
+  box-shadow: inset 0 -2px 0 var(--figma-brand);
+}
+
 .layer-row--hidden {
   color: var(--figma-text-tertiary);
 }

@@ -57,6 +57,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- Layers could not be reordered by dragging. Dragging a row above or below a sibling moves it, one
+  undo step; a drop into a different parent is refused (B85a–b, DECISIONS.md).
 - Export had no keyboard shortcut. Cmd/Ctrl+Shift+E now opens the export options for the selection,
   the menu shows ⇧⌘E beside it, and an empty selection says so (B84a–c).
 - Grid: the Rows count showed only the declared rows, so three children wrapping onto a second row read
