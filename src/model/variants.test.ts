@@ -21,7 +21,7 @@ import {
 } from './variants';
 import { createFrameNode, createRectNode, createTextNode } from './factory';
 import { emptyFile } from './validate';
-import { findNode } from './tree';
+import { findNode, updateNode } from './tree';
 import { parseFile, serializeFile } from './serialize';
 import { syncInstances } from './instances';
 import type { ComponentNode, InstanceNode, SceneNode } from './types';
@@ -189,6 +189,17 @@ describe('making a slot', () => {
     const twice = makeSlot(once, frameId).file;
     const definitions = (findNode(twice.document, componentId) as ComponentNode).componentPropertyDefinitions!;
     expect(Object.keys(definitions).sort()).toEqual(['Slot', 'Slot 2'].sort());
+  });
+
+  it('refuses a slot inside another slot, with the reason, and changes nothing', () => {
+    const { file, frameId } = componentWithFrame();
+    const slotted = makeSlot(file, frameId).file;
+    // A frame inside the slot frame: a nested slot.
+    const inner = createFrameNode(slotted.document, 0, 0, 40, 40, { name: 'Inner' });
+    const nested = { ...slotted, document: updateNode(slotted.document, frameId, (node) => ({ ...node, children: [inner] }) as SceneNode) };
+    const result = makeSlot(nested, inner.id);
+    expect(result.reason).toMatch(/inside another slot is not supported/);
+    expect(result.file).toBe(nested);
   });
 
   it('refuses a node that is not a frame, and a frame outside any component', () => {

@@ -272,6 +272,11 @@ export function makeSlot(file: PigmaFile, slotId: string): { file: PigmaFile; re
     cursor = parent.parent.id;
   }
   if (!owner) return refuse('Select a frame inside a component to make it a slot');
+  // A slot inside another slot would receive content inside content: not modelled yet.
+  for (let ancestor = parentAndIndex(file.document, slotId); ancestor; ancestor = parentAndIndex(file.document, ancestor.parent.id)) {
+    if (ancestor.parent.type === owner.type) break;
+    if (ancestor.parent.componentPropertyReferences?.slot) return refuse('A slot inside another slot is not supported yet');
+  }
   const target = componentSetOf(file, owner.id) ?? owner;
   const definitions = componentPropertiesOf(target);
   // Name it Slot, Slot 2, ... so no existing property is overwritten.
