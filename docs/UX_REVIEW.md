@@ -57,6 +57,9 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- A Set variable interaction showed as Navigate to in the Prototype list, because the action select had no
+  option for it. It now shows as Set variable (B92a).
+- An interaction can be made conditional on a variable, from an Only when row in the Prototype tab (B92a).
 - A designer could not make a component slot. A frame inside a component now offers **Make slot** in
   the context menu, which binds a SLOT property to it; a root component is refused with the reason
   (B88a–b, DECISIONS.md).

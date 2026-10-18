@@ -2314,6 +2314,8 @@ function PrototypeSection({ node }: { node: SceneNode | null }) {
                         value={action.type === 'NODE' ? (action.overlay ? 'OVERLAY' : 'NAVIGATE') : action.type}
                         onChange={(event) => {
                           const value = event.target.value;
+                          // A variable action is authored in the quick-link row, not rewritten here.
+                          if (value === 'SET_VARIABLE') return;
                           const next: PrototypeAction =
                             value === 'NAVIGATE'
                               ? { type: 'NODE', destinationId: action.destinationId ?? destinations[0]?.id ?? null, navigation: 'NAVIGATE' }
@@ -2332,6 +2334,7 @@ function PrototypeSection({ node }: { node: SceneNode | null }) {
                         <option value="BACK">Back</option>
                         <option value="CLOSE">Close</option>
                         <option value="URL">Open URL</option>
+                        {action.type === 'SET_VARIABLE' ? <option value="SET_VARIABLE">Set variable</option> : null}
                       </select>
                       <button
                         type="button"
@@ -2342,6 +2345,53 @@ function PrototypeSection({ node }: { node: SceneNode | null }) {
                       >
                         <Icon name="trash" size={13} />
                       </button>
+                    </div>
+                    {/* Only when: the interaction runs while a variable holds the value named here. */}
+                    <div className="prop-row">
+                      <span className="prop-row__label" style={{ minWidth: 60 }}>Only when</span>
+                      <select
+                        className="input"
+                        aria-label={`Condition ${index}`}
+                        value={interaction.condition?.variableId ?? ''}
+                        onChange={(event) => {
+                          const variable = settable.find((entry) => entry.id === event.target.value);
+                          updateInteraction(node.id, index, {
+                            condition: variable
+                              ? { variableId: variable.id, value: variable.resolvedType === 'BOOLEAN' ? true : 0 }
+                              : undefined,
+                          });
+                        }}
+                      >
+                        <option value="">Always</option>
+                        {settable.map((variable) => (
+                          <option key={variable.id} value={variable.id}>{variable.name}</option>
+                        ))}
+                      </select>
+                      {interaction.condition ? (
+                        settable.find((entry) => entry.id === interaction.condition?.variableId)?.resolvedType === 'BOOLEAN' ? (
+                          <select
+                            className="input"
+                            aria-label={`Condition value ${index}`}
+                            value={String(interaction.condition.value)}
+                            onChange={(event) =>
+                              updateInteraction(node.id, index, { condition: { ...interaction.condition!, value: event.target.value === 'true' } })
+                            }
+                          >
+                            <option value="true">True</option>
+                            <option value="false">False</option>
+                          </select>
+                        ) : (
+                          <input
+                            className="input"
+                            type="number"
+                            aria-label={`Condition value ${index}`}
+                            value={String(interaction.condition.value)}
+                            onChange={(event) =>
+                              updateInteraction(node.id, index, { condition: { ...interaction.condition!, value: Number(event.target.value) } })
+                            }
+                          />
+                        )
+                      ) : null}
                     </div>
                     {action.type === 'NODE' ? (
                       <div className="prop-row">
