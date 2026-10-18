@@ -57,6 +57,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- Export had no keyboard shortcut. Cmd/Ctrl+Shift+E now opens the export options for the selection,
+  the menu shows ⇧⌘E beside it, and an empty selection says so (B84a–c).
 - Grid: the Rows count showed only the declared rows, so three children wrapping onto a second row read
   as one row. The panel now shows the rows the grid uses (`gridRowCount`, B57f).
 - Keyboard: F6 focuses the tools toolbar (B82b). The main menu no longer shows ⇧D beside the theme

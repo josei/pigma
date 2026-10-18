@@ -27,7 +27,7 @@ const ITEMS: MenuItem[] = [
   { group: 'Share', label: 'Copy link to this document…', icon: 'link', run: () => useEditor.getState().setShareLinkOpen(true) },
   { group: 'Export', label: 'Export SVG', icon: 'duplicate', action: 'export-svg' },
   { label: 'Export selection as SVG', icon: 'duplicate', action: 'export-selection-svg' },
-  { label: 'Export selection as PNG…', icon: 'duplicate', action: 'export-selection-png-options' },
+  { label: 'Export selection as PNG…', icon: 'duplicate', shortcut: '⇧⌘E', action: 'export-selection-png-options' },
   { label: 'Copy as PNG', icon: 'copy', action: 'copy-png' },
   { label: 'Export PNG…', icon: 'duplicate', action: 'export-png-options' },
   { label: 'Export PDF', icon: 'duplicate', action: 'export-pdf' },

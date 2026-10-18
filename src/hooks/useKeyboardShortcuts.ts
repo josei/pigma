@@ -123,6 +123,14 @@ export function useKeyboardShortcuts(): void {
         state.pasteProperties();
         return;
       }
+      // Figma's Export: Cmd/Ctrl+Shift+E opens the export options for the selection,
+      // the same dialog the menu's "Export selection as PNG" opens.
+      if (meta && event.shiftKey && !event.altKey && event.key.toLowerCase() === 'e') {
+        event.preventDefault();
+        if (state.selection.length === 0) state.pushToast('Select something to export');
+        else state.setPngOptions({ open: true, scope: 'selection' });
+        return;
+      }
       // Figma's Flatten: Cmd/Ctrl+E.
       if (meta && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'e' && state.selection.length > 0) {
         event.preventDefault();
