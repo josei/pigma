@@ -19,7 +19,7 @@ import type { Paint } from '../model/types';
 
 /** A draggable point of a gradient: a linear's two ends, or a radial's centre and edges. */
 export type GradientHandle = 'start' | 'end' | 'centre' | 'right' | 'bottom';
-import { absoluteBounds, boundsOfNodes, findNode, insertChild, parentAndIndex, removeNode, updateNode } from '../model/tree';
+import { absoluteBounds, boundsOfNodes, findNode, insertChild, moveNode, parentAndIndex, removeNode, updateNode } from '../model/tree';
 import {
   alignNodes,
   applyNodePatch,
@@ -410,10 +410,11 @@ export interface EditorState {
   resetOverrides: (instanceId: string) => void;
   updateSelectedTextStyle: (patch: Partial<TextStyle>, label?: string) => void;
   /**
-   * Move one layer before or after a sibling, in DATA order (the layers panel shows
-   * children reversed). Only within the same parent: a drop elsewhere is refused.
+   * Move a layer beside a row ('before' / 'after', in DATA order: the layers panel shows
+   * children reversed), into the row's parent; or 'inside' a frame or section, as its
+   * front child. The layer keeps its place on the canvas. Instance children refuse drops.
    */
-  moveLayer: (nodeId: string, targetId: string, placement: 'before' | 'after') => void;
+  moveLayer: (nodeId: string, targetId: string, placement: 'before' | 'after' | 'inside') => void;
   moveSelection: (dx: number, dy: number, transient?: boolean) => void;
   moveSelectionTo: (entries: Array<{ id: string; x: number; y: number }>, transient?: boolean) => void;
   syncTextSizes: () => void;
@@ -1361,15 +1362,22 @@ export const useEditor = create<EditorState>((set, get) => ({
   moveLayer: (nodeId, targetId, placement) => {
     if (nodeId === targetId) return;
     get().apply('Move layer', (file) => {
-      const from = parentAndIndex(file.document, nodeId);
-      const target = parentAndIndex(file.document, targetId);
-      if (!from || !target || from.parent.id !== target.parent.id) return file;
-      const { root, removed } = removeNode(file.document, nodeId);
-      if (!removed) return file;
+      if (!findNode(file.document, nodeId) || !findNode(file.document, targetId)) return file;
+      // Inside a frame or section: the layer becomes its last child (its front).
+      if (placement === 'inside') {
+        const container = findNode(file.document, targetId);
+        if (!container || (container.type !== 'FRAME' && container.type !== 'SECTION')) return file;
+        if (instanceAncestryOf(file.document, targetId)) return file;
+        return { ...file, document: moveNode(file.document, nodeId, targetId) };
+      }
+      // Beside a row: the layer joins that row's parent, at the row's place.
+      const { root } = removeNode(file.document, nodeId);
       const at = parentAndIndex(root, targetId);
       if (!at) return file;
+      // An instance's children are owned by its component: nothing is dropped into them.
+      if (at.parent.type === 'INSTANCE' || instanceAncestryOf(file.document, targetId)) return file;
       const index = placement === 'after' ? at.index + 1 : at.index;
-      return { ...file, document: insertChild(root, at.parent.id, removed, index) };
+      return { ...file, document: moveNode(file.document, nodeId, at.parent.id, index) };
     });
   },
   moveSelection: (dx, dy, transient = false) => {

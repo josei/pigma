@@ -563,6 +563,11 @@ select {
   box-shadow: inset 0 -2px 0 var(--figma-brand);
 }
 
+/* A frame or section takes a layer inside it: its whole row is outlined. */
+.layer-row--drop-inside {
+  box-shadow: inset 0 0 0 2px var(--figma-brand);
+}
+
 .layer-row--hidden {
   color: var(--figma-text-tertiary);
 }

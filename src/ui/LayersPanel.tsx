@@ -42,7 +42,7 @@ function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRe
   const setEnteredContainer = useEditor((state) => state.setEnteredContainer);
   const [draft, setDraft] = useState(node.name);
   // Which edge of this row a dragged layer would land on, as the panel shows it.
-  const [dropEdge, setDropEdge] = useState<'above' | 'below' | null>(null);
+  const [dropEdge, setDropEdge] = useState<'above' | 'below' | 'inside' | null>(null);
   const moveLayer = useEditor((state) => state.moveLayer);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -77,14 +77,18 @@ function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRe
           if (!event.dataTransfer.types.includes('text/plain')) return;
           event.preventDefault();
           const rect = event.currentTarget.getBoundingClientRect();
-          setDropEdge(event.clientY < rect.top + rect.height / 2 ? 'above' : 'below');
+          const fraction = (event.clientY - rect.top) / rect.height;
+          // A frame or section takes the middle of its row as "inside"; its edges place beside it.
+          const container = node.type === 'FRAME' || node.type === 'SECTION';
+          if (container && fraction > 0.25 && fraction < 0.75) setDropEdge('inside');
+          else setDropEdge(fraction < 0.5 ? 'above' : 'below');
         }}
         onDragLeave={() => setDropEdge(null)}
         onDrop={(event) => {
           event.preventDefault();
           const from = event.dataTransfer.getData('text/plain');
           // The panel lists children reversed: a row above this one is LATER in the data.
-          if (from) moveLayer(from, node.id, dropEdge === 'above' ? 'after' : 'before');
+          if (from) moveLayer(from, node.id, dropEdge === 'inside' ? 'inside' : dropEdge === 'above' ? 'after' : 'before');
           setDropEdge(null);
         }}
         onClick={(event) => select([node.id], event.shiftKey || event.metaKey || event.ctrlKey ? 'toggle' : 'replace')}

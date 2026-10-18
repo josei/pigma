@@ -60,8 +60,9 @@ other than Chromium. Nothing below should be read as a claim about those.
 - A designer could not make a component slot. A frame inside a component now offers **Make slot** in
   the context menu, which binds a SLOT property to it; a root component is refused with the reason
   (B88a–b, DECISIONS.md).
-- Layers could not be reordered by dragging. Dragging a row above or below a sibling moves it, one
-  undo step; a drop into a different parent is refused (B85a–b, DECISIONS.md).
+- Layers could not be reordered by dragging. A drag above or below a row moves the layer beside it,
+  and a drop onto the middle of a frame or section puts it inside. Each move is one undo step and
+  keeps the layer's place on the canvas; instance children refuse drops (B85a–c, DECISIONS.md).
 - Export had no keyboard shortcut. Cmd/Ctrl+Shift+E now opens the export options for the selection,
   the menu shows ⇧⌘E beside it, and an empty selection says so (B84a–c).
 - Grid: the Rows count showed only the declared rows, so three children wrapping onto a second row read
