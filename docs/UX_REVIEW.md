@@ -57,6 +57,9 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- A designer could not make a component slot. A frame inside a component now offers **Make slot** in
+  the context menu, which binds a SLOT property to it; a root component is refused with the reason
+  (B88a–b, DECISIONS.md).
 - Layers could not be reordered by dragging. Dragging a row above or below a sibling moves it, one
   undo step; a drop into a different parent is refused (B85a–b, DECISIONS.md).
 - Export had no keyboard shortcut. Cmd/Ctrl+Shift+E now opens the export options for the selection,

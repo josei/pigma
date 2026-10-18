@@ -129,6 +129,7 @@ import {
 } from '../model/prototype';
 import {
   addComponentProperty as addComponentPropertyOp,
+  makeSlot as makeSlotOp,
   createComponentSet as createComponentSetOp,
   setInstanceProperty as setInstancePropertyOp,
   setInstanceVariant as setInstanceVariantOp,
@@ -446,6 +447,8 @@ export interface EditorState {
    */
   setSlotContent: (instanceId: string, slotNodeId: string, contentIds: string[] | null) => void;
   addComponentProperty: (componentId: string, type: 'BOOLEAN' | 'TEXT' | 'INSTANCE_SWAP', name: string, defaultValue: ComponentPropertyValue) => void;
+  /** Make the selected frame, inside a component, a slot (a SLOT property bound to it). */
+  makeSlot: () => void;
   addVariableCollection: () => void;
   addVariable: (collectionId: string, type: VariableType) => void;
   setVariableValue: (variableId: string, value: VariableValue) => void;
@@ -1638,6 +1641,15 @@ export const useEditor = create<EditorState>((set, get) => ({
     get().apply(`Set ${name}`, () => next);
   },
 
+  makeSlot: () => {
+    const selection = get().selection;
+    const result = selection.length === 1 ? makeSlotOp(get().file, selection[0]!) : { file: get().file, reason: 'Select a frame inside a component to make it a slot' };
+    if (result.reason) {
+      get().pushToast(result.reason);
+      return;
+    }
+    get().apply('Make slot', () => result.file);
+  },
   addComponentProperty: (componentId, type, name, defaultValue) => {
     const next = addComponentPropertyOp(get().file, componentId, type, name, defaultValue);
     if (next === get().file) return;

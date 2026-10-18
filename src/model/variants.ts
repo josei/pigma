@@ -249,6 +249,42 @@ export function addComponentProperty(
   return { ...file, document: syncInstances(document) };
 }
 
+/**
+ * Make a frame inside a component a slot. The SLOT property is defined on the owning
+ * component (or its variant set, as every other property is), and the frame names it
+ * through `componentPropertyReferences.slot`. Refused, with the reason, when the node is
+ * not a frame or is not inside a component.
+ */
+export function makeSlot(file: PigmaFile, slotId: string): { file: PigmaFile; reason?: string } {
+  const refuse = (reason: string) => ({ file, reason });
+  const slot = findNode(file.document, slotId);
+  if (!slot || slot.type !== 'FRAME') return refuse('Select a frame inside a component to make it a slot');
+  // The nearest component above the frame owns its properties.
+  let owner: ComponentNode | null = null;
+  let cursor = slotId;
+  for (;;) {
+    const parent = parentAndIndex(file.document, cursor);
+    if (!parent) break;
+    if (parent.parent.type === 'COMPONENT' || parent.parent.type === 'COMPONENT_SET') {
+      owner = parent.parent as ComponentNode;
+      break;
+    }
+    cursor = parent.parent.id;
+  }
+  if (!owner) return refuse('Select a frame inside a component to make it a slot');
+  const target = componentSetOf(file, owner.id) ?? owner;
+  const definitions = componentPropertiesOf(target);
+  // Name it Slot, Slot 2, ... so no existing property is overwritten.
+  let name = 'Slot';
+  for (let index = 2; definitions[name]; index += 1) name = `Slot ${index}`;
+  const withDefinition = updateNode(file.document, target.id, (node) => ({
+    ...node,
+    componentPropertyDefinitions: { ...definitions, [name]: { type: 'SLOT', defaultValue: null } },
+  }) as SceneNode);
+  const withReference = setPropertyReference({ ...file, document: withDefinition }, slotId, 'slot', name);
+  return { file: { ...withReference, document: syncInstances(withReference.document) } };
+}
+
 export function removeComponentProperty(file: PigmaFile, componentId: string, name: string): PigmaFile {
   const set = componentSetOf(file, componentId);
   const targetId = set ? set.id : componentId;

@@ -35,6 +35,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon, type IconName } from './icons';
 import { useEditor } from '../store/editorStore';
 import { findNode } from '../model/tree';
+import { makeSlot as makeSlotOp } from '../model/variants';
 
 interface ContextItem {
   label: string;
@@ -102,6 +103,18 @@ function nodeItems(): ContextItem[] {
       icon: 'instance',
       shortcut: '⌘⌥K',
       run: () => store().createComponentFromSelection(),
+    },
+    {
+      label: 'Make slot',
+      icon: 'instance',
+      // Enabled only where it would succeed: the reason says what to select instead.
+      ...(() => {
+        const { selection, file } = store();
+        if (selection.length !== 1) return { disabledReason: 'select one frame inside a component' };
+        const reason = makeSlotOp(file, selection[0]!).reason;
+        return reason ? { disabledReason: reason } : {};
+      })(),
+      run: () => store().makeSlot(),
     },
     { label: 'Frame selection', icon: 'frame', shortcut: '⌘⌥G', run: () => store().frameSelection() },
     { label: 'Delete', icon: 'trash', shortcut: '⌫', run: () => store().deleteSelection() },

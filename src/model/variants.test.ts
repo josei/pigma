@@ -6,6 +6,7 @@ import {
   componentSetOf,
   createComponentSet,
   describeVariant,
+  makeSlot,
   findVariant,
   formatVariantName,
   parseVariantName,
@@ -18,7 +19,7 @@ import {
   suggestedComponents,
   variantOptions,
 } from './variants';
-import { createRectNode, createTextNode } from './factory';
+import { createFrameNode, createRectNode, createTextNode } from './factory';
 import { emptyFile } from './validate';
 import { findNode } from './tree';
 import { parseFile, serializeFile } from './serialize';
@@ -159,6 +160,46 @@ describe('variants and component properties', () => {
     expect(set.type).toBe('COMPONENT_SET');
     expect(set.componentPropertyDefinitions).toMatchObject({ Size: { variantOptions: ['Small', 'Large'] } });
     expect((set.children as SceneNode[]).map((child) => child.name)).toEqual(['Size=Small', 'Size=Large']);
+  });
+});
+
+describe('making a slot', () => {
+  /** A component holding one frame; returns the file and the ids. */
+  function componentWithFrame() {
+    const file = emptyFile('Slots');
+    const page = file.document.children[0]!;
+    const frame = createFrameNode(file.document, 0, 0, 120, 80, { name: 'Body' });
+    const component = { ...createRectNode(file.document, 0, 0, 200, 160), type: 'COMPONENT' as const, name: 'Card', children: [frame] } as unknown as ComponentNode;
+    page.children = [component];
+    return { file: { ...file, document: file.document }, componentId: component.id, frameId: frame.id };
+  }
+
+  it('defines a SLOT on the component and names the frame that holds it', () => {
+    const { file, componentId, frameId } = componentWithFrame();
+    const result = makeSlot(file, frameId);
+    expect(result.reason).toBeUndefined();
+    const component = findNode(result.file.document, componentId) as ComponentNode;
+    expect(component.componentPropertyDefinitions).toEqual({ Slot: { type: 'SLOT', defaultValue: null } });
+    expect(findNode(result.file.document, frameId)!.componentPropertyReferences).toEqual({ slot: 'Slot' });
+  });
+
+  it('gives a second slot its own name, and keeps the first', () => {
+    const { file, componentId, frameId } = componentWithFrame();
+    const once = makeSlot(file, frameId).file;
+    const twice = makeSlot(once, frameId).file;
+    const definitions = (findNode(twice.document, componentId) as ComponentNode).componentPropertyDefinitions!;
+    expect(Object.keys(definitions).sort()).toEqual(['Slot', 'Slot 2'].sort());
+  });
+
+  it('refuses a node that is not a frame, and a frame outside any component', () => {
+    const { file, frameId } = componentWithFrame();
+    const rect = createRectNode(file.document, 0, 0, 10, 10);
+    const loose = createFrameNode(file.document, 0, 0, 50, 50, { name: 'Loose' });
+    const page = file.document.children[0]!;
+    page.children = [...page.children, loose];
+    expect(makeSlot(file, rect.id).reason).toMatch(/Select a frame inside a component/);
+    expect(makeSlot(file, loose.id).reason, 'a frame outside any component became a slot').toMatch(/Select a frame inside a component/);
+    expect(makeSlot(file, frameId).reason).toBeUndefined();
   });
 });
 
