@@ -281,7 +281,7 @@ export type OverlayPosition =
   | 'CUSTOM';
 
 export interface PrototypeAction {
-  type: 'NODE' | 'BACK' | 'CLOSE' | 'URL';
+  type: 'NODE' | 'BACK' | 'CLOSE' | 'URL' | 'SET_VARIABLE';
   /** Overlay actions keep the current frame underneath. */
   overlay?: boolean;
   /** Overlay anchoring; defaults to centered. */
@@ -293,6 +293,9 @@ export interface PrototypeAction {
   overlayDim?: boolean;
   destinationId?: string | null;
   url?: string;
+  /** SET_VARIABLE: the variable to set, and the boolean or number to set it to. */
+  variableId?: string;
+  variableValue?: boolean | number;
   /**
    * How a NODE action reaches its destination, in Figma's terms.
    *

@@ -269,3 +269,17 @@ export function reachableFrom(file: PigmaFile, startNodeId: string): string[] {
   }
   return [...seen];
 }
+
+/** The variable values a presentation holds while it plays: boolean and number variables. */
+export type PresentationVariables = Record<string, boolean | number>;
+
+/**
+ * Apply a SET_VARIABLE action to a presentation's variable values. Any other action,
+ * or one without a variable or a boolean/number value, leaves the values as they were.
+ */
+export function setVariableFromAction(values: PresentationVariables, action: PrototypeAction): PresentationVariables {
+  if (action.type !== 'SET_VARIABLE' || !action.variableId) return values;
+  const value = action.variableValue;
+  if (typeof value !== 'boolean' && typeof value !== 'number') return values;
+  return { ...values, [action.variableId]: value };
+}

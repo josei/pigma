@@ -5,7 +5,7 @@ import { overlayBox } from '../model/overlay';
 import { useEditor, type OverlayEntry } from '../store/editorStore';
 import { boundsOf } from '../model/matrix';
 import { findNode, worldTransform } from '../model/tree';
-import { interactionsOf, planActions } from '../model/prototype';
+import { interactionsOf, planActions, setVariableFromAction, type PresentationVariables } from '../model/prototype';
 import type { PigmaFile, PrototypeAction, SceneNode } from '../model/types';
 
 /**
@@ -79,6 +79,11 @@ export function Presentation() {
   }, [active]);
 
   const [animation, setAnimation] = useState<SceneAnimation | null>(null);
+  // Variable values live for one presentation: they start empty each time it opens.
+  const [variables, setVariables] = useState<PresentationVariables>({});
+  useEffect(() => {
+    if (active) setVariables({});
+  }, [active]);
 
   useEffect(() => {
     if (!animation) return;
@@ -127,6 +132,9 @@ export function Presentation() {
           continue;
         case 'CLOSE':
           closeOverlay();
+          continue;
+        case 'SET_VARIABLE':
+          setVariables((current) => setVariableFromAction(current, action));
           continue;
         case 'URL':
           if (action.url) window.open(action.url, '_blank', 'noopener');
@@ -255,7 +263,7 @@ export function Presentation() {
 
   if (!base || base.type === 'DOCUMENT' || base.type === 'CANVAS') {
     return (
-      <div className="present">
+      <div className="present" data-variables={JSON.stringify(variables)}>
         <div className="present__toolbar">
           <button type="button" className="button" onClick={() => useEditor.getState().setPresentation(false)}>
             Close
@@ -271,7 +279,7 @@ export function Presentation() {
   const content = scroll.content ?? { width: baseBox.width, height: baseBox.height };
 
   return (
-    <div className="present">
+    <div className="present" data-variables={JSON.stringify(variables)}>
       <div className="present__toolbar">
         <button type="button" className="button" onClick={() => useEditor.getState().setPresentation(false)}>
           Close

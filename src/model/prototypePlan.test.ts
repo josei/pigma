@@ -9,7 +9,10 @@
  * is no longer on screen, which is why the other reading is not implementable.
  */
 import { describe, expect, it } from 'vitest';
-import { actionOfKind, planActions } from './prototype';
+import { actionOfKind, planActions, setVariableFromAction } from './prototype';
+import { createFrameNode } from './factory';
+import { emptyFile } from './validate';
+import { parseFile, serializeFile } from './serialize';
 import type { PrototypeAction } from './types';
 
 describe('prototype action sequences', () => {
@@ -56,5 +59,43 @@ describe('prototype action sequences', () => {
 
   it('runs an empty list as nothing', () => {
     expect(planActions([], 'frame-a')).toEqual([]);
+  });
+});
+
+describe('SET_VARIABLE actions', () => {
+  it('stores a boolean or a number, under the variable it names', () => {
+    const set = (variableValue: boolean | number) => setVariableFromAction({}, { type: 'SET_VARIABLE', variableId: 'v1', variableValue });
+    expect(set(true)).toEqual({ v1: true });
+    expect(set(3)).toEqual({ v1: 3 });
+  });
+
+  it('keeps the earlier values, and replaces only the variable it sets', () => {
+    const values = setVariableFromAction({ a: 1 }, { type: 'SET_VARIABLE', variableId: 'b', variableValue: false });
+    expect(values).toEqual({ a: 1, b: false });
+    expect(setVariableFromAction(values, { type: 'SET_VARIABLE', variableId: 'a', variableValue: 2 })).toEqual({ a: 2, b: false });
+  });
+
+  it('ignores an action that names no variable, a value that is not a boolean or number, or another action', () => {
+    const values = { a: 1 };
+    expect(setVariableFromAction(values, { type: 'SET_VARIABLE' })).toBe(values);
+    expect(setVariableFromAction(values, { type: 'SET_VARIABLE', variableId: 'a', variableValue: 'text' as unknown as number })).toBe(values);
+    expect(setVariableFromAction(values, { type: 'BACK' })).toBe(values);
+  });
+
+  it('keeps its place in the order of a trigger, and does not move the frame', () => {
+    const set: PrototypeAction = { type: 'SET_VARIABLE', variableId: 'v', variableValue: true };
+    const steps = planActions([set, { type: 'NODE', destinationId: 'next', navigation: 'NAVIGATE' }], 'start');
+    expect(steps.map((step) => step.action.type)).toEqual(['SET_VARIABLE', 'NODE']);
+    expect(steps[0]!.frameId).toBe('start');
+  });
+
+  it('round-trips through the file format with its value', () => {
+    const file = emptyFile('Vars');
+    const frame = createFrameNode(file.document, 0, 0, 100, 100, { name: 'Trigger' });
+    frame.interactions = [{ trigger: { type: 'ON_CLICK' }, actions: [{ type: 'SET_VARIABLE', variableId: 'v', variableValue: false }] }];
+    file.document.children[0]!.children = [frame];
+    const restored = parseFile(serializeFile(file));
+    const kept = (restored.file!.document.children[0]!.children[0] as typeof frame).interactions![0]!.actions[0]!;
+    expect(kept).toEqual({ type: 'SET_VARIABLE', variableId: 'v', variableValue: false });
   });
 });
