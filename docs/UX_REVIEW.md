@@ -57,6 +57,9 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- Keyboard: F6 focuses the tools toolbar (B82b). The main menu no longer shows ⇧D beside the theme
+  entry, since Shift+D is Dev Mode (B82a). Ctrl+Space keyboard box selection is a recorded decision
+  (docs/DECISIONS.md).
 - A vector with several contours (a glyph's counters, a compound shape, a boolean result with a
   hole) was read as one contour, so holes filled in and separate pieces joined. Each subpath is a
   contour now, and contours combine even-odd, so a counter is a hole (boolean-geometry.test.ts).

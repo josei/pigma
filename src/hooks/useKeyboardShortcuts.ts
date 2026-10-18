@@ -45,6 +45,17 @@ export function useKeyboardShortcuts(): void {
       const meta = event.metaKey || event.ctrlKey;
       const typing = isTypingTarget(event.target);
 
+      // F6 moves focus to the tools toolbar, so the keyboard can reach it without the mouse.
+      if (event.key === 'F6') {
+        const toolbar = document.querySelector<HTMLElement>('.toolbar');
+        const first = toolbar?.querySelector<HTMLButtonElement>('button:not([disabled])');
+        if (first) {
+          event.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+
       if (event.key === 'Escape') {
         if (state.followingId) {
           // Leaving follow mode is the most local thing Escape can undo.

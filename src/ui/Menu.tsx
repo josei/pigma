@@ -42,7 +42,8 @@ const ITEMS: MenuItem[] = [
   { label: 'Show pixel grid', icon: 'rect', shortcut: '⇧G', run: () => useEditor.getState().toggleGrid() },
   { label: 'Snap to pixel grid', icon: 'rect', shortcut: '⇧X', run: () => useEditor.getState().toggleSnapToGrid() },
   { group: 'Tools', label: 'Present', icon: 'play', shortcut: '⌘\\', run: () => useEditor.getState().setPresentation(true) },
-  { label: 'Toggle dark theme', icon: 'eye', shortcut: '⇧D', run: () => useEditor.getState().toggleTheme() },
+  // No shortcut: Shift+D is Dev Mode (Figma's binding), and a theme is a preference, not a command.
+  { label: 'Toggle dark theme', icon: 'eye', run: () => useEditor.getState().toggleTheme() },
   { label: 'Connect AI agent…', icon: 'sparkle', run: () => useEditor.getState().setLeftTab('tools') },
   { label: 'Plugins…', icon: 'instance', run: () => useEditor.getState().setLeftTab('plugins') },
 ];
