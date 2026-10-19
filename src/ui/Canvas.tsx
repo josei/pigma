@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { activeContainer, activePage, useEditor, type GradientHandle, type Viewport } from '../store/editorStore';
 import { SceneSvg } from '../render/SceneRenderer';
-import { absoluteBounds, boundsOfNodes, findNode, findParent, findPath, hitTestBox, worldTransform } from '../model/tree';
+import { absoluteBounds, boundsOfNodes, findNode, findParent, findPath, hitTestBox, innermostFrameAt, worldTransform } from '../model/tree';
 import { autoLayoutOf } from '../model/autoLayout';
 import { backgroundBlurRadius, hasBackgroundBlur } from '../model/effects';
 import { gridBands } from '../model/constraints';
@@ -839,16 +839,10 @@ export function Canvas() {
     rectFromPoints(fromCentre ? { x: 2 * start.x - current.x, y: 2 * start.y - current.y } : start, current);
 
   /** Topmost frame under a point, so drawing inside a frame nests into it. */
-  const frameUnder = (point: Point): string | null => {
-    const state = useEditor.getState();
-    const children = container.children as SceneNode[];
-    for (let index = children.length - 1; index >= 0; index -= 1) {
-      const child = children[index];
-      if (!child || child.type !== 'FRAME' || !child.visible || child.locked) continue;
-      if (hitTestBox(child, worldTransform(state.file.document, child.id), point.x, point.y)) return child.id;
-    }
-    return null;
-  };
+  // The innermost frame under the point, so a shape drawn over a frame inside a frame nests
+  // into the inner one (Figma).
+  const frameUnder = (point: Point): string | null =>
+    innermostFrameAt(useEditor.getState().file.document, container.id, point.x, point.y);
 
   const createFromDrag = (rect: Rect, start: Point, end: Point, square: boolean) => {
     const state = useEditor.getState();

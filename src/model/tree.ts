@@ -207,6 +207,28 @@ export function hitTestBox(node: AnyNode, space: Transform, x: number, y: number
   );
 }
 
+/**
+ * The innermost FRAME under a world point, searched through the children of `parentId`.
+ * A shape drawn over a frame goes into the frame it is drawn into, and when that frame sits
+ * inside another frame, into the inner one (Figma). Frames and groups are descended into;
+ * a hidden or locked node is skipped with its children. Null when no frame is under the point.
+ */
+export function innermostFrameAt(document: AnyNode, parentId: string, x: number, y: number): string | null {
+  const parent = findNode(document, parentId);
+  if (!parent || !hasChildren(parent)) return null;
+  const children = parent.children as AnyNode[];
+  for (let index = children.length - 1; index >= 0; index -= 1) {
+    const child = children[index];
+    if (!child || !child.visible || child.locked) continue;
+    if (child.type !== 'FRAME' && child.type !== 'GROUP') continue;
+    if (!hitTestBox(child, worldTransform(document, child.id), x, y)) continue;
+    const inner = innermostFrameAt(document, child.id, x, y);
+    if (inner) return inner;
+    if (child.type === 'FRAME') return child.id;
+  }
+  return null;
+}
+
 export function localPoint(space: Transform, x: number, y: number): { x: number; y: number } {
   return applyToPoint(invert(space), x, y);
 }

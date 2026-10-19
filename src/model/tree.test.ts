@@ -7,6 +7,7 @@ import {
   findParent,
   findPath,
   hitTestBox,
+  innermostFrameAt,
   insertChild,
   isDescendant,
   moveNode,
@@ -122,5 +123,44 @@ describe('tree operations', () => {
     const { file, rectId, frameId } = sampleFile();
     const bounds = boundsOfNodes(file.document, [rectId, frameId]);
     expect(bounds).toEqual({ x: 100, y: 50, width: 400, height: 300 });
+  });
+});
+
+describe('innermostFrameAt', () => {
+  function nestedFrames(innerLocked = false) {
+    const file = emptyFile('Nested');
+    const page = file.document.children[0]!;
+    const outer = createFrameNode(null, 0, 0, 400, 400, { name: 'Outer' });
+    const inner = createFrameNode(null, 50, 50, 100, 100, { name: 'Inner' });
+    outer.children = [{ ...inner, locked: innerLocked }];
+    page.children = [outer];
+    return { file, outerId: outer.id, innerId: inner.id };
+  }
+
+  it('returns the innermost frame under the point, not the outer frame that holds it', () => {
+    const { file, innerId } = nestedFrames();
+    expect(innermostFrameAt(file.document, file.document.children[0]!.id, 100, 100)).toBe(innerId);
+  });
+
+  it('returns the outer frame when the point is in it but outside the inner one', () => {
+    const { file, outerId } = nestedFrames();
+    expect(innermostFrameAt(file.document, file.document.children[0]!.id, 20, 20)).toBe(outerId);
+  });
+
+  it('returns null when no frame is under the point', () => {
+    const { file } = nestedFrames();
+    expect(innermostFrameAt(file.document, file.document.children[0]!.id, 900, 900)).toBeNull();
+  });
+
+  it('skips a locked frame with its children, so the outer frame takes the shape', () => {
+    const { file, outerId } = nestedFrames(true);
+    expect(innermostFrameAt(file.document, file.document.children[0]!.id, 100, 100)).toBe(outerId);
+  });
+
+  it('ignores shapes that are not frames', () => {
+    const file = emptyFile('Shape');
+    const page = file.document.children[0]!;
+    page.children = [createRectNode(null, 0, 0, 100, 100)];
+    expect(innermostFrameAt(file.document, page.id, 50, 50)).toBeNull();
   });
 });
