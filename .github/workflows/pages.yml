@@ -1,7 +1,6 @@
-# Publish the static online copy to the gh-pages branch, which GitHub Pages serves
-# (Settings → Pages → Deploy from a branch → gh-pages). Each push to main builds the
-# site and force-pushes it to gh-pages, so the published site always matches main.
-# See docs/ONLINE.md.
+# Publish the static online copy with GitHub Pages' Actions source
+# (Settings → Pages → Source: GitHub Actions). Each push to main builds the site and
+# deploys it. See docs/ONLINE.md.
 name: Pages
 
 on:
@@ -10,14 +9,16 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,11 +28,16 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:pages
-      - name: Push the site to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
+      - uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          publish_branch: gh-pages
-          force_orphan: true
-          commit_message: "Publish ${{ github.sha }}"
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

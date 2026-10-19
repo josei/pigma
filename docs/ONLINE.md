@@ -31,14 +31,12 @@ landing page's explanation (`b98-landing`).
 1. `npm run build:pages` builds the landing page and the editor with the static flag
    (`VITE_PIGMA_STATIC=1`) and the project base path (`/pigma/`), and writes the
    desktop update manifest.
-2. The workflow force-pushes `dist/` to the `gh-pages` branch as a single commit
-   (`peaceiris/actions-gh-pages`, using the default `GITHUB_TOKEN` with `contents: write`).
-   The site is served from that branch, so no Pages API call is needed.
+2. The workflow uploads `dist/` as a Pages artifact and deploys it with
+   `actions/deploy-pages`. No branch is written.
 
 One-time setup in the repository settings: **Settings → Pages → Build and deployment →
-Source: Deploy from a branch → Branch: `gh-pages` / `/ (root)`**. Pages serves each new
-`gh-pages` commit without further action. `public/.nojekyll` keeps Pages from running
-Jekyll over the build.
+Source: GitHub Actions**. After that, every push to `main` goes live. The default token
+cannot make this choice, so it is the one manual step.
 
 To build it locally and preview it at the same base path:
 
