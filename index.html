@@ -11,8 +11,21 @@
     <meta name="theme-color" content="#f24822" />
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23FF4D8D'/%3E%3Cellipse cx='16' cy='18' rx='8' ry='6.5' fill='%23ffffff'/%3E%3Cellipse cx='12.5' cy='18' rx='1.7' ry='2.4' fill='%230d0c22'/%3E%3Cellipse cx='19.5' cy='18' rx='1.7' ry='2.4' fill='%230d0c22'/%3E%3Ccircle cx='9' cy='9' r='2' fill='%23ffffff'/%3E%3Ccircle cx='23' cy='9' r='2' fill='%23ffffff'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23f24822'/%3E%3Cellipse cx='16' cy='18' rx='8' ry='6.5' fill='%23ffffff'/%3E%3Cellipse cx='12.5' cy='18' rx='1.7' ry='2.4' fill='%230d0c22'/%3E%3Cellipse cx='19.5' cy='18' rx='1.7' ry='2.4' fill='%230d0c22'/%3E%3Ccircle cx='9' cy='9' r='2' fill='%23ffffff'/%3E%3Ccircle cx='23' cy='9' r='2' fill='%23ffffff'/%3E%3C/svg%3E"
     />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('pigma-theme');
+          if (t !== 'dark' && t !== 'light') {
+            t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          document.documentElement.setAttribute('data-theme', t);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -25,27 +38,33 @@
         --muted: #5d5a70;
         --paper: #fbfafe;
         --card: #ffffff;
+        --card-2: #f4f2fa;
         --line: #e7e4f2;
-        --brand: #ff4d8d;
-        --brand-2: #f24822;
+        --brand: #f24822;
+        --brand-ink: #d63a15;
+        --brand-soft: rgba(242, 72, 34, 0.1);
+        --pig-ink: #0d0c22;
         --blue: #0d99ff;
+        --green: #14ae5c;
         --radius: 18px;
-        color-scheme: light dark;
+        --shadow: 0 30px 60px -30px rgba(20, 18, 31, 0.35);
+        color-scheme: light;
       }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --ink: #f3f1fb;
-          --muted: #a9a5c2;
-          --paper: #0d0c16;
-          --card: #17162a;
-          --line: #2a2840;
-        }
+      :root[data-theme='dark'] {
+        --ink: #ffffff;
+        --muted: #b9b9c2;
+        --paper: #1e1e1e;
+        --card: #2c2c2c;
+        --card-2: #383838;
+        --line: #444444;
+        --brand: #f24822;
+        --brand-ink: #ff6a45;
+        --brand-soft: rgba(242, 72, 34, 0.18);
+        --shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.7);
+        color-scheme: dark;
       }
-      * {
-        box-sizing: border-box;
-      }
-      html,
-      body {
+      * { box-sizing: border-box; }
+      html, body {
         margin: 0;
         background: var(--paper);
         color: var(--ink);
@@ -53,13 +72,15 @@
         font-feature-settings: 'cv11', 'ss01';
         -webkit-font-smoothing: antialiased;
       }
-      a {
-        color: inherit;
+      a { color: inherit; }
+      code {
+        padding: 1px 6px;
+        border-radius: 6px;
+        background: var(--card-2);
+        font-size: 0.92em;
       }
-      .wrap {
-        width: min(1080px, 92vw);
-        margin: 0 auto;
-      }
+      .wrap { width: min(1080px, 92vw); margin: 0 auto; }
+      .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
       header.top {
         display: flex;
         align-items: center;
@@ -74,58 +95,70 @@
         text-decoration: none;
         letter-spacing: -0.01em;
       }
-      .brand svg {
-        width: 28px;
-        height: 28px;
-      }
+      .brand svg { width: 30px; height: 30px; }
+      nav { display: flex; align-items: center; }
       nav a {
         margin-left: 18px;
         color: var(--muted);
         text-decoration: none;
         font-size: 15px;
       }
-      nav a:hover {
+      nav a:hover { color: var(--ink); }
+      .theme-toggle {
+        margin-left: 18px;
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--card);
         color: var(--ink);
+        cursor: pointer;
       }
+      .theme-toggle:hover { border-color: var(--brand); }
+      .theme-toggle:focus-visible, .btn:focus-visible, a:focus-visible {
+        outline: 2px solid var(--brand);
+        outline-offset: 2px;
+      }
+      .theme-toggle svg { width: 18px; height: 18px; }
+      .theme-toggle .i-sun { display: none; }
+      :root[data-theme='dark'] .theme-toggle .i-sun { display: block; }
+      :root[data-theme='dark'] .theme-toggle .i-moon { display: none; }
+
       .hero {
         display: grid;
         grid-template-columns: 1.05fr 1fr;
         gap: 48px;
         align-items: center;
-        padding: 56px 0 72px;
+        padding: 40px 0 56px;
       }
       .eyebrow {
-        display: inline-block;
-        padding: 6px 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 12px 5px 6px;
         border: 1px solid var(--line);
         border-radius: 999px;
         font-size: 13px;
         color: var(--muted);
         background: var(--card);
       }
+      .eyebrow svg { width: 20px; height: 20px; }
       h1 {
         margin: 18px 0 16px;
         font-size: clamp(40px, 6vw, 64px);
         line-height: 1.04;
         letter-spacing: -0.03em;
       }
-      h1 span {
-        background: linear-gradient(90deg, var(--brand), var(--brand-2));
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-      }
+      h1 span { color: var(--brand); }
       .lead {
         margin: 0 0 28px;
         max-width: 34em;
         font-size: 19px;
         color: var(--muted);
       }
-      .cta {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-      }
+      .cta { display: flex; gap: 12px; flex-wrap: wrap; }
       .btn {
         display: inline-flex;
         align-items: center;
@@ -136,193 +169,257 @@
         text-decoration: none;
         font-size: 16px;
       }
+      /* White text on the brand fill: #d63a15 keeps it at 4.7:1 (AA); #f24822 is 3.6:1. */
       .btn-primary {
-        background: linear-gradient(90deg, var(--brand), var(--brand-2));
+        background: #d63a15;
         color: #fff;
         box-shadow: 0 10px 30px -12px rgba(242, 72, 34, 0.7);
       }
-      .btn-primary:hover {
-        filter: brightness(1.05);
-      }
-      .btn-ghost {
-        border: 1px solid var(--line);
-        background: var(--card);
-      }
-      .note {
-        margin-top: 18px;
-        font-size: 14px;
-        color: var(--muted);
-      }
-      .mock {
+      .btn-primary:hover { background: #b92f10; }
+      .btn-ghost { border: 1px solid var(--line); background: var(--card); }
+      .btn-ghost:hover { border-color: var(--brand); }
+      .note { margin-top: 18px; font-size: 14px; color: var(--muted); }
+
+      /* hero pig stage */
+      .stage {
         position: relative;
-        aspect-ratio: 4 / 3;
-        border-radius: var(--radius);
-        border: 1px solid var(--line);
-        background: var(--card);
-        overflow: hidden;
-        box-shadow: 0 30px 60px -30px rgba(20, 18, 31, 0.35);
+        aspect-ratio: 1 / 1;
+        max-width: 480px;
+        width: 100%;
+        justify-self: center;
       }
-      .mock .bar {
-        height: 34px;
-        border-bottom: 1px solid var(--line);
+      .stage svg { width: 100%; height: 100%; display: block; overflow: visible; }
+      .stage .floaty { animation: bob 5s ease-in-out infinite; transform-origin: 50% 60%; }
+      @keyframes bob { 50% { transform: translateY(-8px); } }
+      @media (prefers-reduced-motion: reduce) { .stage .floaty { animation: none; } }
+
+      /* section heads and pig dividers */
+      .sec-head { text-align: center; margin: 0 auto 36px; max-width: 40em; }
+      .sec-head h2 { margin: 10px 0 8px; font-size: clamp(26px, 3.4vw, 36px); letter-spacing: -0.02em; line-height: 1.15; }
+      .sec-head p { margin: 0; color: var(--muted); }
+      .sec-head .pig-mark { width: 48px; height: 48px; display: block; margin: 0 auto; }
+      .divider {
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 0 12px;
+        gap: 14px;
+        margin: 8px 0 44px;
+        color: var(--line);
       }
-      .mock .bar i {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: var(--line);
+      .divider::before, .divider::after { content: ''; flex: 1; border-top: 2px dashed var(--line); }
+      .divider svg { width: 34px; height: 34px; flex: none; }
+      .kicker {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--brand-ink);
       }
-      .mock .canvas {
-        position: absolute;
-        inset: 34px 0 0 0;
-        background-image: radial-gradient(var(--line) 1px, transparent 1px);
-        background-size: 18px 18px;
-      }
-      .mock .frame {
-        position: absolute;
-        left: 12%;
-        top: 14%;
-        width: 52%;
-        height: 58%;
-        border-radius: 10px;
-        background: #fff;
-        border: 1px solid var(--line);
-        padding: 14px;
-      }
-      .mock .frame b {
-        display: block;
-        height: 12px;
-        width: 60%;
-        border-radius: 6px;
-        background: var(--ink);
-        opacity: 0.85;
-        margin-bottom: 12px;
-      }
-      .mock .frame em {
-        display: block;
-        height: 56px;
-        border-radius: 8px;
-        background: linear-gradient(120deg, var(--blue), var(--brand));
-        margin-bottom: 10px;
-      }
-      .mock .frame .row {
-        display: flex;
-        gap: 8px;
-      }
-      .mock .frame .row span {
-        flex: 1;
-        height: 34px;
-        border-radius: 8px;
-        background: var(--line);
-      }
-      .mock .blob {
-        position: absolute;
-        right: 10%;
-        bottom: 12%;
-        width: 30%;
-        aspect-ratio: 1;
-        border-radius: 50%;
-        background: radial-gradient(circle at 35% 35%, #fff, var(--brand) 60%, var(--brand-2));
-        opacity: 0.9;
-      }
+
       .features {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 18px;
-        padding: 8px 0 72px;
+        padding: 0 0 72px;
       }
       .card {
+        position: relative;
         padding: 24px;
         border-radius: var(--radius);
         border: 1px solid var(--line);
         background: var(--card);
+        overflow: hidden;
       }
-      .card h3 {
-        margin: 6px 0 8px;
-        font-size: 18px;
-        letter-spacing: -0.01em;
-      }
-      .card p {
-        margin: 0;
-        color: var(--muted);
-        font-size: 15px;
-      }
+      .card:hover { border-color: var(--brand); }
+      .card h3 { margin: 12px 0 8px; font-size: 18px; letter-spacing: -0.01em; }
+      .card p { margin: 0; color: var(--muted); font-size: 15px; }
+      .card .peek { position: absolute; right: 14px; top: 14px; width: 44px; height: 44px; }
       .dot {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
+        width: 38px;
+        height: 38px;
+        border-radius: 11px;
         display: grid;
         place-items: center;
-        color: #fff;
+        background: var(--brand-soft);
+        color: var(--brand-ink);
         font-weight: 700;
       }
+
+      /* showcase sections */
+      .show {
+        display: grid;
+        grid-template-columns: 0.8fr 1.2fr;
+        gap: 40px;
+        align-items: center;
+        padding: 0 0 72px;
+      }
+      .show.flip { grid-template-columns: 1.2fr 0.8fr; }
+      .show.flip .show-text { order: 2; }
+      .show h2 { margin: 8px 0 12px; font-size: clamp(26px, 3.2vw, 34px); letter-spacing: -0.02em; line-height: 1.15; }
+      .show p { color: var(--muted); margin: 0 0 12px; }
+      .caveat {
+        margin-top: 16px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px dashed var(--brand);
+        background: var(--brand-soft);
+        font-size: 14px;
+        color: var(--ink);
+      }
+      .panel {
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+        background: var(--card);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+      .panel-bar {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 36px;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .panel-bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+      .panel-bar b { margin-left: 8px; font-weight: 600; }
+      .ai { display: grid; grid-template-columns: 1fr 1fr; }
+      .chat { padding: 16px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid var(--line); font-size: 13.5px; }
+      .bubble { padding: 10px 12px; border-radius: 12px; max-width: 94%; }
+      .bubble.me { align-self: flex-end; background: #d63a15; color: #fff; border-bottom-right-radius: 4px; }
+      .bubble.bot { background: var(--card-2); border-bottom-left-radius: 4px; display: flex; gap: 8px; align-items: flex-start; }
+      .bubble.bot svg { width: 22px; height: 22px; flex: none; margin-top: 1px; }
+      .chips { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 4px; }
+      .chip {
+        font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        padding: 6px 9px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        color: var(--ink);
+      }
+      .chip::before { content: '\2713'; color: var(--green); margin-right: 6px; }
+      .result { background-image: radial-gradient(var(--line) 1px, transparent 1px); background-size: 16px 16px; display: grid; place-items: center; padding: 14px; }
+      .result svg { width: 100%; height: auto; display: block; }
+      .conn {
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px 12px; border-top: 1px solid var(--line);
+        font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted);
+      }
+      .conn::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+
+      .share-canvas {
+        position: relative;
+        aspect-ratio: 16 / 10;
+        background-image: radial-gradient(var(--line) 1px, transparent 1px);
+        background-size: 18px 18px;
+      }
+      .share-canvas > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .share-btn {
+        position: absolute; right: 12px; top: 6px;
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 12px; border-radius: 8px; border: 0;
+        background: #d63a15; color: #fff; font: 600 12px Inter, sans-serif;
+      }
+      .avatars { margin-left: auto; margin-right: 112px; display: flex; }
+      .avatars span {
+        width: 22px; height: 22px; border-radius: 50%; margin-left: -6px;
+        border: 2px solid var(--card); color: #fff; font-size: 10px; font-weight: 700;
+        display: grid; place-items: center;
+      }
+
       .online {
-        margin: 0 0 72px;
+        margin: 0 0 56px;
         padding: 28px 30px;
         border-radius: var(--radius);
         border: 1px dashed var(--line);
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 24px;
+        align-items: center;
       }
-      .online h2 {
-        margin: 0 0 8px;
-        font-size: 22px;
-      }
-      .online ul {
-        margin: 12px 0 0;
-        padding-left: 20px;
-        color: var(--muted);
-      }
+      .online h2 { margin: 0 0 8px; font-size: 22px; }
+      .online ul { margin: 12px 0 0; padding-left: 20px; color: var(--muted); }
+      .online .pig-side { width: 120px; height: 120px; }
+
       footer {
+        position: relative;
         padding: 28px 0 44px;
         border-top: 1px solid var(--line);
         color: var(--muted);
         font-size: 14px;
         display: flex;
         justify-content: space-between;
+        align-items: center;
         flex-wrap: wrap;
         gap: 12px;
       }
+      footer .foot-pig { display: flex; align-items: center; gap: 12px; }
+      footer .foot-pig svg { width: 64px; height: 56px; flex: none; }
       @media (max-width: 820px) {
-        .hero {
-          grid-template-columns: 1fr;
-          padding-top: 28px;
-        }
-        .features {
-          grid-template-columns: 1fr;
-        }
-        nav a:not(:last-child) {
-          display: none;
-        }
+        .hero, .show, .show.flip, .online { grid-template-columns: 1fr; }
+        .hero { padding-top: 20px; }
+        .show.flip .show-text { order: 0; }
+        .features { grid-template-columns: 1fr; }
+        .ai { grid-template-columns: 1fr; }
+        .chat { border-right: 0; border-bottom: 1px solid var(--line); }
+        .online .pig-side { display: none; }
+        nav a:not(:last-of-type) { display: none; }
       }
     </style>
   </head>
-  <body>
+<body>
+    <svg class="sprite" aria-hidden="true" focusable="false">
+      <defs>
+        <symbol id="pig" viewBox="0 0 512 512">
+          <path d="M96 150 L118 40 Q122 28 134 34 L226 100 Z" fill="#f24822" />
+          <path d="M416 150 L394 40 Q390 28 378 34 L286 100 Z" fill="#f24822" />
+          <path d="M122 118 L130 72 L172 100 Z" fill="#fff" opacity="0.9" />
+          <path d="M390 118 L382 72 L340 100 Z" fill="#fff" opacity="0.9" />
+          <circle cx="256" cy="276" r="168" fill="#f24822" />
+          <circle cx="256" cy="276" r="128" fill="#fff" />
+          <ellipse cx="198" cy="196" rx="34" ry="34" fill="#fff" />
+          <ellipse cx="314" cy="196" rx="34" ry="34" fill="#fff" />
+          <ellipse cx="198" cy="196" rx="14" ry="14" fill="#0d0c22" />
+          <ellipse cx="314" cy="196" rx="14" ry="14" fill="#0d0c22" />
+          <ellipse cx="256" cy="316" rx="86" ry="66" fill="#f24822" />
+          <ellipse cx="224" cy="310" rx="16" ry="22" fill="#0d0c22" />
+          <ellipse cx="288" cy="310" rx="16" ry="22" fill="#0d0c22" />
+          <circle cx="256" cy="352" r="12" fill="#fff" />
+        </symbol>
+        <symbol id="pig-tile" viewBox="0 0 512 512">
+          <rect width="512" height="512" rx="112" fill="#fff" />
+          <circle cx="256" cy="276" r="168" fill="#f24822" />
+          <circle cx="256" cy="276" r="128" fill="#fff" />
+          <ellipse cx="198" cy="196" rx="34" ry="34" fill="#fff" />
+          <ellipse cx="314" cy="196" rx="34" ry="34" fill="#fff" />
+          <ellipse cx="198" cy="196" rx="14" ry="14" fill="#0d0c22" />
+          <ellipse cx="314" cy="196" rx="14" ry="14" fill="#0d0c22" />
+          <ellipse cx="256" cy="316" rx="86" ry="66" fill="#f24822" />
+          <ellipse cx="224" cy="310" rx="16" ry="22" fill="#0d0c22" />
+          <ellipse cx="288" cy="310" rx="16" ry="22" fill="#0d0c22" />
+          <circle cx="256" cy="352" r="12" fill="#fff" />
+        </symbol>
+      </defs>
+    </svg>
     <div class="wrap">
       <header class="top">
         <a class="brand" href="./">
-          <svg viewBox="0 0 32 32" aria-hidden="true">
-            <rect width="32" height="32" rx="8" fill="#FF4D8D" />
-            <ellipse cx="16" cy="18" rx="8" ry="6.5" fill="#fff" />
-            <ellipse cx="12.5" cy="18" rx="1.7" ry="2.4" fill="#0d0c22" />
-            <ellipse cx="19.5" cy="18" rx="1.7" ry="2.4" fill="#0d0c22" />
-            <circle cx="9" cy="9" r="2" fill="#fff" />
-            <circle cx="23" cy="9" r="2" fill="#fff" />
-          </svg>
+          <svg viewBox="0 0 512 512" aria-hidden="true" class=""><use href="#pig-tile"/></svg>
           Pigma
         </a>
         <nav>
           <a href="#features">Features</a>
           <a href="#online">Online</a>
           <a href="https://github.com/josei/pigma">Source</a>
+          <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch to dark theme"><svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
         </nav>
       </header>
 
       <section class="hero">
         <div>
-          <span class="eyebrow">Open source · runs in your browser</span>
+          <span class="eyebrow"><svg viewBox="0 0 512 512" aria-hidden="true" class=""><use href="#pig"/></svg>Open source · runs in your browser</span>
           <h1>Design in the <span>browser</span>, nothing to install.</h1>
           <p class="lead">
             Pigma is a Figma-inspired design editor: vector tools, real layers, auto layout,
@@ -334,71 +431,226 @@
           </div>
           <p class="note">Your work is saved in this browser. Export a file to keep a copy or move it.</p>
         </div>
-        <div class="mock" role="img" aria-label="Preview of the Pigma editor with a frame, a gradient and a blob">
-          <div class="bar"><i></i><i></i><i></i></div>
-          <div class="canvas">
-            <div class="frame">
-              <b></b>
-              <em></em>
-              <div class="row"><span></span><span></span></div>
-            </div>
-            <div class="blob"></div>
-          </div>
+        <div class="stage">
+          <svg viewBox="0 0 480 480" role="img" aria-label="The Pigma pig, selected on a canvas like a shape in the editor">
+          <rect x="20" y="40" width="440" height="400" rx="28" fill="var(--card)" stroke="var(--line)" />
+          <g fill="var(--line)">
+            <circle cx="60" cy="80" r="1.6"/><circle cx="100" cy="80" r="1.6"/><circle cx="140" cy="80" r="1.6"/><circle cx="340" cy="80" r="1.6"/><circle cx="380" cy="80" r="1.6"/><circle cx="420" cy="80" r="1.6"/>
+            <circle cx="60" cy="400" r="1.6"/><circle cx="100" cy="400" r="1.6"/><circle cx="380" cy="400" r="1.6"/><circle cx="420" cy="400" r="1.6"/>
+          </g>
+          <circle cx="400" cy="120" r="34" fill="none" stroke="#f24822" stroke-width="3" stroke-dasharray="6 7" />
+          <rect x="52" y="330" width="74" height="54" rx="12" fill="#f24822" opacity="0.18" />
+          <path d="M392 330 l30 52 h-60 z" fill="#0d99ff" opacity="0.85" />
+          <g class="floaty">
+            <ellipse cx="240" cy="418" rx="110" ry="12" fill="#0d0c22" opacity="0.12" />
+            <g transform="translate(86 62) scale(0.62)"><use href="#pig" width="512" height="512"/></g>
+          </g>
+          <g stroke="#0d99ff" stroke-width="1.5" fill="none">
+            <rect x="124" y="60" width="232" height="332" rx="4" stroke-dasharray="0" />
+          </g>
+          <g fill="#fff" stroke="#0d99ff" stroke-width="1.5">
+            <rect x="119" y="55" width="10" height="10"/><rect x="351" y="55" width="10" height="10"/>
+            <rect x="119" y="387" width="10" height="10"/><rect x="351" y="387" width="10" height="10"/>
+          </g>
+          <g transform="translate(300 30)">
+            <rect width="76" height="22" rx="6" fill="#0d99ff" />
+            <text x="38" y="15" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" font-weight="600" fill="#fff">Pigma</text>
+          </g>
+        </svg>
         </div>
       </section>
 
+      <div class="divider" aria-hidden="true"><svg viewBox="0 0 512 512" aria-hidden="true" class=""><use href="#pig"/></svg></div>
+
+      <div class="sec-head" id="features-head">
+        <h2>Everything a pig needs to design</h2>
+        <p>Six tools you reach for every day, all in one editor.</p>
+      </div>
       <section id="features" class="features">
         <div class="card">
-          <div class="dot" style="background: linear-gradient(120deg, #0d99ff, #14ae5c)">V</div>
+          <svg viewBox="0 0 512 512" aria-hidden="true" class="peek"><use href="#pig"/></svg>
+          <div class="dot">V</div>
           <h3>Vectors and shapes</h3>
           <p>Draw rectangles, ellipses and paths, then combine them with boolean operations that stay live.</p>
         </div>
         <div class="card">
-          <div class="dot" style="background: linear-gradient(120deg, #ff4d8d, #f24822)">L</div>
+          <svg viewBox="0 0 512 512" aria-hidden="true" class="peek"><use href="#pig"/></svg>
+          <div class="dot">L</div>
           <h3>Layout that adapts</h3>
           <p>Auto layout, grids and constraints reflow your frames when content or size changes.</p>
         </div>
         <div class="card">
-          <div class="dot" style="background: linear-gradient(120deg, #9747ff, #0d99ff)">C</div>
+          <svg viewBox="0 0 512 512" aria-hidden="true" class="peek"><use href="#pig"/></svg>
+          <div class="dot">C</div>
           <h3>Components</h3>
           <p>Make a component once, place instances, and override only what should differ.</p>
         </div>
         <div class="card">
-          <div class="dot" style="background: linear-gradient(120deg, #ffb020, #f24822)">P</div>
+          <svg viewBox="0 0 512 512" aria-hidden="true" class="peek"><use href="#pig"/></svg>
+          <div class="dot">P</div>
           <h3>Prototypes</h3>
           <p>Link frames, add overlays and smart animate, then present full screen.</p>
         </div>
         <div class="card">
-          <div class="dot" style="background: linear-gradient(120deg, #14ae5c, #0d99ff)">E</div>
+          <svg viewBox="0 0 512 512" aria-hidden="true" class="peek"><use href="#pig"/></svg>
+          <div class="dot">E</div>
           <h3>Export</h3>
           <p>Export SVG, PNG and PDF from any selection, at the scale you need.</p>
         </div>
         <div class="card">
-          <div class="dot" style="background: linear-gradient(120deg, #6b6880, #14121f)">{ }</div>
+          <svg viewBox="0 0 512 512" aria-hidden="true" class="peek"><use href="#pig"/></svg>
+          <div class="dot">{ }</div>
           <h3>Open source</h3>
           <p>The whole editor is in this repository. Read it, change it, host it yourself.</p>
         </div>
       </section>
 
+      <section class="show" id="ai">
+        <div class="show-text">
+          <span class="kicker">AI assistant (MCP)</span>
+          <h2>Ask the pig to draw it</h2>
+          <p>
+            An AI assistant connects to a Pigma server through the Model Context Protocol and edits your
+            design with tool calls: frames, text, fills. You describe it, the canvas changes.
+          </p>
+          <div class="caveat">
+            The online copy has no server, so this needs the desktop app or a server you run yourself.
+          </div>
+        </div>
+        <div class="panel" role="img" aria-label="Mock-up: a prompt, three tool calls and the resulting pricing card">
+          <div class="panel-bar"><i></i><i></i><i></i><b>Assistant</b></div>
+          <div class="ai">
+            <div class="chat">
+              <div class="bubble me">Add a pricing card with three tiers</div>
+              <div class="bubble bot"><svg viewBox="0 0 512 512" aria-hidden="true" class=""><use href="#pig"/></svg><span>On it. Building the card on your canvas.</span></div>
+              <div class="chips">
+                <span class="chip">create_frame</span>
+                <span class="chip">create_text</span>
+                <span class="chip">create_text</span>
+                <span class="chip">set_fill</span>
+                <span class="chip">set_fill</span>
+              </div>
+              <div class="bubble bot"><svg viewBox="0 0 512 512" aria-hidden="true" class=""><use href="#pig"/></svg><span>Done: Free, Pro and Team, with Pro highlighted.</span></div>
+            </div>
+            <div class="result">
+              <svg viewBox="0 0 220 250" role="img" aria-label="The generated pricing card: three tiers, Free, Pro and Team">
+              <rect x="6" y="6" width="208" height="238" rx="14" fill="#fff" stroke="#e7e4f2" />
+              <text x="20" y="32" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#0d0c22">Pricing</text>
+              <g font-family="Inter, sans-serif">
+                <rect x="16" y="46" width="58" height="150" rx="10" fill="#f4f2fa" />
+                <text x="45" y="68" text-anchor="middle" font-size="10" font-weight="600" fill="#5d5a70">Free</text>
+                <text x="45" y="96" text-anchor="middle" font-size="18" font-weight="800" fill="#0d0c22">$0</text>
+                <rect x="26" y="112" width="38" height="4" rx="2" fill="#d9d5ea"/><rect x="26" y="124" width="30" height="4" rx="2" fill="#d9d5ea"/><rect x="26" y="136" width="34" height="4" rx="2" fill="#d9d5ea"/>
+                <rect x="24" y="170" width="42" height="18" rx="6" fill="#0d0c22"/>
+                <rect x="81" y="40" width="58" height="162" rx="10" fill="#d63a15" />
+                <text x="110" y="64" text-anchor="middle" font-size="10" font-weight="600" fill="#fff">Pro</text>
+                <text x="110" y="94" text-anchor="middle" font-size="18" font-weight="800" fill="#fff">$12</text>
+                <rect x="91" y="112" width="38" height="4" rx="2" fill="#fff" opacity="0.6"/><rect x="91" y="124" width="30" height="4" rx="2" fill="#fff" opacity="0.6"/><rect x="91" y="136" width="34" height="4" rx="2" fill="#fff" opacity="0.6"/>
+                <rect x="89" y="172" width="42" height="18" rx="6" fill="#fff"/>
+                <rect x="146" y="46" width="58" height="150" rx="10" fill="#f4f2fa" />
+                <text x="175" y="68" text-anchor="middle" font-size="10" font-weight="600" fill="#5d5a70">Team</text>
+                <text x="175" y="96" text-anchor="middle" font-size="18" font-weight="800" fill="#0d0c22">$30</text>
+                <rect x="156" y="112" width="38" height="4" rx="2" fill="#d9d5ea"/><rect x="156" y="124" width="30" height="4" rx="2" fill="#d9d5ea"/><rect x="156" y="136" width="34" height="4" rx="2" fill="#d9d5ea"/>
+                <rect x="154" y="170" width="42" height="18" rx="6" fill="#0d0c22"/>
+              </g>
+              <g transform="translate(88 212) scale(0.05)"><use href="#pig" width="512" height="512"/></g>
+            </svg>
+            </div>
+          </div>
+          <div class="conn">connected to a Pigma server via MCP</div>
+        </div>
+      </section>
+
+      <section class="show flip" id="share">
+        <div class="show-text">
+          <span class="kicker">Shared rooms</span>
+          <h2>Design together, cursor to cursor</h2>
+          <p>
+            Share a link and everyone in the room sees the same canvas, with each person's cursor and name
+            live as they work.
+          </p>
+          <div class="caveat">
+            Shared rooms need a relay server you run yourself. The online copy has none.
+          </div>
+        </div>
+        <div class="panel" role="img" aria-label="Mock-up: a shared canvas with cursors labelled Ana and Sam and a Share link button">
+          <div class="panel-bar"><i></i><i></i><i></i><b>Launch page</b>
+            <span class="avatars"><span style="background:#0d99ff">A</span><span style="background:#14ae5c">S</span></span>
+          </div>
+          <div class="share-canvas">
+            <svg viewBox="0 0 640 400" role="img" aria-label="A shared canvas with two collaborators, Ana and Sam, each with a labelled cursor">
+              <g>
+                <rect x="60" y="60" width="250" height="250" rx="14" fill="var(--card-2)" stroke="var(--line)" />
+                <rect x="84" y="86" width="130" height="14" rx="7" fill="var(--ink)" opacity="0.8" />
+                <rect x="84" y="114" width="202" height="86" rx="10" fill="#f24822" opacity="0.9" />
+                <rect x="84" y="214" width="94" height="68" rx="10" fill="var(--line)" />
+                <rect x="192" y="214" width="94" height="68" rx="10" fill="var(--line)" />
+                <circle cx="460" cy="130" r="58" fill="var(--card-2)" stroke="var(--line)" />
+                <g transform="translate(414 84) scale(0.18)"><use href="#pig" width="512" height="512"/></g>
+                <rect x="380" y="226" width="190" height="84" rx="12" fill="var(--card-2)" stroke="var(--line)" />
+                <rect x="400" y="248" width="110" height="10" rx="5" fill="var(--line)" />
+                <rect x="400" y="270" width="140" height="10" rx="5" fill="var(--line)" />
+              </g>
+              <rect x="380" y="226" width="190" height="84" rx="12" fill="none" stroke="#14ae5c" stroke-width="2" />
+              <rect x="56" y="56" width="258" height="258" rx="16" fill="none" stroke="#0d99ff" stroke-width="2" stroke-dasharray="5 4" />
+              <g transform="translate(300 292)">
+                <path d="M0 0 L0 22 L6 17 L11 28 L15 26 L10 15 L18 15 Z" fill="#0d99ff" stroke="#fff" stroke-width="1.5" stroke-linejoin="round" />
+                <rect x="16" y="22" width="40" height="22" rx="11" fill="#0d99ff" />
+                <text x="36" y="37" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#fff">Ana</text>
+              </g>
+              <g transform="translate(540 150)">
+                <path d="M0 0 L0 22 L6 17 L11 28 L15 26 L10 15 L18 15 Z" fill="#14ae5c" stroke="#fff" stroke-width="1.5" stroke-linejoin="round" />
+                <rect x="16" y="22" width="40" height="22" rx="11" fill="#14ae5c" />
+                <text x="36" y="37" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#fff">Sam</text>
+              </g>
+            </svg>
+            <span class="share-btn" style="top:-30px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>Share link</span>
+          </div>
+        </div>
+      </section>
+
       <section id="online" class="online">
-        <h2>What works in the online editor</h2>
-        <p class="lead" style="margin: 0; font-size: 16px">
-          The online editor is the full editor, running entirely in your browser. Two features need a Pigma
-          server, and the online copy says so instead of failing:
-        </p>
-        <ul>
-          <li><strong>Shared rooms</strong> (live collaboration) need a relay server you run yourself.</li>
-          <li><strong>The AI agent</strong> (MCP) needs a local or self-hosted endpoint.</li>
-        </ul>
-        <p class="note" style="margin: 14px 0 0">
-          Run a server with <code>npm run relay</code>, see the repository's README to get started.
-        </p>
+        <div>
+          <h2>What works in the online editor</h2>
+          <p class="lead" style="margin: 0; font-size: 16px">
+            The online editor is the full editor, running entirely in your browser. Two features need a Pigma
+            server, and the online copy says so instead of failing:
+          </p>
+          <ul>
+            <li><strong>Shared rooms</strong> (live collaboration) need a relay server you run yourself.</li>
+            <li><strong>The AI agent</strong> (MCP) needs a local or self-hosted endpoint.</li>
+          </ul>
+          <p class="note" style="margin: 14px 0 0">
+            Run a server with <code>npm run relay</code>, see the repository's README to get started.
+          </p>
+        </div>
+        <svg viewBox="0 0 512 512" aria-hidden="true" class="pig-side"><use href="#pig"/></svg>
       </section>
 
       <footer>
-        <span>Pigma is open source. Figma is a trademark of Figma, Inc.; Pigma is not affiliated with it.</span>
+        <div class="foot-pig">
+          <svg viewBox="0 0 512 512" aria-hidden="true" class=""><use href="#pig"/></svg>
+          <span>Pigma is open source. Figma is a trademark of Figma, Inc.; Pigma is not affiliated with it.</span>
+        </div>
         <span><a href="https://github.com/josei/pigma">github.com/josei/pigma</a></span>
       </footer>
     </div>
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var btn = document.getElementById('theme-toggle');
+        function sync() {
+          var dark = root.getAttribute('data-theme') === 'dark';
+          btn.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+        }
+        sync();
+        btn.addEventListener('click', function () {
+          var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+          root.setAttribute('data-theme', next);
+          try { localStorage.setItem('pigma-theme', next); } catch (e) {}
+          sync();
+        });
+      })();
+    </script>
   </body>
 </html>
