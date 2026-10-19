@@ -39,8 +39,8 @@ const ITEMS: MenuItem[] = [
   // Figma puts mask outlines under View with the other view options; ours sit in
   // the same list as the rulers and the grid for the same reason.
   { label: 'Mask outlines', icon: 'mask', run: () => useEditor.getState().toggleMaskOutlines() },
-  { label: 'Show pixel grid', icon: 'rect', shortcut: '⇧G', run: () => useEditor.getState().toggleGrid() },
-  { label: 'Snap to pixel grid', icon: 'rect', shortcut: '⇧X', run: () => useEditor.getState().toggleSnapToGrid() },
+  { label: 'Show pixel grid', icon: 'rect', shortcut: '⌘\'', run: () => useEditor.getState().toggleGrid() },
+  { label: 'Snap to pixel grid', icon: 'rect', shortcut: '⇧⌘\'', run: () => useEditor.getState().toggleSnapToGrid() },
   { group: 'Tools', label: 'Present', icon: 'play', shortcut: '⌘\\', run: () => useEditor.getState().setPresentation(true) },
   // No shortcut: Shift+D is Dev Mode (Figma's binding), and a theme is a preference, not a command.
   { label: 'Toggle dark theme', icon: 'eye', run: () => useEditor.getState().toggleTheme() },

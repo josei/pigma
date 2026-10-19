@@ -243,9 +243,15 @@ export function useKeyboardShortcuts(): void {
         state.toggleRulers();
         return;
       }
-      if (event.shiftKey && !meta && event.code === 'KeyG') {
+      // Figma's pixel grid: Cmd/Ctrl+' (snap to it with Shift, below).
+      if (meta && !event.altKey && !event.shiftKey && event.code === 'Quote') {
         event.preventDefault();
         state.toggleGrid();
+        return;
+      }
+      if (meta && !event.altKey && event.shiftKey && event.code === 'Quote') {
+        event.preventDefault();
+        state.toggleSnapToGrid();
         return;
       }
       // Figma documents Shift+D as DEV MODE, and this used to toggle the dark theme
@@ -256,11 +262,6 @@ export function useKeyboardShortcuts(): void {
       if (event.shiftKey && !meta && event.code === 'KeyD') {
         event.preventDefault();
         state.toggleDevMode();
-        return;
-      }
-      if (event.shiftKey && !meta && event.code === 'KeyX') {
-        event.preventDefault();
-        state.toggleSnapToGrid();
         return;
       }
 

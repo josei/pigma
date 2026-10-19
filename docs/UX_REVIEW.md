@@ -57,6 +57,7 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- The pixel grid and snap-to-grid keys were Shift+G and Shift+X; they are Cmd/Ctrl+' and Cmd/Ctrl+Shift+' (B94a, DECISIONS.md).
 - Detach instance had no keyboard shortcut; Ctrl/Cmd+Alt+B now detaches the selected instance (B93a).
 - Ctrl/Cmd+Shift+D also duplicated the selection; Duplicate is Ctrl/Cmd+D alone (B93b).
 - A conditional interaction lost its condition on save and reload: the file loader rebuilt interactions
