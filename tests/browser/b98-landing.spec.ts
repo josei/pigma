@@ -12,9 +12,9 @@ test('B98a the landing page offers the editor, and says what the online copy can
   await expect(cta).toHaveText(/Open the editor/);
   await expect(cta).toHaveAttribute('href', 'app/');
 
-  // The honest limits are on the page, not discovered later as errors.
-  await expect(page.locator('#online')).toContainText('Shared rooms');
-  await expect(page.locator('#online')).toContainText('AI agent');
+  // The honest limit is on the page where the feature is described, not discovered later as an error.
+  await expect(page.locator('#ai')).toContainText('Model Context Protocol');
+  await expect(page.locator('#ai')).toContainText('online copy has no server');
 
   // The domain we do not own is never named.
   const text = (await page.locator('body').textContent()) ?? '';
