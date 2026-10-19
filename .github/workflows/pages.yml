@@ -27,7 +27,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:pages
+      # enablement: turns Pages on for the repository on the first run, so no manual
+      # setting is needed (it fails with "Pages not enabled" otherwise).
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

@@ -13,6 +13,12 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23FF4D8D'/%3E%3Cellipse cx='16' cy='18' rx='8' ry='6.5' fill='%23ffffff'/%3E%3Cellipse cx='12.5' cy='18' rx='1.7' ry='2.4' fill='%230d0c22'/%3E%3Cellipse cx='19.5' cy='18' rx='1.7' ry='2.4' fill='%230d0c22'/%3E%3Ccircle cx='9' cy='9' r='2' fill='%23ffffff'/%3E%3Ccircle cx='23' cy='9' r='2' fill='%23ffffff'/%3E%3C/svg%3E"
     />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;800&display=swap"
+      rel="stylesheet"
+    />
     <style>
       :root {
         --ink: #14121f;
@@ -43,7 +49,9 @@
         margin: 0;
         background: var(--paper);
         color: var(--ink);
-        font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        font: 16px/1.55 Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        font-feature-settings: 'cv11', 'ss01';
+        -webkit-font-smoothing: antialiased;
       }
       a {
         color: inherit;
