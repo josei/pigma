@@ -411,6 +411,7 @@
         </a>
         <nav>
           <a href="#features">Features</a>
+          <a href="#figma">Figma files</a>
           <a href="#online">Online</a>
           <a href="https://github.com/josei/pigma">Source</a>
           <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch to dark theme"><svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
@@ -517,11 +518,11 @@
             The online copy has no server, so this needs the desktop app or a server you run yourself.
           </div>
         </div>
-        <div class="panel" role="img" aria-label="Mock-up: a prompt, three tool calls and the resulting pricing card">
+        <div class="panel" role="img" aria-label="Mock-up: a prompt, tool calls and the resulting sign-up card">
           <div class="panel-bar"><i></i><i></i><i></i><b>Assistant</b></div>
           <div class="ai">
             <div class="chat">
-              <div class="bubble me">Add a pricing card with three tiers</div>
+              <div class="bubble me">Add a sign-up card with an email field and a button</div>
               <div class="bubble bot"><svg viewBox="0 0 512 512" aria-hidden="true" class=""><use href="#pig"/></svg><span>On it. Building the card on your canvas.</span></div>
               <div class="chips">
                 <span class="chip">create_frame</span>
@@ -530,30 +531,20 @@
                 <span class="chip">set_fill</span>
                 <span class="chip">set_fill</span>
               </div>
-              <div class="bubble bot"><svg viewBox="0 0 512 512" aria-hidden="true" class=""><use href="#pig"/></svg><span>Done: Free, Pro and Team, with Pro highlighted.</span></div>
+              <div class="bubble bot"><svg viewBox="0 0 512 512" aria-hidden="true" class=""><use href="#pig"/></svg><span>Done: the card, its field and the button, on your canvas.</span></div>
             </div>
             <div class="result">
-              <svg viewBox="0 0 220 250" role="img" aria-label="The generated pricing card: three tiers, Free, Pro and Team">
+              <svg viewBox="0 0 220 250" role="img" aria-label="The generated sign-up card: a title, an email field and a button">
               <rect x="6" y="6" width="208" height="238" rx="14" fill="#fff" stroke="#e7e4f2" />
-              <text x="20" y="32" font-family="Inter, sans-serif" font-size="13" font-weight="700" fill="#0d0c22">Pricing</text>
+              <text x="20" y="34" font-family="Inter, sans-serif" font-size="14" font-weight="700" fill="#0d0c22">Sign up</text>
               <g font-family="Inter, sans-serif">
-                <rect x="16" y="46" width="58" height="150" rx="10" fill="#f4f2fa" />
-                <text x="45" y="68" text-anchor="middle" font-size="10" font-weight="600" fill="#5d5a70">Free</text>
-                <text x="45" y="96" text-anchor="middle" font-size="18" font-weight="800" fill="#0d0c22">$0</text>
-                <rect x="26" y="112" width="38" height="4" rx="2" fill="#d9d5ea"/><rect x="26" y="124" width="30" height="4" rx="2" fill="#d9d5ea"/><rect x="26" y="136" width="34" height="4" rx="2" fill="#d9d5ea"/>
-                <rect x="24" y="170" width="42" height="18" rx="6" fill="#0d0c22"/>
-                <rect x="81" y="40" width="58" height="162" rx="10" fill="#d63a15" />
-                <text x="110" y="64" text-anchor="middle" font-size="10" font-weight="600" fill="#fff">Pro</text>
-                <text x="110" y="94" text-anchor="middle" font-size="18" font-weight="800" fill="#fff">$12</text>
-                <rect x="91" y="112" width="38" height="4" rx="2" fill="#fff" opacity="0.6"/><rect x="91" y="124" width="30" height="4" rx="2" fill="#fff" opacity="0.6"/><rect x="91" y="136" width="34" height="4" rx="2" fill="#fff" opacity="0.6"/>
-                <rect x="89" y="172" width="42" height="18" rx="6" fill="#fff"/>
-                <rect x="146" y="46" width="58" height="150" rx="10" fill="#f4f2fa" />
-                <text x="175" y="68" text-anchor="middle" font-size="10" font-weight="600" fill="#5d5a70">Team</text>
-                <text x="175" y="96" text-anchor="middle" font-size="18" font-weight="800" fill="#0d0c22">$30</text>
-                <rect x="156" y="112" width="38" height="4" rx="2" fill="#d9d5ea"/><rect x="156" y="124" width="30" height="4" rx="2" fill="#d9d5ea"/><rect x="156" y="136" width="34" height="4" rx="2" fill="#d9d5ea"/>
-                <rect x="154" y="170" width="42" height="18" rx="6" fill="#0d0c22"/>
+                <text x="20" y="62" font-size="10" font-weight="600" fill="#5d5a70">Email</text>
+                <rect x="20" y="70" width="180" height="28" rx="7" fill="#fff" stroke="#d9d5ea" />
+                <text x="30" y="88" font-size="10" fill="#b9b5cc">you@example.com</text>
+                <rect x="20" y="118" width="180" height="30" rx="8" fill="#d63a15" />
+                <text x="110" y="137" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">Create account</text>
               </g>
-              <g transform="translate(88 212) scale(0.05)"><use href="#pig" width="512" height="512"/></g>
+              <g transform="translate(88 190) scale(0.1)"><use href="#pig" width="512" height="512"/></g>
             </svg>
             </div>
           </div>
@@ -605,6 +596,25 @@
               </g>
             </svg>
             <span class="share-btn" style="top:-30px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>Share link</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="show flip" id="figma">
+        <div>
+          <div class="kicker">Figma files</div>
+          <h2>Bring your Figma files along</h2>
+          <p>Open a Figma <code>.fig</code> file or a Figma REST export in Pigma, keep editing, and export a <code>.fig</code> back out. Pigma lists anything it cannot map in an import report.</p>
+          <p><a href="https://github.com/josei/pigma/blob/main/docs/FIGMA_COMPAT.md">What survives a round trip</a> is written down, with the known losses.</p>
+        </div>
+        <div class="panel" role="img" aria-label="Diagram: a .fig file goes into Pigma and a .fig file comes back out">
+          <div class="panel-bar"><i></i><i></i><i></i><b>Interchange</b></div>
+          <div style="padding: 28px 24px; display: flex; flex-direction: column; gap: 12px; align-items: center; color: var(--muted); font-size: 14px">
+            <span class="chip">design.fig</span>
+            <span aria-hidden="true">&darr; opens in</span>
+            <span class="chip">Pigma</span>
+            <span aria-hidden="true">&darr; exports to</span>
+            <span class="chip">design.fig</span>
           </div>
         </div>
       </section>
