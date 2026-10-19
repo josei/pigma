@@ -10,6 +10,18 @@ Pigma is an independent project. It is **not affiliated with, endorsed by, or
 sponsored by Figma**. "Figma compatibility" is a technical goal, not a claim of
 association.
 
+## Try it online
+
+The editor runs in your browser, with nothing to install:
+**<https://josei.github.io/pigma/>** (landing page), and the editor at
+**<https://josei.github.io/pigma/app/>**.
+
+The online copy is static. Sharing rooms and the AI agent need a Pigma server, so
+they show a note there instead. Run one yourself (`npm run relay`, or the desktop
+app) to use them. See [`docs/ONLINE.md`](docs/ONLINE.md).
+
+Locally, `npm run dev` serves the landing page at `/` and the editor at `/app/`.
+
 ---
 
 ## Status: working editor, verified features
@@ -27,7 +39,7 @@ past drawing:
 - MCP bridge (connect, resilience, remote edit + undo round trip) and
   collaboration presence (cursors, follow)
 
-Evidence: **1140 unit tests across 122 files**, **373 browser tests passing / 0 failing**
+Evidence: **1142 unit tests across 123 files**, **375 browser tests passing / 0 failing**
 on Chromium (`CI=true npm run test:browser`; Firefox is an opt-in second engine),
 **15 Rust tests passing**, and a parity script that separates its INTERNAL
 contract rows (**11/11** - Pigma's own values, not evidence about Figma) from its
@@ -116,7 +128,7 @@ the selection in the right-hand panel.
 | `npm run mcp` | the MCP server over stdio |
 | `npm run relay` | the collaboration / MCP relay server |
 
-Current evidence: **1140 unit tests across 122 files**, **373 browser tests
+Current evidence: **1142 unit tests across 123 files**, **375 browser tests
 passing** on Chromium, and **15 Rust tests passing** - see [`docs/ROADMAP.md`](docs/ROADMAP.md) for
 what each milestone
 proves and for the known limitations.

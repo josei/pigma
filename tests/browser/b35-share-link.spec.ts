@@ -89,7 +89,7 @@ test.afterAll(async () => {
 const fileName = (page: Page) => page.locator('input[aria-label="File name"]').inputValue();
 
 async function openLink(page: Page, link: string) {
-  await page.goto(`/?blank=1#open=${encodeURIComponent(link)}`);
+  await page.goto(`/app/?blank=1#open=${encodeURIComponent(link)}`);
   await page.waitForSelector('.app');
   await page.waitForTimeout(1500);
 }
@@ -135,7 +135,7 @@ test('B35c a non-Pigma payload is rejected', async ({ page }) => {
 
 test('B35d opening a share link does not clobber an existing local document', async ({ page }) => {
   // Make a local document first.
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   const box = (await page.locator('.canvas').boundingBox())!;
   await page.locator('.toolbar__button[aria-label="Rectangle"]').click();
@@ -159,7 +159,7 @@ test('B35d opening a share link does not clobber an existing local document', as
   expect(await fileName(page)).toContain('Shared Doc');
 
   // ...and going back to the local document still finds it intact.
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
   await page.waitForTimeout(1200);
   const afterShapes = await page

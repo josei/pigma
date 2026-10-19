@@ -21,7 +21,10 @@ import { CONFIG_PATH } from '../../server/config';
 const tempRoot = mkdtempSync(join(tmpdir(), 'pigma-manifest-'));
 const tempDist = join(tempRoot, 'dist');
 mkdirSync(join(tempDist, 'assets'), { recursive: true });
-writeFileSync(join(tempDist, 'index.html'), '<!doctype html><div id="root"></div>');
+mkdirSync(join(tempDist, 'app'), { recursive: true });
+// The root is the landing page; the editor, the desktop entry, lives under /app/.
+writeFileSync(join(tempDist, 'index.html'), '<!doctype html><h1>landing</h1>');
+writeFileSync(join(tempDist, 'app', 'index.html'), '<!doctype html><div id="root"></div>');
 writeFileSync(join(tempDist, 'assets', 'index-abc.js'), 'console.log("pigma");');
 writeFileSync(join(tempDist, 'assets', 'index-abc.css'), 'body{margin:0}');
 // A stale manifest in the bundle is never described by the new one.
@@ -40,9 +43,9 @@ describe('generated asset manifest', () => {
 
     // The entry is inside the bundle, every path is relative, every digest is a
     // sha256, and the version carries the package version plus a content digest.
-    expect(manifest!.entry).toBe('index.html');
+    expect(manifest!.entry).toBe('app/index.html');
     expect(Object.keys(manifest!.assets)).toContain(manifest!.entry);
-    expect(Object.keys(manifest!.assets).sort()).toEqual(['assets/index-abc.css', 'assets/index-abc.js', 'index.html']);
+    expect(Object.keys(manifest!.assets).sort()).toEqual(['app/index.html', 'assets/index-abc.css', 'assets/index-abc.js', 'index.html']);
     for (const [path, hash] of Object.entries(manifest!.assets)) {
       expect(path.startsWith('/')).toBe(false);
       expect(path.includes('..')).toBe(false);
@@ -58,7 +61,7 @@ describe('generated asset manifest', () => {
     expect(again).toEqual(generated);
     writeFileSync(join(tempDist, 'assets', 'index-abc.js'), 'console.log("changed");');
     const changed = await buildManifest({ distDir: tempDist, packageFile: join(tempRoot, 'package.json') });
-    expect(changed.assets['index.html']).toBe(generated.assets['index.html']);
+    expect(changed.assets['app/index.html']).toBe(generated.assets['app/index.html']);
     expect(changed.assets['assets/index-abc.js']).not.toBe(generated.assets['assets/index-abc.js']);
     expect(changed.version).not.toBe(generated.version);
   });
@@ -79,7 +82,7 @@ describe('generated asset manifest', () => {
     if (!existsSync(built)) return;
     const manifest = parseManifest(JSON.parse(readFileSync(built, 'utf8')));
     expect(manifest, 'the built manifest is not one the shell accepts').not.toBeNull();
-    expect(manifest!.entry).toBe('index.html');
+    expect(manifest!.entry).toBe('app/index.html');
   });
 
   it('is not confused with the deployment config surface', () => {

@@ -117,7 +117,7 @@ export async function connectEditor(page: Page, relay: RelayInfo): Promise<void>
   // Only navigate when the app is not already loaded. Navigating would reload
   // the document, discarding any local edits made before connecting.
   if ((await page.locator('.app').count()) === 0) {
-    await page.goto('/');
+    await page.goto('/app/');
     await page.waitForSelector('.app');
   }
   await page.locator('.rail__button[aria-label="AI agent"]').click();

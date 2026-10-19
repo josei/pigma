@@ -73,7 +73,7 @@ test('B20c Subtract produces a different result from Union', async ({ page }) =>
   await page.waitForTimeout(400);
   const unionMarkup = await page.locator('.canvas__svg').innerHTML();
 
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await twoOverlappingRects(page);
   await page.locator('[aria-label="Subtract"]').click();

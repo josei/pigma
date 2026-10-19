@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 /** Every room is encrypted: there is no plaintext option, and Join needs a key. */
 test('B66a the Rooms panel offers no plaintext join', async ({ page }) => {
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await page.locator('.rail__button[aria-label="Rooms"]').click();
   await expect(page.locator('input[aria-label="Room nickname"]')).toBeVisible();
@@ -11,7 +11,7 @@ test('B66a the Rooms panel offers no plaintext join', async ({ page }) => {
 });
 
 test('B66b Join is disabled without a key, and says why', async ({ page }) => {
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await page.locator('.rail__button[aria-label="Rooms"]').click();
   await page.locator('input[aria-label="Room nickname"]').fill('Ada');
@@ -21,7 +21,7 @@ test('B66b Join is disabled without a key, and says why', async ({ page }) => {
 });
 
 test('B66c Share creates the key, and Join then becomes available', async ({ page }) => {
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await page.locator('.rail__button[aria-label="Rooms"]').click();
   await page.locator('input[aria-label="Room nickname"]').fill('Ada');

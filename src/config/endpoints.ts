@@ -1,19 +1,16 @@
 /**
- * Hosted endpoints (product decision in docs/ROADMAP.md).
+ * Endpoints for sharing rooms and the AI agent (MCP).
  *
- * pigma.design hosts the **relay** and, since the 2026-10-03 decision, a
- * **fully working MCP endpoint** served by it: Claude/ChatGPT can drive Pigma
- * with no download. The relay necessarily sees tool calls — accepted, under a
- * hard policy that it logs nothing and stores nothing of MCP traffic. The
- * desktop app (loopback) and a self-hosted server remain available for users who
- * want the endpoint on their own machine.
- *
- * Nothing connects until the user joins a room or connects MCP.
+ * There are no built-in hosted endpoints: a relay and an MCP server are run by
+ * whoever runs the Pigma server (the desktop app, a self-hosted server, or a
+ * developer's machine). The online copy on GitHub Pages is static and runs no
+ * server, so it has none; there sharing and the agent degrade to a note that says
+ * so. A user can still point the editor at their own server, which is remembered in
+ * this browser (`readEndpointOverrides`).
  */
 
-export const HOSTED_RELAY_URL = 'wss://pigma.design/relay';
-/** The hosted MCP endpoint: served by the relay, tokens minted per session. */
-export const HOSTED_MCP_ENDPOINT = 'https://pigma.design/mcp';
+/** True for the static online copy, which has no relay or MCP server to reach. */
+export const STATIC_SITE = import.meta.env.VITE_PIGMA_STATIC === '1';
 
 /** Where a user's overrides are remembered (per browser, no account). */
 export const ENDPOINT_OVERRIDE_KEY = 'pigma:endpoints:v1';
@@ -34,18 +31,21 @@ export function normalizeEndpoint(value: unknown, fallback: string | null): stri
   return trimmed;
 }
 
-/** The relay URL to use: the override when there is one, else the hosted default. */
-export function effectiveRelayUrl(overrides: EndpointOverrides = {}): string {
-  // The relay always has a default, so this never returns null.
-  return normalizeEndpoint(overrides.relay, HOSTED_RELAY_URL) ?? HOSTED_RELAY_URL;
+/**
+ * The relay URL to use: the user's override when there is one. Otherwise the relay
+ * this page is served by (a self-hosted server serves its own), and nothing on the
+ * static site, which has no relay.
+ */
+export function effectiveRelayUrl(overrides: EndpointOverrides = {}, pageRelay: string | null = null): string | null {
+  return normalizeEndpoint(overrides.relay, pageRelay);
 }
 
 /**
- * The MCP endpoint to use: the user's override when there is one, else the
- * hosted default — which is `null`, because the hosted site does not offer MCP.
+ * The MCP endpoint to use: the user's override when there is one, else none. A
+ * server's own advertisement (`/config.json`) is resolved by the MCP panel, not here.
  */
 export function effectiveMcpEndpoint(overrides: EndpointOverrides = {}): string | null {
-  return normalizeEndpoint(overrides.mcp, HOSTED_MCP_ENDPOINT);
+  return normalizeEndpoint(overrides.mcp, null);
 }
 
 /** True when an endpoint points at this machine (the desktop/self-host case). */

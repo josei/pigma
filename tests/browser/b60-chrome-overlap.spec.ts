@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
  * grouped popover that stays inside the window.
  */
 test('B60a the zoom readout does not overlap the top ruler', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
   const hud = await page.locator('.canvas__hud').boundingBox();
   const canvas = await page.locator('.canvas').first().boundingBox();
@@ -15,7 +15,7 @@ test('B60a the zoom readout does not overlap the top ruler', async ({ page }) =>
 });
 
 test('B60b the main menu is grouped and fits inside the window', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
   await page.locator('[aria-label="Main menu"]').first().click();
   const menu = page.locator('.menu--main');
@@ -28,7 +28,7 @@ test('B60b the main menu is grouped and fits inside the window', async ({ page }
 });
 
 test('B60c the context menu is only as tall as its items', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
   await page.mouse.click(1000, 600, { button: 'right' });
   const menu = page.locator('[data-testid="context-menu"]');
@@ -40,7 +40,7 @@ test('B60c the context menu is only as tall as its items', async ({ page }) => {
 });
 
 test('B60d an empty document reads "0 layers", and a lone layer is singular', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
   await page.locator('[aria-label="Main menu"]').first().click();
   await page.locator('.menu__item', { hasText: 'New file' }).first().click();
@@ -48,7 +48,7 @@ test('B60d an empty document reads "0 layers", and a lone layer is singular', as
 });
 
 test('B60e the menu opens the AI agent panel', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
   await page.locator('[aria-label="Main menu"]').first().click();
   await page.locator('.menu__item', { hasText: 'Connect AI agent' }).click();

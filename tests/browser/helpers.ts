@@ -4,7 +4,7 @@ import { expect, type Page } from '@playwright/test';
 export async function boot(page: Page, options: { blank?: boolean } = {}): Promise<void> {
   // ?blank=1 boots an empty document: no starter frames to parent into and no
   // auto-expanded tree, so counts and coordinates are deterministic.
-  await page.goto(options.blank ? '/?blank=1' : '/');
+  await page.goto(options.blank ? '/app/?blank=1' : '/app/');
   await page.waitForSelector('.app');
   await expect(page.locator('.app__rail')).toBeVisible();
   await expect(page.locator('.app__left')).toBeVisible();

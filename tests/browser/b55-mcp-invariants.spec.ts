@@ -23,7 +23,7 @@ const text = (response: Awaited<ReturnType<typeof script>>): string =>
   response.result?.content?.[0]?.text ?? JSON.stringify(response);
 
 test('B55a the live bridge refuses a hostile script and leaves the editor alone', async ({ page, relay }) => {
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await connectEditor(page, relay);
 

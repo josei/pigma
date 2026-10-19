@@ -46,21 +46,15 @@ describe('MCP panel states', () => {
       <McpPanel environment={{ desktop: null, advertised: null, desktopToken: null, ...environment }} />,
     );
 
-  it('offers the hosted endpoint with a session token, not a dead end', () => {
+  it('says there is no server to connect to, and offers no connection', () => {
     const html = render({});
-    expect(html).toContain('data-mcp-state="hosted"');
-    expect(html).toContain('data-mcp-endpoint="https://pigma.design/mcp"');
-    // The same connection surface as the other states.
-    expect(html).toContain('aria-label="MCP endpoint"');
-    expect(html).toContain('aria-label="MCP token"');
-    expect(html).toContain('aria-label="Harness"');
-    expect(html).toContain('mcp-bridge-panel');
-    expect(html).toContain('aria-label="Get a session token"');
-    // ...and none of the old "download the app" dead end.
-    expect(html).not.toContain('mcp-desktop-link');
-    expect(html).not.toContain('mcp-hosted-note');
-    expect(html).not.toContain('not offered');
-    expect(html).toContain('stores nothing of MCP traffic');
+    expect(html).toContain('data-mcp-state="unavailable"');
+    expect(html).toContain('needs a Pigma server');
+    // No connection surface, and no endpoint to offer.
+    expect(html).not.toContain('aria-label="MCP endpoint"');
+    expect(html).not.toContain('aria-label="Get a session token"');
+    expect(html).not.toContain('data-mcp-endpoint=');
+    expect(html).not.toContain('example.test');
   });
 
   it('shows the loopback endpoint with no token in the desktop state', () => {

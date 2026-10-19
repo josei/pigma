@@ -14,7 +14,7 @@ import { useEditor } from '../store/editorStore';
  * and shows the same connection surface in every case — status, endpoint, masked
  * token, ready-to-paste harness config, bridge controls:
  *
- *   hosted      pigma.design's endpoint, with a per-session token minted by
+ *   hosted      a remote endpoint, with a per-session token minted by
  *               `POST /mcp/token` — no download needed
  *   desktop     the shell's loopback endpoint, no token needed
  *   self-hosted the server's advertised endpoint (or the user's own), plus its
@@ -34,7 +34,7 @@ export function maskToken(token: string): string {
 /**
  * Endpoint for a relay URL: the same host, `/mcp`. Used when a build derives its
  * MCP endpoint from the relay it talks to; the panel itself shows the effective
- * endpoint (hosted by default, overridable).
+ * endpoint (none by default; the user may type one).
  */
 export function endpointFor(relayUrl: string): string | null {
   try {
@@ -154,6 +154,23 @@ export function McpPanel({ environment }: McpPanelProps = {}) {
     await copy(ready?.content ?? '', 'config');
   };
 
+  // No server here (the static online copy): say so, and offer no connection.
+  if (availability.kind === 'unavailable') {
+    return (
+      <div className="section" data-testid="mcp-panel" data-mcp-state="unavailable">
+        <div className="section__header">
+          <span>AI agent (MCP)</span>
+        </div>
+        <div className="section__body">
+          <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }} data-testid="mcp-state-note">
+            The AI agent needs a Pigma server to talk to: the desktop app, or a server you run yourself. This online copy
+            runs only in your browser, so there is nothing to connect to here.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="section"
@@ -237,7 +254,7 @@ export function McpPanel({ environment }: McpPanelProps = {}) {
           <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
             Effective: <code aria-label="Effective MCP endpoint">{endpoint}</code>
             {isLoopbackEndpoint(endpoint ?? '') ? ' (this machine)' : ''}
-            {availability.kind === 'hosted' ? ' — the relay logs nothing and stores nothing of MCP traffic.' : ''}
+
           </p>
           <div className="prop-row">
             <span className="prop-row__label">Token</span>

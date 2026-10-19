@@ -3,25 +3,394 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pigma 🐷</title>
-    <meta name="description" content="Pigma - an open-source, Figma-inspired browser design editor" />
+    <title>Pigma: design in your browser</title>
+    <meta
+      name="description"
+      content="Pigma is an open-source, Figma-inspired design editor that runs in your browser. Draw, lay out and prototype with nothing to install."
+    />
     <meta name="theme-color" content="#f24822" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <!-- Inline SVG favicon: no binary asset, works in the production bundle, and
-         stops the browser's default /favicon.ico 404. -->
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23FF4D8D'/%3E%3Cellipse cx='16' cy='18' rx='8' ry='6.5' fill='%23ffffff'/%3E%3Cellipse cx='12.5' cy='18' rx='1.7' ry='2.4' fill='%230d0c22'/%3E%3Cellipse cx='19.5' cy='18' rx='1.7' ry='2.4' fill='%230d0c22'/%3E%3Ccircle cx='9' cy='9' r='2' fill='%23ffffff'/%3E%3Ccircle cx='23' cy='9' r='2' fill='%23ffffff'/%3E%3C/svg%3E"
     />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap"
-      rel="stylesheet"
-    />
+    <style>
+      :root {
+        --ink: #14121f;
+        --muted: #5d5a70;
+        --paper: #fbfafe;
+        --card: #ffffff;
+        --line: #e7e4f2;
+        --brand: #ff4d8d;
+        --brand-2: #f24822;
+        --blue: #0d99ff;
+        --radius: 18px;
+        color-scheme: light dark;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #f3f1fb;
+          --muted: #a9a5c2;
+          --paper: #0d0c16;
+          --card: #17162a;
+          --line: #2a2840;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      a {
+        color: inherit;
+      }
+      .wrap {
+        width: min(1080px, 92vw);
+        margin: 0 auto;
+      }
+      header.top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 22px 0;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        text-decoration: none;
+        letter-spacing: -0.01em;
+      }
+      .brand svg {
+        width: 28px;
+        height: 28px;
+      }
+      nav a {
+        margin-left: 18px;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 15px;
+      }
+      nav a:hover {
+        color: var(--ink);
+      }
+      .hero {
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: 48px;
+        align-items: center;
+        padding: 56px 0 72px;
+      }
+      .eyebrow {
+        display: inline-block;
+        padding: 6px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        font-size: 13px;
+        color: var(--muted);
+        background: var(--card);
+      }
+      h1 {
+        margin: 18px 0 16px;
+        font-size: clamp(40px, 6vw, 64px);
+        line-height: 1.04;
+        letter-spacing: -0.03em;
+      }
+      h1 span {
+        background: linear-gradient(90deg, var(--brand), var(--brand-2));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .lead {
+        margin: 0 0 28px;
+        max-width: 34em;
+        font-size: 19px;
+        color: var(--muted);
+      }
+      .cta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 22px;
+        border-radius: 12px;
+        font-weight: 650;
+        text-decoration: none;
+        font-size: 16px;
+      }
+      .btn-primary {
+        background: linear-gradient(90deg, var(--brand), var(--brand-2));
+        color: #fff;
+        box-shadow: 0 10px 30px -12px rgba(242, 72, 34, 0.7);
+      }
+      .btn-primary:hover {
+        filter: brightness(1.05);
+      }
+      .btn-ghost {
+        border: 1px solid var(--line);
+        background: var(--card);
+      }
+      .note {
+        margin-top: 18px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .mock {
+        position: relative;
+        aspect-ratio: 4 / 3;
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+        background: var(--card);
+        overflow: hidden;
+        box-shadow: 0 30px 60px -30px rgba(20, 18, 31, 0.35);
+      }
+      .mock .bar {
+        height: 34px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 12px;
+      }
+      .mock .bar i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--line);
+      }
+      .mock .canvas {
+        position: absolute;
+        inset: 34px 0 0 0;
+        background-image: radial-gradient(var(--line) 1px, transparent 1px);
+        background-size: 18px 18px;
+      }
+      .mock .frame {
+        position: absolute;
+        left: 12%;
+        top: 14%;
+        width: 52%;
+        height: 58%;
+        border-radius: 10px;
+        background: #fff;
+        border: 1px solid var(--line);
+        padding: 14px;
+      }
+      .mock .frame b {
+        display: block;
+        height: 12px;
+        width: 60%;
+        border-radius: 6px;
+        background: var(--ink);
+        opacity: 0.85;
+        margin-bottom: 12px;
+      }
+      .mock .frame em {
+        display: block;
+        height: 56px;
+        border-radius: 8px;
+        background: linear-gradient(120deg, var(--blue), var(--brand));
+        margin-bottom: 10px;
+      }
+      .mock .frame .row {
+        display: flex;
+        gap: 8px;
+      }
+      .mock .frame .row span {
+        flex: 1;
+        height: 34px;
+        border-radius: 8px;
+        background: var(--line);
+      }
+      .mock .blob {
+        position: absolute;
+        right: 10%;
+        bottom: 12%;
+        width: 30%;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 35%, #fff, var(--brand) 60%, var(--brand-2));
+        opacity: 0.9;
+      }
+      .features {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+        padding: 8px 0 72px;
+      }
+      .card {
+        padding: 24px;
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+        background: var(--card);
+      }
+      .card h3 {
+        margin: 6px 0 8px;
+        font-size: 18px;
+        letter-spacing: -0.01em;
+      }
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .dot {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-weight: 700;
+      }
+      .online {
+        margin: 0 0 72px;
+        padding: 28px 30px;
+        border-radius: var(--radius);
+        border: 1px dashed var(--line);
+      }
+      .online h2 {
+        margin: 0 0 8px;
+        font-size: 22px;
+      }
+      .online ul {
+        margin: 12px 0 0;
+        padding-left: 20px;
+        color: var(--muted);
+      }
+      footer {
+        padding: 28px 0 44px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 14px;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      @media (max-width: 820px) {
+        .hero {
+          grid-template-columns: 1fr;
+          padding-top: 28px;
+        }
+        .features {
+          grid-template-columns: 1fr;
+        }
+        nav a:not(:last-child) {
+          display: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div class="wrap">
+      <header class="top">
+        <a class="brand" href="./">
+          <svg viewBox="0 0 32 32" aria-hidden="true">
+            <rect width="32" height="32" rx="8" fill="#FF4D8D" />
+            <ellipse cx="16" cy="18" rx="8" ry="6.5" fill="#fff" />
+            <ellipse cx="12.5" cy="18" rx="1.7" ry="2.4" fill="#0d0c22" />
+            <ellipse cx="19.5" cy="18" rx="1.7" ry="2.4" fill="#0d0c22" />
+            <circle cx="9" cy="9" r="2" fill="#fff" />
+            <circle cx="23" cy="9" r="2" fill="#fff" />
+          </svg>
+          Pigma
+        </a>
+        <nav>
+          <a href="#features">Features</a>
+          <a href="#online">Online</a>
+          <a href="https://github.com/josei/pigma">Source</a>
+        </nav>
+      </header>
+
+      <section class="hero">
+        <div>
+          <span class="eyebrow">Open source · runs in your browser</span>
+          <h1>Design in the <span>browser</span>, nothing to install.</h1>
+          <p class="lead">
+            Pigma is a Figma-inspired design editor: vector tools, real layers, auto layout,
+            components, prototypes and export, in a tab you already have open.
+          </p>
+          <div class="cta">
+            <a class="btn btn-primary" href="app/">Open the editor &rarr;</a>
+            <a class="btn btn-ghost" href="https://github.com/josei/pigma">View the source</a>
+          </div>
+          <p class="note">Your work is saved in this browser. Export a file to keep a copy or move it.</p>
+        </div>
+        <div class="mock" role="img" aria-label="Preview of the Pigma editor with a frame, a gradient and a blob">
+          <div class="bar"><i></i><i></i><i></i></div>
+          <div class="canvas">
+            <div class="frame">
+              <b></b>
+              <em></em>
+              <div class="row"><span></span><span></span></div>
+            </div>
+            <div class="blob"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" class="features">
+        <div class="card">
+          <div class="dot" style="background: linear-gradient(120deg, #0d99ff, #14ae5c)">V</div>
+          <h3>Vectors and shapes</h3>
+          <p>Draw rectangles, ellipses and paths, then combine them with boolean operations that stay live.</p>
+        </div>
+        <div class="card">
+          <div class="dot" style="background: linear-gradient(120deg, #ff4d8d, #f24822)">L</div>
+          <h3>Layout that adapts</h3>
+          <p>Auto layout, grids and constraints reflow your frames when content or size changes.</p>
+        </div>
+        <div class="card">
+          <div class="dot" style="background: linear-gradient(120deg, #9747ff, #0d99ff)">C</div>
+          <h3>Components</h3>
+          <p>Make a component once, place instances, and override only what should differ.</p>
+        </div>
+        <div class="card">
+          <div class="dot" style="background: linear-gradient(120deg, #ffb020, #f24822)">P</div>
+          <h3>Prototypes</h3>
+          <p>Link frames, add overlays and smart animate, then present full screen.</p>
+        </div>
+        <div class="card">
+          <div class="dot" style="background: linear-gradient(120deg, #14ae5c, #0d99ff)">E</div>
+          <h3>Export</h3>
+          <p>Export SVG, PNG and PDF from any selection, at the scale you need.</p>
+        </div>
+        <div class="card">
+          <div class="dot" style="background: linear-gradient(120deg, #6b6880, #14121f)">{ }</div>
+          <h3>Open source</h3>
+          <p>The whole editor is in this repository. Read it, change it, host it yourself.</p>
+        </div>
+      </section>
+
+      <section id="online" class="online">
+        <h2>What works in the online editor</h2>
+        <p class="lead" style="margin: 0; font-size: 16px">
+          The online editor is the full editor, running entirely in your browser. Two features need a Pigma
+          server, and the online copy says so instead of failing:
+        </p>
+        <ul>
+          <li><strong>Shared rooms</strong> (live collaboration) need a relay server you run yourself.</li>
+          <li><strong>The AI agent</strong> (MCP) needs a local or self-hosted endpoint.</li>
+        </ul>
+        <p class="note" style="margin: 14px 0 0">
+          Run a server with <code>npm run relay</code>, see the repository's README to get started.
+        </p>
+      </section>
+
+      <footer>
+        <span>Pigma is open source. Figma is a trademark of Figma, Inc.; Pigma is not affiliated with it.</span>
+        <span><a href="https://github.com/josei/pigma">github.com/josei/pigma</a></span>
+      </footer>
+    </div>
   </body>
 </html>

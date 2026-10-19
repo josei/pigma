@@ -58,7 +58,7 @@ test('B48b the status badge survives a reload', async ({ page }) => {
   // Reload WITHOUT ?blank=1: that flag boots a fresh empty document each time,
   // so a `page.reload()` would discard the drawing and prove nothing (this is
   // the same trap b7 documents).
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
   await page.waitForTimeout(900);
 
@@ -85,7 +85,7 @@ test('B48c completed and cleared statuses are reflected and survive a reload', a
   await page.waitForTimeout(350);
   await expect(badge(page), 'clearing the status left the badge behind').toHaveCount(0);
 
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
   await page.waitForTimeout(900);
   // The frame is still here (so this is about the status, not a lost document)...

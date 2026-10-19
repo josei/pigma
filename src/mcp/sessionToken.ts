@@ -1,13 +1,12 @@
 /**
  * Hosted MCP: the per-session token.
  *
- * pigma.design's MCP endpoint requires a token, and the relay mints one for the
+ * A hosted MCP endpoint requires a token, and the relay mints one for the
  * session with `POST /mcp/token` (see src/mcp/transports/http.ts). The token is
  * short-lived, revocable, and exists only in this tab's memory: it is never
  * written to storage, never put in a URL, and never logged. The panel shows it
  * masked and the harness config carries it, which is the only reason it exists.
  */
-import { HOSTED_MCP_ENDPOINT } from '../config/endpoints';
 
 export interface SessionToken {
   token: string;
@@ -85,10 +84,6 @@ export async function mintSessionToken(endpoint: string, fetchImpl?: typeof fetc
 }
 
 /** True when the hosted endpoint is the one in play. */
-export function isHostedEndpoint(endpoint: string): boolean {
-  return endpoint.replace(/\/+$/, '') === HOSTED_MCP_ENDPOINT.replace(/\/+$/, '');
-}
-
 /** How long a minted token has left, in whole minutes, or null when unknown. */
 export function minutesLeft(token: SessionToken, now = Date.now()): number | null {
   if (token.expiresAt === null) return null;

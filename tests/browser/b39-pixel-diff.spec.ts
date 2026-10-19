@@ -24,7 +24,7 @@ const MAX_CHANGED_RATIO = 0.005;
 
 async function capture(page: import('@playwright/test').Page): Promise<Buffer> {
   await page.setViewportSize(VIEWPORT);
-  await page.goto('/?blank=1', { waitUntil: 'networkidle' });
+  await page.goto('/app/?blank=1', { waitUntil: 'networkidle' });
   await page.waitForSelector('.app');
   await page.waitForTimeout(700);
   return page.screenshot();

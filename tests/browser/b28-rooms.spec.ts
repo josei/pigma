@@ -31,7 +31,7 @@ interface JoinOptions {
  * with "Create share link", a guest pastes the same key. Returns the key.
  */
 async function joinRoom(page: Page, { nickname, roomId, relayUrl, key }: JoinOptions): Promise<string> {
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await page.locator('.rail__button[aria-label="Rooms"]').click();
   await page.waitForTimeout(300);

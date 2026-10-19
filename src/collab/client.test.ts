@@ -77,8 +77,8 @@ const welcome: ServerMessage = {
 describe('rooms client', () => {
   it('builds a websocket url from any relay base', () => {
     expect(roomSocketUrl({ base: 'http://localhost:8080', roomId: 'studio' })).toBe('ws://localhost:8080/collab?room=studio');
-    expect(roomSocketUrl({ base: 'https://pigma.design', roomId: 'studio', token: 'secret' })).toBe(
-      'wss://pigma.design/collab?room=studio&token=secret',
+    expect(roomSocketUrl({ base: 'https://example.test', roomId: 'studio', token: 'secret' })).toBe(
+      'wss://example.test/collab?room=studio&token=secret',
     );
     expect(roomSocketUrl({ base: 'ws://127.0.0.1:9', roomId: '' })).toBe('ws://127.0.0.1:9/collab?room=default');
     expect(roomSocketUrl({ base: '   ', roomId: 'x' })).toContain('ws://localhost:8080/collab?room=x');
@@ -86,7 +86,7 @@ describe('rooms client', () => {
 
   it('derives the relay base from the page origin', () => {
     expect(defaultRelayBase({ protocol: 'http:', host: '127.0.0.1:5173' })).toBe('http://127.0.0.1:5173');
-    expect(defaultRelayBase({ protocol: 'https:', host: 'pigma.design' })).toBe('https://pigma.design');
+    expect(defaultRelayBase({ protocol: 'https:', host: 'example.test' })).toBe('https://example.test');
   });
 
   it('welcomes the client with its own id and the other peers', () => {

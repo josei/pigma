@@ -184,6 +184,10 @@ import {
 import { instanceAncestryOf, syncInstances, withOverride } from '../model/instances';
 import { documentProblems } from '../model/invariants';
 import type { NodeOverride } from '../model/types';
+import { STATIC_SITE } from '../config/endpoints';
+
+/** Why a room cannot be joined on the static online copy (there is no relay to reach). */
+const NO_RELAY_MESSAGE = 'Sharing needs a Pigma server. This online copy runs only in your browser.';
 
 export type Tool =
   | 'select'
@@ -2072,7 +2076,13 @@ export const useEditor = create<EditorState>((set, get) => ({
   setRoomState: (room) => set({ room }),
 
   joinRoom: (options) => {
-    const base = options.base?.trim() || defaultRelayBase(window.location);
+    const typedBase = options.base?.trim() || '';
+    // The static online copy has no relay: say so, rather than dial the page's own origin.
+    if (typedBase === '' && STATIC_SITE) {
+      set({ room: { ...EMPTY_ROOM, phase: 'error', roomId: options.roomId, error: NO_RELAY_MESSAGE } });
+      return;
+    }
+    const base = typedBase || defaultRelayBase(window.location);
     const rawKey = options.key?.trim() ?? '';
     // A malformed or missing key is an error: rooms are always encrypted.
     if (rawKey !== '' && parseKeyText(rawKey) === null) {

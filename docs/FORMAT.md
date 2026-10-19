@@ -253,7 +253,7 @@ fields still loads — they land in `raw` and are written back on export.
 A share link points at a document; it does not contain one.
 
 ```
-https://pigma.design/#open=<percent-encoded url>&name=<optional label>
+https://<your-editor>/app/#open=<percent-encoded url>&name=<optional label>
 ```
 
 - `open` is the URL of the document file. It may be **absolute**

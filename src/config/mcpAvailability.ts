@@ -4,7 +4,7 @@
  * MCP is offered in three places, and they differ only in the endpoint and in
  * whether a token is required:
  *
- *   hosted      pigma.design's own MCP endpoint, reached through the relay, with
+ *   hosted      a remote MCP endpoint, reached through a relay, with
  *               a per-session token minted by `POST /mcp/token`
  *   desktop     the shell's `desktop_info` loopback endpoint — no token
  *   self-hosted a server's advertised endpoint (`/config.json`, see
@@ -14,7 +14,7 @@
  * comes from the desktop shell, from a hosted mint, or from the user, never from
  * the advertisement.
  */
-import { HOSTED_MCP_ENDPOINT, effectiveMcpEndpoint, normalizeEndpoint, type EndpointOverrides } from './endpoints';
+import { effectiveMcpEndpoint, normalizeEndpoint, type EndpointOverrides } from './endpoints';
 
 /**
  * The well-known path a deployment advertises on. Mirrors `CONFIG_PATH` in
@@ -50,10 +50,14 @@ export interface DesktopInfo {
   mcpTokenRequired?: unknown;
 }
 
+/**
+ * `unavailable` is the static online copy (or any page with no server): there is no
+ * endpoint, so the panel explains that instead of offering a connection.
+ */
 export type McpAvailability =
-  | { kind: 'hosted'; endpoint: string; token: string | null; tokenRequired: boolean }
   | { kind: 'desktop'; endpoint: string; token: string | null; tokenRequired: boolean }
-  | { kind: 'self-hosted'; endpoint: string; token: string | null; tokenRequired: boolean };
+  | { kind: 'self-hosted'; endpoint: string; token: string | null; tokenRequired: boolean }
+  | { kind: 'unavailable'; endpoint: string; token: string | null; tokenRequired: boolean };
 
 export interface McpEnvironment {
   /** The desktop shell's loopback endpoint, when this is the desktop app. */
@@ -129,14 +133,9 @@ export function resolveMcpAvailability(environment: McpEnvironment): McpAvailabi
       tokenRequired: environment.advertised.tokenRequired,
     };
   }
-  // Nothing local or advertised: the hosted endpoint, which needs a session
-  // token. This is the "no download needed" path.
-  return {
-    kind: 'hosted',
-    endpoint: HOSTED_MCP_ENDPOINT,
-    token: environment.desktopToken ?? null,
-    tokenRequired: true,
-  };
+  // Nothing local, advertised or typed: there is no agent endpoint to connect to
+  // (the static online copy runs no server). The panel says so instead of offering one.
+  return { kind: 'unavailable', endpoint: '', token: null, tokenRequired: false };
 }
 
 /** Every state offers a connection; they differ in endpoint and token only. */

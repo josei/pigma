@@ -23,16 +23,11 @@ const server = {
 };
 
 describe('MCP availability', () => {
-  it('falls back to the hosted endpoint, which needs a session token', () => {
+  it('is unavailable when nothing local, advertised or typed names a server', () => {
+    // The static online copy runs no server: there is no endpoint to offer.
     const availability = resolveMcpAvailability({ desktop: null, advertised: null });
-    expect(availability).toEqual({
-      kind: 'hosted',
-      endpoint: 'https://pigma.design/mcp',
-      token: null,
-      tokenRequired: true,
-    });
-    // Every state offers a connection; they differ in endpoint and token only.
-    expect(offersMcp(availability)).toBe(true);
+    expect(availability).toEqual({ kind: 'unavailable', endpoint: '', token: null, tokenRequired: false });
+    expect(offersMcp(availability)).toBe(false);
   });
 
   it('is the desktop state for the shell or a bundled loopback server', () => {
@@ -64,10 +59,10 @@ describe('MCP availability', () => {
   });
 
   it('treats only a typed endpoint as an override', () => {
-    // The hosted default is the hosted state, not an override.
-    expect(resolveMcpAvailability({ desktop: null, advertised: null, overrides: {} })).toMatchObject({ kind: 'hosted' });
+    // With nothing typed, there is no override: the state is unavailable.
+    expect(resolveMcpAvailability({ desktop: null, advertised: null, overrides: {} })).toMatchObject({ kind: 'unavailable' });
     expect(resolveMcpAvailability({ desktop: null, advertised: null, overrides: { mcp: '   ' } })).toMatchObject({
-      kind: 'hosted',
+      kind: 'unavailable',
     });
   });
 
@@ -141,7 +136,7 @@ describe('the desktop shell’s report', () => {
     // disappears: the panel falls through to hosted with no error.
     const payload = {
       mcpEndpoint: 'http://127.0.0.1:3001/mcp',
-      relayUrl: 'wss://pigma.design/relay',
+      relayUrl: 'wss://example.test/relay',
       localMcpEndpoint: 'http://127.0.0.1:3001/mcp',
       localRelayUrl: 'ws://127.0.0.1:3002/relay',
       mcpTokenRequired: false,

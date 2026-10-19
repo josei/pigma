@@ -27,6 +27,14 @@ export interface DocumentLink {
 }
 
 /** Build the link for a document the user hosts. */
+/**
+ * Where the editor page lives: the origin plus the directory of the page being
+ * shown, so a link made on `/app/` opens `/app/` rather than the landing page.
+ */
+export function editorBase(location: Pick<Location, 'origin' | 'pathname'> = window.location): string {
+  return `${location.origin}${location.pathname.replace(/[^/]*$/, '')}`;
+}
+
 export function buildDocumentLink(options: { base: string; url: string; name?: string }): string {
   const origin = options.base.trim().replace(/\/+$/, '');
   const params = new URLSearchParams();

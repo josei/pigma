@@ -3,7 +3,7 @@ import { test, expect, type Page } from '@playwright/test';
 const LEGACY_KEY = 'pigma:document:v1';
 
 /** Wait for the app shell without asserting a particular document. */
-async function openApp(page: Page, url = '/?blank=1') {
+async function openApp(page: Page, url = '/app/?blank=1') {
   await page.goto(url);
   await page.waitForSelector('.app');
   await page.waitForTimeout(700);
@@ -98,12 +98,12 @@ test('B27a a clean boot shows no spurious "Recovered" toast', async ({ page }) =
 
 test('B27b a legacy single-document key is migrated into the library', async ({ page }) => {
   // Seed the legacy key exactly as the previous build left it, then boot.
-  await page.goto('/');
+  await page.goto('/app/');
   await page.evaluate(
     (seed: { key: string; value: string }) => localStorage.setItem(seed.key, seed.value),
     { key: LEGACY_KEY, value: persistEnvelope('Legacy Design', 1) },
   );
-  await openApp(page, '/');
+  await openApp(page, '/app/');
 
   // The library database is created and holds the migrated document.
   const library = await page.evaluate(async () => {
@@ -155,12 +155,12 @@ test('B27b a legacy single-document key is migrated into the library', async ({ 
 test('B27c a stale crash marker cannot overwrite newer library work', async ({ page }) => {
   // Seed a legacy marker claiming an older document, then a NEWER library entry
   // through the app, and reload: the newer work must win.
-  await page.goto('/');
+  await page.goto('/app/');
   await page.evaluate(
     (seed: { key: string; value: string }) => localStorage.setItem(seed.key, seed.value),
     { key: LEGACY_KEY, value: persistEnvelope('Stale Marker Doc', 1) },
   );
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
   await page.waitForTimeout(700);
 

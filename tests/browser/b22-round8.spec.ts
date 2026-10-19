@@ -118,7 +118,7 @@ test('B22d min/max limits survive a reload', async ({ page }) => {
   await field(page, 'Max H').press('Enter');
   await page.waitForTimeout(300);
 
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
   await page.locator('.layer-row').last().click();
   await page.waitForTimeout(200);

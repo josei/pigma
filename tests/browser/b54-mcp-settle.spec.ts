@@ -28,7 +28,7 @@ async function runScript(relay: Parameters<typeof mcpCall>[0], code: string): Pr
 }
 
 test('B54a an MCP-created text node reaches the editor with its SETTLED box', async ({ page, relay }) => {
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await connectEditor(page, relay);
 
@@ -118,7 +118,7 @@ figma.currentPage.selection = [t];`,
 });
 
 test('B54b an MCP-created boolean re-evaluates when an operand moves', async ({ page, relay }) => {
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await connectEditor(page, relay);
 

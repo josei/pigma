@@ -310,8 +310,8 @@ export function createCollabServer(options: CollabServerOptions = {}): CollabSer
       return;
     }
     // Static assets only. Pigma has no client-side URL routing, so there is no
-    // SPA fallback: a path that is not a real file is a 404, which also keeps
-    // the no-auth guarantee crisp (there is no route to invent).
+    // SPA fallback: a path that is not a real file or directory index is a 404,
+    // which also keeps the no-auth guarantee crisp (there is no route to invent).
     const requested = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, '');
     const candidate = resolve(staticDir, `.${sep}${requested}`);
     const inside = candidate === staticDir || candidate.startsWith(staticDir + sep);
@@ -320,8 +320,14 @@ export function createCollabServer(options: CollabServerOptions = {}): CollabSer
       notFound(response);
       return;
     }
-    const target = requested === '/' ? join(staticDir, 'index.html') : candidate;
-    const served = await readFile(target).catch(() => null);
+    // A directory serves its own index.html: `/` is the landing page and `/app/`
+    // is the editor, the same on the relay as on GitHub Pages.
+    let target = requested === '/' ? join(staticDir, 'index.html') : candidate;
+    let served = await readFile(target).catch(() => null);
+    if (!served) {
+      target = join(candidate, 'index.html');
+      served = await readFile(target).catch(() => null);
+    }
     if (!served) {
       notFound(response);
       return;

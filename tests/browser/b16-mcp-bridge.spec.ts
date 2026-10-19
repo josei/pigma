@@ -10,7 +10,7 @@ import type { Page } from '@playwright/test';
  */
 
 async function openBridgePanel(page: Page) {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
   await page.locator('.rail__button[aria-label="AI agent"]').click();
   const panel = page.locator('[data-testid="mcp-bridge-panel"]');
@@ -85,7 +85,7 @@ test('B16e the relay reports which client is attached', async ({ page, relay, re
 });
 
 test('B16f an unknown client name is still served, not rejected', async ({ page, relay }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
 
   // `/bridge/events` is an SSE stream, so open it the way the app does.

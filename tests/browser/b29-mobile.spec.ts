@@ -5,7 +5,7 @@ const PHONE = { width: 390, height: 844 };
 
 async function openMobile(page: Page) {
   await page.setViewportSize(PHONE);
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await page.waitForTimeout(700);
 }

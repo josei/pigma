@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useEditor } from '../store/editorStore';
-import { buildDocumentLink } from '../share/openLink';
+import { buildDocumentLink, editorBase } from '../share/openLink';
 import { copyText } from './clipboard';
 
 /**
@@ -35,7 +35,7 @@ export function ShareLinkDialog() {
 
   const trimmed = url.trim();
   const link =
-    trimmed === '' ? '' : buildDocumentLink({ base: window.location.origin, url: trimmed, name: name.trim() });
+    trimmed === '' ? '' : buildDocumentLink({ base: editorBase(), url: trimmed, name: name.trim() });
 
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label="Copy link to this document" data-testid="share-link-dialog">

@@ -106,9 +106,9 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **373 browser tests passing / 0 failing** on Chromium (Firefox 343
+Current state: **375 browser tests passing / 0 failing** on Chromium (Firefox 343
 passed, 5 skipped; WebKit 342 passed, 6 skipped) with **0 orphan processes**. `npx vitest run` =
-1140 passing across 122 files.
+1142 passing across 122 files.
 
 ### Round 12 - what is and is not covered
 
@@ -166,7 +166,7 @@ Control surface, printed from the live app (`/tmp/rooms-discovery.mjs`):
     Room        input[aria-label="Room id"]      placeholder "studio"
     Token       input[aria-label="Room token"]   placeholder "optional"
     Key         (share-link key; encrypted rooms only)
-    Relay base  input[aria-label="Relay base"]   default wss://pigma.design/relay
+    Relay base  input[aria-label="Relay base"]   placeholder wss://your-server/relay
     Join        button[aria-label="Join room"]
     Room key   field - every room is encrypted; paste the key from a share link
 

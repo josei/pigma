@@ -42,7 +42,7 @@ async function waitForHttp(url: string, timeoutMs = 40000): Promise<boolean> {
 export const test = base.extend<{ previewUrl: string }>({
   previewUrl: async ({}, use) => {
     const { existsSync } = await import('node:fs');
-    if (!existsSync('dist/index.html')) {
+    if (!existsSync('dist/app/index.html')) {
       test.skip(true, 'dist/ has not been built: run `npm run build` first');
     }
     const port = await freePort();
@@ -55,7 +55,8 @@ export const test = base.extend<{ previewUrl: string }>({
     try {
       const up = await waitForHttp(url);
       expect(up, `vite preview never served ${url}`).toBe(true);
-      await use(url);
+      // The editor, the page that registers the worker, lives under /app/.
+      await use(`${url}/app/`);
     } finally {
       const pid = child.pid;
       if (pid) {

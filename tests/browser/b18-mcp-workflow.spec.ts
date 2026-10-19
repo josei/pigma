@@ -28,7 +28,7 @@ test('B18a local edit, remote edit, undo, then remote read stay consistent', asy
   relay,
 }) => {
   // 1. Local edit through real pointer input, before connecting.
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await drawShape(page, 'Rectangle', 200, 120);
   const localName = (await page
@@ -73,7 +73,7 @@ figma.currentPage.selection = [r];`,
 });
 
 test('B18b a remote edit after a local move keeps both changes', async ({ page, relay }) => {
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await drawShape(page, 'Rectangle', 200, 120);
   const localName = (await page

@@ -16,12 +16,22 @@
  *   straight through to the network and are never cached.
  */
 
-const CACHE_VERSION = 'pigma-v1';
-const SHELL_URL = '/index.html';
+const CACHE_VERSION = 'pigma-v2';
 
-// Always fetched at install so the app boots on a first visit, before the
+// The worker lives at the deployment's root (`/` locally, `/<repo>/` on GitHub
+// Pages), so every path is taken relative to the worker's own location.
+const SCOPE = new URL('./', self.location.href).pathname;
+const LANDING_URL = SCOPE;
+const EDITOR_URL = SCOPE + 'app/';
+
+// Always fetched at install so both pages boot on a first visit, before the
 // worker controls the page and can populate the cache through `fetch`.
-const PRECACHE_URLS = ['/', SHELL_URL, '/manifest.webmanifest', '/icon.svg'];
+const PRECACHE_URLS = [LANDING_URL, EDITOR_URL, SCOPE + 'manifest.webmanifest', SCOPE + 'icon.svg'];
+
+/** A page's cache key: its path, without query or fragment. */
+function pageKey(url) {
+  return new URL(url, self.location.href).pathname;
+}
 
 self.addEventListener('install', (event) => {
   // Activate this worker immediately instead of waiting for old tabs to close.
@@ -34,7 +44,7 @@ self.addEventListener('install', (event) => {
       // cache whatever it references now; otherwise an offline reload would
       // get the HTML back but no bundle to run.
       try {
-        const shell = await cache.match(SHELL_URL);
+        const shell = await cache.match(EDITOR_URL);
         if (!shell) return;
         const refs = [...(await shell.text()).matchAll(/(?:src|href)="(\/[^"#?]+)"/g)];
         const extra = [...new Set(refs.map((match) => match[1]))].filter(
@@ -83,17 +93,22 @@ self.addEventListener('fetch', (event) => {
 /** Network-first for page loads; fall back to the cached shell when offline. */
 async function networkFirstNavigation(request) {
   const cache = await caches.open(CACHE_VERSION);
+  const key = pageKey(request.url);
   try {
     const response = await fetch(request);
     if (response && response.ok) {
-      await cache.put(SHELL_URL, response.clone());
+      await cache.put(key, response.clone());
     }
     return response;
   } catch {
     // `ignoreVary`: the dev/preview server sends `Vary: Origin`, and the
     // `crossorigin` script/style requests carry an Origin header that the
     // precached (Origin-less) responses would otherwise fail to match.
-    const cached = await cache.match(SHELL_URL, { ignoreVary: true });
+    // Each page is cached under its own path; an unknown path offline falls back
+    // to the page it belongs to (the editor under /app/, otherwise the landing page).
+    const cached =
+      (await cache.match(key, { ignoreVary: true })) ||
+      (await cache.match(key.startsWith(EDITOR_URL) ? EDITOR_URL : LANDING_URL, { ignoreVary: true }));
     if (cached) return cached;
     return new Response('Offline', {
       status: 503,

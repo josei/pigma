@@ -7,7 +7,7 @@
 export function registerServiceWorker(): void {
   if (!import.meta.env.PROD) return;
   if (!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('/sw.js').catch(() => {
+  navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
     // Offline support is best-effort; a failed registration must not break the app.
   });
 }

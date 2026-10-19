@@ -57,8 +57,8 @@ export async function buildManifest({ distDir: target, packageFile = join(root, 
     digests.push(`${path}:${hash}`);
   }
 
-  if (!('index.html' in assets)) {
-    throw new Error(`${target}/index.html is missing — the bundle has no entry`);
+  if (!('app/index.html' in assets)) {
+    throw new Error(`${target}/app/index.html is missing — the bundle has no editor entry`);
   }
 
   const pkg = JSON.parse(await readFile(packageFile, 'utf8'));
@@ -66,7 +66,8 @@ export async function buildManifest({ distDir: target, packageFile = join(root, 
   return {
     schema: 'pigma/assets/1',
     version: `${pkg.version}+${contentDigest}`,
-    entry: 'index.html',
+    // The desktop window opens the editor, which lives under /app/ (the root is the landing page).
+    entry: 'app/index.html',
     assets,
   };
 }

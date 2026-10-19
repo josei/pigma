@@ -40,7 +40,7 @@ pub const MANIFEST_SCHEMA: &str = "pigma/assets/1";
 /// Pointer file inside the cache root.
 pub const POINTER_FILE: &str = "current.json";
 /// Where the manifest lives by default; overridable by the user.
-pub const DEFAULT_MANIFEST_URL: &str = "https://pigma.design/desktop-assets.json";
+pub const DEFAULT_MANIFEST_URL: &str = "https://josei.github.io/pigma/desktop-assets.json";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AssetManifest {

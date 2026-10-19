@@ -16,7 +16,7 @@ test('B7b the document survives a reload', async ({ page }) => {
   const rows = await page.locator('.layer-row').count();
 
   // Reload WITHOUT ?blank=1: the flag boots a fresh empty document each time.
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
 
   await expect(page.locator('.layer-row')).toHaveCount(rows);
@@ -31,7 +31,7 @@ test('B7c a restored document keeps node geometry', async ({ page }) => {
   const w0 = await field(page, 'W').inputValue();
   const h0 = await field(page, 'H').inputValue();
 
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
 
   // Re-select the drawn node by name, then re-read its geometry.

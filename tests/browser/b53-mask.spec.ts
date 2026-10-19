@@ -639,7 +639,7 @@ test('B53f the mask flag and its clip survive a RELOAD', async ({ page }) => {
 
   // Reload WITHOUT ?blank=1 - that flag boots a fresh empty document, so a
   // `page.reload()` would discard the drawing and prove nothing.
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
   await page.waitForTimeout(1200);
 

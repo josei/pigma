@@ -45,7 +45,7 @@ test('B17a the relay survives a bridged command that succeeded', async ({ page, 
 });
 
 test('B17b the relay survives a command with no editor attached', async ({ page, relay }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
 
   const result = (await mcpCall(relay, 'tools/call', {

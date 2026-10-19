@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Icon } from './icons';
 import { useEditor } from '../store/editorStore';
-import { initialsOf } from '../collab/client';
+import { editorBase } from '../share/openLink';
+import { defaultRelayBase, initialsOf } from '../collab/client';
 import { createInvite, inviteKeyText, modeLabel, parseKeyText, readRoomInvite } from '../collab/share';
 import { normalizeNickname } from '../collab/protocol';
 import {
-  HOSTED_RELAY_URL,
+  STATIC_SITE,
   effectiveRelayUrl,
   isLoopbackEndpoint,
   readEndpointOverrides,
@@ -33,13 +34,16 @@ export function RoomsPanel() {
   const [keyText, setKeyText] = useState('');
   const [sharedLink, setSharedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState<'link' | 'key' | null>(null);
-  // Pre-filled with the hosted relay (the default in every build), overridable
-  // for self-host, LAN or the desktop shell's loopback relay.
-  const [base, setBase] = useState(() => effectiveRelayUrl(readEndpointOverrides()));
+  // The relay this page is served by (a self-hosted server serves its own); none on
+  // the static online copy, which has no server. A typed relay overrides it.
+  const pageRelay = STATIC_SITE ? null : defaultRelayBase(window.location);
+  // Pre-filled with the relay this page is served by, overridable for self-host,
+  // LAN or the desktop shell's loopback relay.
+  const [base, setBase] = useState(() => effectiveRelayUrl(readEndpointOverrides(), pageRelay) ?? '');
 
   const online = room.phase === 'online';
   // One effective-URL path: the resolver normalizes and applies the fallback.
-  const effective = effectiveRelayUrl({ relay: base });
+  const effective = effectiveRelayUrl({ relay: base }, pageRelay);
   const keyRaw = keyText.trim();
   const inviteKey = parseKeyText(keyRaw);
   const keyInvalid = keyRaw !== '' && inviteKey === null;
@@ -89,7 +93,7 @@ export function RoomsPanel() {
             <div className="prop-row">
               <span className="prop-row__label">Relay</span>
               <span className="layer-row__name" aria-label="Effective relay">
-                {room.base ?? effectiveRelayUrl(readEndpointOverrides())}
+                {room.base ?? effectiveRelayUrl(readEndpointOverrides(), pageRelay) ?? 'none'}
               </span>
             </div>
             <div className="prop-row">
@@ -162,7 +166,7 @@ export function RoomsPanel() {
                 That key is not a valid room key. Paste the whole share link from the room.
               </p>
             ) : null}
-            {!keyInvalid && !canJoin ? (
+            {!keyInvalid && !canJoin && effective !== null ? (
               <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
                 Rooms are encrypted. Click Share to create one, or paste the key from a share link.
               </p>
@@ -177,19 +181,25 @@ export function RoomsPanel() {
                 onChange={(event) => setKeyText(event.target.value)}
               />
             </div>
+            {effective === null ? (
+              <p style={{ margin: '0 0 8px', color: 'var(--figma-text-secondary)' }} data-testid="rooms-no-relay">
+                Sharing needs a Pigma server to relay the room. Run the desktop app or your own server, then enter its
+                relay address above. This online copy runs only in your browser.
+              </p>
+            ) : null}
             <div className="prop-row">
               <button
                 type="button"
                 className="button button--primary"
                 aria-label="Join room"
-                disabled={room.phase === 'connecting' || !canJoin}
+                disabled={room.phase === 'connecting' || !canJoin || effective === null}
                 onClick={() => {
                   saveEndpointOverrides({ relay: base.trim() });
                   joinRoom({
                     nickname: normalizeNickname(nickname),
                     roomId: roomId.trim() || 'default',
                     ...(token.trim() ? { token: token.trim() } : {}),
-                    base: effective,
+                    base: effective ?? undefined,
                     ...(keyRaw !== '' ? { key: keyRaw } : {}),
                     // With a key present the join is encrypted, whatever the tick says.
                   });
@@ -204,9 +214,9 @@ export function RoomsPanel() {
                 data-tooltip="Make a fresh key and copy an invite link"
                 onClick={() => {
                   const { link, invite } = createInvite({
-                    base: window.location.origin,
+                    base: editorBase(),
                     roomId: roomId.trim() || 'default',
-                    relay: effective,
+                    relay: effective ?? undefined,
                   });
                   setSharedLink(link);
                   // The sharer joins their own room: the key goes in the field, so
@@ -257,7 +267,8 @@ export function RoomsPanel() {
               <input
                 className="input"
                 aria-label="Relay base"
-                placeholder={HOSTED_RELAY_URL}
+                placeholder="wss://your-server/relay"
+
                 value={base}
                 onChange={(event) => {
                   setBase(event.target.value);
@@ -266,10 +277,12 @@ export function RoomsPanel() {
                 }}
               />
             </div>
-            <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
-              Effective: <code aria-label="Effective relay">{effective}</code>
-              {isLoopbackEndpoint(effective) ? ' (this machine)' : ''} — override it for self-host or LAN.
-            </p>
+            {effective === null ? null : (
+              <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
+                Effective: <code aria-label="Effective relay">{effective}</code>
+                {isLoopbackEndpoint(effective) ? ' (this machine)' : ''} — override it for self-host or LAN.
+              </p>
+            )}
             </details>
             <p style={{ margin: '6px 0 0', color: 'var(--figma-text-secondary)' }}>
               {room.phase === 'error'

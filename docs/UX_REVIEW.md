@@ -51,9 +51,9 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **Other engines.** Firefox passes the suite (343, 5 clipboard specs skipped), run
   with `PIGMA_FIREFOX=1`. WebKit passes 342 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
-- **Hosted deployment (owner decision).** The domain is `pigma.design` and resolves, but nothing is
-  deployed behind it. Publishing is outward-facing, so it waits for the owner's go-ahead; the
-  hosted mode is built and tested. See `docs/DECISIONS.md`.
+- **Hosted deployment (owner decision).** The online copy is published to GitHub Pages (docs/ONLINE.md).
+  Running a relay and MCP server for others waits for the owner's go-ahead; the server mode is built and
+  tested. See `docs/DECISIONS.md`.
 
 ## Resolved
 

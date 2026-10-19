@@ -5,11 +5,10 @@
 //! endpoint lives and that a Rooms relay may be reachable. Everything else (the
 //! editor, the Rooms client, local-first behaviour) is the shared code.
 //!
-//! Defaults follow the product decision in docs/ROADMAP.md: pigma.design hosts
-//! the relay but **not** MCP, so the shell reports the loopback MCP endpoint it
-//! can serve itself (`http://127.0.0.1:<port>/mcp`, the Node server the CLI
-//! runs) and the hosted relay for Rooms. That is what puts the MCP panel in its
-//! desktop state instead of the hosted one. See docs/DESKTOP.md.
+//! Defaults: the shell reports the loopback MCP endpoint it can serve itself
+//! (`http://127.0.0.1:<port>/mcp`, the Node server the CLI runs), and the loopback
+//! relay it runs for Rooms. There is no hosted relay or MCP endpoint, so nothing
+//! leaves the machine by default. See docs/DESKTOP.md.
 //!
 //! **Assets update themselves** (src/assets.rs): on launch the shell fetches the
 //! published manifest, verifies every hash, caches the bundle under
@@ -106,10 +105,9 @@ fn desktop_info(app: tauri::AppHandle, config: tauri::State<'_, Mutex<Config>>) 
     // and deadlock this command — which is what blanked the window for three rounds.
     let asset_origin = active_bundle_locked(&app, &config).map(|_| ASSET_ORIGIN.to_string());
     DesktopInfo {
-        // MCP is not offered on the hosted site, so the desktop build reports the
-        // loopback endpoint it serves itself; Rooms stay on the hosted relay.
+        // The shell serves its own MCP endpoint and Rooms relay on loopback.
         mcp_endpoint: format!("http://127.0.0.1:{}/mcp", config.mcp_port),
-        relay_url: "wss://pigma.design/relay".to_string(),
+        relay_url: format!("ws://127.0.0.1:{}/relay", config.relay_port),
         // What this shell can serve locally, offline.
         local_mcp_endpoint: format!("http://127.0.0.1:{}/mcp", config.mcp_port),
         local_relay_url: format!("ws://127.0.0.1:{}/relay", config.relay_port),
@@ -380,7 +378,7 @@ mod tests {
     fn desktop_info_serializes_camel_case() {
         let value = serde_json::to_value(DesktopInfo {
             mcp_endpoint: "http://127.0.0.1:3001/mcp".to_string(),
-            relay_url: "wss://pigma.design/relay".to_string(),
+            relay_url: "ws://127.0.0.1:3002/relay".to_string(),
             local_mcp_endpoint: "http://127.0.0.1:3001/mcp".to_string(),
             local_relay_url: "ws://127.0.0.1:3002/relay".to_string(),
             mcp_token_required: false,

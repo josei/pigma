@@ -14,7 +14,7 @@ test.setTimeout(60_000);
 
 /** Join with the room's key: the host creates it (returned), a guest pastes it. */
 async function joinRoom(page: Page, nickname: string, roomId: string, relayUrl: string, key?: string): Promise<string> {
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await page.locator('.rail__button[aria-label="Rooms"]').click();
   await page.waitForTimeout(300);

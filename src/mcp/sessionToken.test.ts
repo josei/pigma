@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { isHostedEndpoint, minutesLeft, mintSessionToken, tokenMintUrl } from './sessionToken';
+import { minutesLeft, mintSessionToken, tokenMintUrl } from './sessionToken';
 
 /** A fetch stub returning one response. */
 const responding = (body: unknown, status = 200) =>
@@ -10,14 +10,11 @@ const responding = (body: unknown, status = 200) =>
       json: async () => body,
     }) as unknown as Response) as unknown as typeof fetch;
 
-describe('hosted MCP session tokens', () => {
+describe('MCP session tokens', () => {
   it('mints from the endpoint origin, not the path', () => {
-    expect(tokenMintUrl('https://pigma.design/mcp')).toBe('https://pigma.design/mcp/token');
+    expect(tokenMintUrl('https://example.test/mcp')).toBe('https://example.test/mcp/token');
     expect(tokenMintUrl('http://127.0.0.1:3001/mcp')).toBe('http://127.0.0.1:3001/mcp/token');
     expect(tokenMintUrl('not a url')).toBeNull();
-    expect(isHostedEndpoint('https://pigma.design/mcp')).toBe(true);
-    expect(isHostedEndpoint('https://pigma.design/mcp/')).toBe(true);
-    expect(isHostedEndpoint('http://127.0.0.1:3001/mcp')).toBe(false);
   });
 
   it('posts to /mcp/token and keeps the token in memory only', async () => {
@@ -27,8 +24,8 @@ describe('hosted MCP session tokens', () => {
       return { ok: true, status: 201, json: async () => ({ token: 'pigma_abc', expiresAt: Date.now() + 1_800_000 }) } as unknown as Response;
     }) as unknown as typeof fetch;
 
-    const result = await mintSessionToken('https://pigma.design/mcp', fetchImpl);
-    expect(calls).toEqual([{ url: 'https://pigma.design/mcp/token', method: 'POST' }]);
+    const result = await mintSessionToken('https://example.test/mcp', fetchImpl);
+    expect(calls).toEqual([{ url: 'https://example.test/mcp/token', method: 'POST' }]);
     expect(result.error).toBeNull();
     expect(result.token?.token).toBe('pigma_abc');
     expect(minutesLeft(result.token!, result.token!.mintedAt)).toBe(30);
@@ -38,22 +35,22 @@ describe('hosted MCP session tokens', () => {
   });
 
   it('explains every refusal instead of failing silently', async () => {
-    const forbidden = await mintSessionToken('https://pigma.design/mcp', responding({ error: 'no' }, 403));
+    const forbidden = await mintSessionToken('https://example.test/mcp', responding({ error: 'no' }, 403));
     expect(forbidden.token).toBeNull();
     expect(forbidden.error).toMatch(/desktop app or self-host/i);
 
-    const notHosted = await mintSessionToken('https://pigma.design/mcp', responding({ error: 'no' }, 404));
+    const notHosted = await mintSessionToken('https://example.test/mcp', responding({ error: 'no' }, 404));
     expect(notHosted.error).toMatch(/no token/i);
 
     const unreachable = await mintSessionToken(
-      'https://pigma.design/mcp',
+      'https://example.test/mcp',
       (async () => {
         throw new TypeError('Failed to fetch');
       }) as unknown as typeof fetch,
     );
     expect(unreachable.error).toMatch(/could not reach/i);
 
-    const empty = await mintSessionToken('https://pigma.design/mcp', responding({}));
+    const empty = await mintSessionToken('https://example.test/mcp', responding({}));
     expect(empty.error).toMatch(/no token/i);
 
     const badUrl = await mintSessionToken('not a url', vi.fn() as unknown as typeof fetch);

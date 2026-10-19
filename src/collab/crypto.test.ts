@@ -34,8 +34,8 @@ describe('room keys', () => {
 
   it('carries the key in the fragment, never in the query', () => {
     const key = generateRoomKey();
-    const link = buildRoomLink('https://pigma.design/', 'studio', key);
-    expect(link).toBe(`https://pigma.design/#room=studio&key=${encodeRoomKey(key)}`);
+    const link = buildRoomLink('https://example.test/', 'studio', key);
+    expect(link).toBe(`https://example.test/#room=studio&key=${encodeRoomKey(key)}`);
     // A fragment is not sent to a server, which is the whole point.
     expect(new URL(link).search).toBe('');
     expect(parseRoomLink(link)).toMatchObject({ roomId: 'studio' });

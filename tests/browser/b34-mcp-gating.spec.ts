@@ -3,11 +3,11 @@ import { test, expect, type Page } from '@playwright/test';
 /**
  * MCP panel states (product decision recorded in docs/ROADMAP.md).
  *
- * pigma.design offers a fully working MCP endpoint through the relay (decision
- * 2026-10-03, reversing the earlier one), so MCP needs no download. The panel
- * renders a stable state hook,
- * `[data-testid="mcp-panel"][data-mcp-state="hosted|desktop|self-hosted"]`, and
- * the three states differ ONLY in the endpoint and whether a token is required.
+ * There is no built-in MCP endpoint: an agent needs a Pigma server, which the
+ * desktop app or a self-hosted server provides. With nothing advertised the panel
+ * says so and offers no connection (the static online copy is this state). The
+ * panel renders a stable state hook,
+ * `[data-testid="mcp-panel"][data-mcp-state="unavailable|desktop|self-hosted"]`.
  *
  * State is driven by the server advertisement at `/config.json`
  * (src/config/mcpAvailability.ts, MCP_CONFIG_PATH), whose payload is
@@ -21,14 +21,14 @@ const CONFIG = '**/config.json';
 const panel = (page: Page) => page.locator('[data-testid="mcp-panel"]');
 
 async function openTools(page: Page) {
-  await page.goto('/?blank=1');
+  await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await page.locator('.rail__button[aria-label="AI agent"]').click();
   await page.waitForTimeout(500);
 }
 
-/** Pretend nothing advertises MCP: the hosted state. */
-async function asHosted(page: Page) {
+/** Pretend nothing advertises MCP: the static online copy, which has no server. */
+async function asUnavailable(page: Page) {
   await page.route(CONFIG, (route) => route.fulfill({ status: 404, body: '' }));
 }
 
@@ -43,26 +43,16 @@ async function asSelfHosted(page: Page, url: string) {
   );
 }
 
-test('B34a with no advertisement the panel offers the hosted endpoint and a session token', async ({
-  page,
-}) => {
-  await asHosted(page);
+test('B34a with no server the panel says so, and offers no connection', async ({ page }) => {
+  await asUnavailable(page);
   await openTools(page);
 
-  await expect(panel(page)).toHaveAttribute('data-mcp-state', 'hosted');
-  // The hosted endpoint is offered, not a dead end: same panel as the others.
-  await expect(panel(page)).toContainText('https://pigma.design/mcp');
-  await expect(page.locator('input[aria-label="MCP endpoint"]')).toHaveCount(1);
-  await expect(page.locator('[data-testid="mcp-bridge-panel"]')).toHaveCount(1);
-  await expect(page.locator('button', { hasText: /connect mcp/i })).toHaveCount(1);
-  // The hosted endpoint needs a token, and the panel offers to mint one.
-  await expect(page.locator('button[aria-label="Get a session token"]')).toHaveCount(1);
-
-  // Nothing points at a download any more.
-  const text = (await panel(page).textContent()) ?? '';
-  expect(text, `hosted panel still offers a download: ${text.slice(0, 240)}`).not.toMatch(
-    /not offered|download the app/i,
-  );
+  await expect(panel(page)).toHaveAttribute('data-mcp-state', 'unavailable');
+  await expect(panel(page)).toContainText('needs a Pigma server');
+  // No endpoint to connect to, so no endpoint field, no bridge and no token request.
+  await expect(page.locator('input[aria-label="MCP endpoint"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="mcp-bridge-panel"]')).toHaveCount(0);
+  await expect(page.locator('button[aria-label="Get a session token"]')).toHaveCount(0);
 });
 
 test('B34b an advertised self-hosted endpoint surfaces the endpoint and a token', async ({
@@ -122,7 +112,7 @@ test('B34c an advertised loopback endpoint is self-hosted and labelled as this m
 test('B34d the desktop state is reached from the shell’s desktop_info report', async ({ page }) => {
   const info = {
     mcpEndpoint: 'http://127.0.0.1:3001/mcp',
-    relayUrl: 'wss://pigma.design/relay',
+    relayUrl: 'ws://127.0.0.1:3002/relay',
     localMcpEndpoint: 'http://127.0.0.1:3001/mcp',
     localRelayUrl: 'ws://127.0.0.1:3002/relay',
     mcpTokenRequired: false,

@@ -70,7 +70,7 @@ test('B30d comments persist across a reload', async ({ page }) => {
   expect(await openCount(page)).toBe(1);
 
   // Reload WITHOUT ?blank=1, which would boot a fresh empty document.
-  await page.goto('/');
+  await page.goto('/app/');
   await page.waitForSelector('.app');
   await openComments(page);
   expect(await openCount(page), 'the comment did not survive the reload').toBe(1);
