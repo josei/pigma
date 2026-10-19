@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 
 /**
  * The dev server advertises a loopback MCP endpoint, exactly like the desktop
@@ -30,6 +31,8 @@ function devMcpAdvertisement(): Plugin {
 
 export default defineConfig({
   plugins: [react(), devMcpAdvertisement()],
+  // GitHub Pages serves the project at /<repo>/; the relay and dev server stay at /.
+  base: process.env.PIGMA_BASE ?? '/',
   server: {
     // Bind IPv4 explicitly: on IPv6-first machines Vite otherwise listens on
     // [::1] only, which breaks the Playwright readiness probe on 127.0.0.1.
@@ -45,6 +48,13 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
+    rollupOptions: {
+      // Two pages: the landing page at the root, and the editor under /app/.
+      input: {
+        landing: fileURLToPath(new URL('./index.html', import.meta.url)),
+        app: fileURLToPath(new URL('./app/index.html', import.meta.url)),
+      },
+    },
   },
   test: {
     globals: true,
