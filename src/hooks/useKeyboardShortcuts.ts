@@ -1,3 +1,4 @@
+import type { AlignMode } from '../model/ops';
 import { useEffect } from 'react';
 import { activeContainer, useEditor, type Tool } from '../store/editorStore';
 import { findNode, findParent } from '../model/tree';
@@ -38,6 +39,16 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 /** Figma-compatible keyboard shortcuts for the whole editor. */
+/** Alt+letter alignment, by physical key (Figma's): A left, H centres, D right, W top, V middles, S bottom. */
+const ALIGN_KEYS: Record<string, AlignMode> = {
+  KeyA: 'left',
+  KeyH: 'hcenter',
+  KeyD: 'right',
+  KeyW: 'top',
+  KeyV: 'vcenter',
+  KeyS: 'bottom',
+};
+
 export function useKeyboardShortcuts(): void {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -359,6 +370,15 @@ export function useKeyboardShortcuts(): void {
           event.preventDefault();
           state.setEnteredContainer(node.id);
         }
+        return;
+      }
+
+      // Figma's alignment keys: Alt+A left, Alt+H horizontal centres, Alt+D right,
+      // Alt+W top, Alt+V vertical centres, Alt+S bottom.
+      const alignMode = event.altKey && !meta && !event.shiftKey ? ALIGN_KEYS[event.code] : undefined;
+      if (alignMode && state.selection.length > 0) {
+        event.preventDefault();
+        state.align(alignMode);
         return;
       }
 
