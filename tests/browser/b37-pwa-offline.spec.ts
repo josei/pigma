@@ -41,14 +41,18 @@ async function waitForHttp(url: string, timeoutMs = 40000): Promise<boolean> {
 
 export const test = base.extend<{ previewUrl: string }>({
   previewUrl: async ({}, use) => {
-    const { existsSync } = await import('node:fs');
+    const { existsSync, readFileSync } = await import('node:fs');
     if (!existsSync('dist/app/index.html')) {
       test.skip(true, 'dist/ has not been built: run `npm run build` first');
     }
+    // `npm run build` and `npm run build:pages` (base /pigma/) both leave dist/; serve it
+    // at the base it was built with, read from the editor's own asset URLs.
+    const built = readFileSync('dist/app/index.html', 'utf8');
+    const base = /src="(\/[^/"]*\/)assets\//.exec(built)?.[1] ?? '/';
     const port = await freePort();
     const child: ChildProcess = spawn(
       'npx',
-      ['vite', 'preview', '--port', String(port), '--strictPort', '--host', '127.0.0.1'],
+      ['vite', 'preview', '--base', base, '--port', String(port), '--strictPort', '--host', '127.0.0.1'],
       { cwd: process.cwd(), stdio: 'ignore', detached: true },
     );
     const url = `http://127.0.0.1:${port}`;
@@ -56,7 +60,7 @@ export const test = base.extend<{ previewUrl: string }>({
       const up = await waitForHttp(url);
       expect(up, `vite preview never served ${url}`).toBe(true);
       // The editor, the page that registers the worker, lives under /app/.
-      await use(`${url}/app/`);
+      await use(`${url}${base}app/`);
     } finally {
       const pid = child.pid;
       if (pid) {

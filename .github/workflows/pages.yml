@@ -1,5 +1,7 @@
-# Publish the static online copy to GitHub Pages: the landing page at the root and
-# the editor under app/. Runs on every push to main; see docs/ONLINE.md.
+# Publish the static online copy to the gh-pages branch, which GitHub Pages serves
+# (Settings → Pages → Deploy from a branch → gh-pages). Each push to main builds the
+# site and force-pushes it to gh-pages, so the published site always matches main.
+# See docs/ONLINE.md.
 name: Pages
 
 on:
@@ -8,16 +10,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,21 +27,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:pages
-      # enablement: turns Pages on for the repository on the first run, so no manual
-      # setting is needed (it fails with "Pages not enabled" otherwise).
-      - uses: actions/configure-pages@v5
+      - name: Push the site to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          enablement: true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: "Publish ${{ github.sha }}"
