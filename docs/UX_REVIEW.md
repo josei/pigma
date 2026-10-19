@@ -48,8 +48,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
-- **Other engines.** Firefox passes the suite (343, 5 clipboard specs skipped), run
-  with `PIGMA_FIREFOX=1`. WebKit passes 342 with 6 skipped (5 clipboard specs and the
+- **Other engines.** Firefox passes the suite (375, 5 clipboard specs skipped), run
+  with `PIGMA_FIREFOX=1`. WebKit passes 374 with 6 skipped (5 clipboard specs and the
   offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
 - **Hosted deployment (owner decision).** The online copy is published to GitHub Pages (docs/ONLINE.md).
   Running a relay and MCP server for others waits for the owner's go-ahead; the server mode is built and

@@ -5,7 +5,7 @@ It has two pages:
 
 | Page | Path | What it is |
 | --- | --- | --- |
-| Landing | `/pigma/` | A static page with the call to action and the honest limits. |
+| Landing | `/pigma/` | A static page with the call to action, the feature sections, and a link to the desktop app for the AI assistant. |
 | Editor | `/pigma/app/` | The full editor, running entirely in the browser. |
 
 Your work is saved in the browser (IndexedDB and localStorage). Export a file to keep a
@@ -22,7 +22,9 @@ instead of failing:
   The panel says so and offers no connection.
 
 Both states are tested: the MCP panel's unavailable state (`b34-mcp-gating`), and the
-landing page's explanation (`b98-landing`).
+landing page's AI section, which says the assistant needs a Pigma server and links the
+desktop app's downloads (`b98-landing`). The landing page does not repeat the shared-rooms
+note; the rooms panel in the editor shows it where the feature is used.
 
 ## Publishing
 
