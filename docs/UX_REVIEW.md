@@ -57,6 +57,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 
 ## Resolved
 
+- Detach instance had no keyboard shortcut; Ctrl/Cmd+Alt+B now detaches the selected instance (B93a).
+- Ctrl/Cmd+Shift+D also duplicated the selection; Duplicate is Ctrl/Cmd+D alone (B93b).
 - A conditional interaction lost its condition on save and reload: the file loader rebuilt interactions
   from trigger and actions only. A well-formed condition now survives the load, and a malformed one is
   dropped (prototypePlan.test.ts).

@@ -123,6 +123,15 @@ export function useKeyboardShortcuts(): void {
         state.pasteProperties();
         return;
       }
+      // Figma's Detach instance: Cmd/Ctrl+Alt+B, on the selected instance.
+      if (meta && event.altKey && !event.shiftKey && event.code === 'KeyB' && state.selection.length === 1) {
+        const node = findNode(state.file.document, state.selection[0]!);
+        if (node?.type === 'INSTANCE') {
+          event.preventDefault();
+          state.detachInstance(node.id);
+          return;
+        }
+      }
       // Figma's Export: Cmd/Ctrl+Shift+E opens the export options for the selection,
       // the same dialog the menu's "Export selection as PNG" opens.
       if (meta && event.shiftKey && !event.altKey && event.key.toLowerCase() === 'e') {
@@ -162,7 +171,8 @@ export function useKeyboardShortcuts(): void {
         state.pasteClipboard();
         return;
       }
-      if (meta && event.key.toLowerCase() === 'd') {
+      // Duplicate is Cmd/Ctrl+D alone: with Shift or Alt held it is another command, or none.
+      if (meta && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'd') {
         event.preventDefault();
         state.duplicateSelection();
         return;
