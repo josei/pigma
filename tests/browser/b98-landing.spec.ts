@@ -12,9 +12,10 @@ test('B98a the landing page offers the editor, and says what the online copy can
   await expect(cta).toHaveText(/Open the editor/);
   await expect(cta).toHaveAttribute('href', 'app/');
 
-  // The honest limit is on the page where the feature is described, not discovered later as an error.
+  // The AI assistant needs a Pigma server: the section says so and links the desktop app's downloads.
   await expect(page.locator('#ai')).toContainText('Model Context Protocol');
-  await expect(page.locator('#ai')).toContainText('online copy has no server');
+  await expect(page.locator('#ai')).toContainText('needs a Pigma server');
+  await expect(page.locator('#ai a')).toHaveAttribute('href', 'https://github.com/josei/pigma/releases');
 
   // The domain we do not own is never named.
   const text = (await page.locator('body').textContent()) ?? '';
