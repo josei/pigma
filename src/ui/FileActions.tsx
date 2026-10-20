@@ -315,29 +315,25 @@ export function runFileAction(action: FileAction): void {
 }
 
 /** Bridges window events (raised by the menu and the left panel) to file actions. */
-/**
- * Ids for the requested scope: the selection, or every layer on the active page.
- * The page case is explicit because `exportScene()` falls back to the selection
- * when one exists.
- */
-function scopeIds(scope: 'selection' | 'page'): string[] | undefined {
+/** Ids for the requested scope: the selection, or every layer on the active page. */
+function scopeIds(scope: 'selection' | 'page'): string[] {
   const store = useEditor.getState();
-  if (scope === 'selection') return store.selection.length > 0 ? [...store.selection] : undefined;
+  if (scope === 'selection') return [...store.selection];
   const page = store.file.document.children.find((child) => child.id === store.pageId);
-  return page ? page.children.map((child) => child.id) : undefined;
+  return page ? page.children.map((child) => child.id) : [];
 }
 
 /** PNG export shared by the quick menu entries and the options dialog. */
 function exportPng(scale: number, transparent: boolean, scope: 'selection' | 'page' = 'page'): void {
   const store = useEditor.getState();
   const ids = scopeIds(scope);
-  if (scope === 'selection' && !ids) {
+  if (scope === 'selection' && ids.length === 0) {
     store.pushToast('Select something to export');
     return;
   }
   const scene = store.exportScene(ids);
   if (!scene) {
-    store.pushToast(ids ? 'Nothing to export in the selection' : 'Nothing to export on this page');
+    store.pushToast(scope === 'selection' ? 'Nothing to export in the selection' : 'Nothing to export on this page');
     return;
   }
   void renderScenePng({

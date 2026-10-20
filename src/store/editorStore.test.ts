@@ -349,11 +349,11 @@ describe('editor store', () => {
   it('exports SVG for the selection and for the whole page', () => {
     const id = addRect(0, 0, 50, 50);
     store().select([id]);
-    const selectionSvg = store().exportSvgString();
+    const selectionSvg = store().exportSvgString([id]);
     expect(selectionSvg).toContain('<svg');
     expect(selectionSvg).toContain('viewBox="0 0 50 50"');
-    const pageSvg = store().exportSvgString([]);
-    expect(pageSvg).toContain('<svg');
+    // An empty list is nothing to export: the export never falls back to the selection.
+    expect(store().exportSvgString([])).toBe('');
   });
 
   it('fits the viewport to the page content', () => {

@@ -600,9 +600,11 @@ export interface EditorState {
   setShareLinkOpen: (open: boolean) => void;
   importJsonText: (text: string) => { ok: boolean; errors: string[]; warnings: string[] };
   exportJsonString: () => string;
-  exportSvgString: (ids?: string[]) => string;
+  /** SVG of exactly these layers; an empty list exports nothing. Callers say selection or page. */
+  exportSvgString: (ids: string[]) => string;
   /** Everything the raster/PDF exporters need for the current selection or page. */
-  exportScene: (ids?: string[]) => ExportScene | null;
+  /** The raster and PDF inputs for exactly these layers; an empty list exports nothing. */
+  exportScene: (ids: string[]) => ExportScene | null;
 
   setLeftTab: (tab: LeftTab) => void;
   setRightTab: (tab: RightTab) => void;
@@ -2734,11 +2736,8 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   exportScene: (ids) => {
     const state = get();
-    const page = activePage(state);
-    const targetIds =
-      ids && ids.length > 0 ? ids : state.selection.length > 0 ? state.selection : page.children.map((child) => child.id);
     const nodes: SceneNode[] = [];
-    for (const id of targetIds) {
+    for (const id of ids) {
       const node = findNode(state.file.document, id);
       if (node && node.type !== 'DOCUMENT' && node.type !== 'CANVAS') nodes.push(node);
     }
@@ -2778,11 +2777,8 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   exportSvgString: (ids) => {
     const state = get();
-    const page = activePage(state);
-    const targetIds =
-      ids && ids.length > 0 ? ids : state.selection.length > 0 ? state.selection : page.children.map((child) => child.id);
     const nodes: SceneNode[] = [];
-    for (const id of targetIds) {
+    for (const id of ids) {
       const node = findNode(state.file.document, id);
       if (node && node.type !== 'DOCUMENT' && node.type !== 'CANVAS') nodes.push(node);
     }
