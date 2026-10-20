@@ -8,6 +8,8 @@ data/
 # Desktop shell build output: binaries are never committed.
 src-tauri/target/
 src-tauri/gen/
+# The sidecar folder holds a Node runtime and the bundled servers; it is built, not committed.
+src-tauri/sidecar/
 
 # TypeScript incremental build artifacts
 *.tsbuildinfo

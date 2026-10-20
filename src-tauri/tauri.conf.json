@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://127.0.0.1:5173",
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeBuildCommand": "npm run build && node scripts/prepare-sidecar.mjs"
   },
   "app": {
     "withGlobalTauri": true,
@@ -28,7 +28,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "dmg"],
+    "targets": [
+      "app",
+      "dmg"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -38,6 +41,9 @@
     ],
     "category": "DeveloperTool",
     "shortDescription": "Pigma — open-source design editor with a local MCP endpoint",
-    "longDescription": "Pigma is a local-first design editor. The desktop build serves the same editor, exposes the MCP endpoint on loopback HTTP (http://127.0.0.1:<port>/mcp) and speaks the same Rooms protocol. No accounts, no cloud dependency."
+    "longDescription": "Pigma is a local-first design editor. The desktop build serves the same editor, exposes the MCP endpoint on loopback HTTP (http://127.0.0.1:<port>/mcp) and speaks the same Rooms protocol. No accounts, no cloud dependency.",
+    "resources": [
+      "sidecar/**/*"
+    ]
   }
 }

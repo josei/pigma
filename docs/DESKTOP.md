@@ -226,11 +226,29 @@ the bundles on Windows, macOS and Linux and uploads them as artifacts. The app i
 Windows and macOS show a warning on first launch until signing is set up. AppImage is left out of Linux: it needs an extra tool download at
 build time, and `deb` is enough for the first release.
 
-## Local servers for the desktop app (in progress)
+## Local servers for the desktop app
 
-`scripts/build-servers.mjs` bundles the collaboration relay and the MCP server into
-`dist-servers/`. Each bundle starts from that directory without the repository: the native
-rasterizer `@resvg/resvg-js` stays external and ships beside the bundles, because it carries a
-binary per platform. `src/desktop/servers.bundle.test.ts` checks both. The shell does not start
-them yet; that step, the Node runtime and the packaged-app check are open (ROADMAP M17).
+The app starts its own MCP server and rooms relay, on loopback only, and stops them when it
+exits. Three parts make that work (ROADMAP M17):
 
+- `scripts/build-servers.mjs` bundles the relay and the MCP server into `dist-servers/`. The
+  native rasterizer `@resvg/resvg-js` stays external: it ships a binary per platform.
+- `scripts/sidecar-supervisor.mjs` runs both servers as children. It stops them when its
+  standard input closes, and the shell holds the other end of that pipe. So the servers stop
+  however the app exits: a normal quit, a SIGTERM, or a crash. Without it the children were left
+  running as orphans (measured on Linux).
+- `scripts/prepare-sidecar.mjs` puts the bundles, the supervisor and a Node runtime into
+  `src-tauri/sidecar/`, which `tauri.conf.json` ships as a resource. The runtime is a copy of
+  the Node that runs the build, so no download is needed on any runner. The folder is built,
+  not committed.
+
+The shell (`src-tauri/src/servers.rs`) starts the supervisor in `setup` and stops it on exit. A
+development run has no sidecar; the window opens and the servers are logged as not started.
+
+Advertised addresses: the shell advertises the relay as `ws://127.0.0.1:3002/relay`. The rooms
+client sets the path to `/collab` before it connects (`src/collab/client.ts`), so the connection
+works; the `/relay` in the advertised base is a label, not the path used.
+
+Tests: `src/desktop/servers.bundle.test.ts` builds the bundles, starts the relay from the bundle
+directory, checks the MCP bundle's usage, and checks that the supervisor runs both servers and
+stops them when its pipe closes.

@@ -10,6 +10,8 @@ on:
       - 'src-tauri/**'
       - 'scripts/desktop-assets.mjs'
       - 'scripts/build-servers.mjs'
+      - 'scripts/prepare-sidecar.mjs'
+      - 'scripts/sidecar-supervisor.mjs'
       - 'server/**'
       - 'src/mcp/**'
       - '.github/workflows/desktop.yml'

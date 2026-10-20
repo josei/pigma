@@ -18,6 +18,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod assets;
+mod servers;
 
 use assets::{AssetStatus, UpdateOutcome};
 use std::path::PathBuf;
@@ -299,6 +300,7 @@ fn serve_bundle(app: &tauri::AppHandle, request_path: &str) -> tauri::http::Resp
 fn main() {
     tauri::Builder::default()
         .manage(Mutex::new(Config::default()))
+        .manage(servers::Servers::default())
         // Confirmed on a machine with the Rust toolchain and the Tauri system
         // prerequisites (rustc 1.99.0, webkit2gtk-4.1/gtk+-3.0/libsoup-3.0):
         // `cargo check` is clean and `cargo test` passes. The closure signature,
@@ -314,6 +316,7 @@ fn main() {
             std::thread::spawn(move || responder.respond(serve_bundle(&app, &path)));
         })
         .setup(|app| {
+            servers::start(app.handle(), &app.state::<servers::Servers>());
             let handle = app.handle().clone();
             let (root, url) = {
                 let config = app.state::<Mutex<Config>>();
@@ -363,8 +366,13 @@ fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![desktop_info, desktop_asset_status, desktop_asset_check])
-        .run(tauri::generate_context!())
-        .expect("error while running Pigma");
+        .build(tauri::generate_context!())
+        .expect("error while building Pigma")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event {
+                servers::stop(&app.state::<servers::Servers>());
+            }
+        });
 }
 
 #[cfg(test)]

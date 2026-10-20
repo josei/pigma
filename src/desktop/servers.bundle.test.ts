@@ -1,5 +1,6 @@
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, copyFileSync } from 'node:fs';
+import { connect } from 'node:net';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -63,4 +64,59 @@ describe('desktop server bundles', () => {
     const result = spawnSync(process.execPath, ['mcp.mjs', '--help'], { cwd: OUT, encoding: 'utf8', env });
     expect(result.stdout + result.stderr).toContain('Usage');
   }, 30_000);
+
+  it('the supervisor runs both servers, and stops them when its standard input closes', async () => {
+    copyFileSync(join(ROOT, 'scripts/sidecar-supervisor.mjs'), join(OUT, 'supervisor.mjs'));
+    const relayPort = await freePort();
+    const mcpPort = await freePort();
+    const child = spawn(
+      process.execPath,
+      ['supervisor.mjs', '--relay-port', String(relayPort), '--mcp-port', String(mcpPort)],
+      { cwd: OUT, stdio: ['pipe', 'ignore', 'ignore'], env: withoutVitest() },
+    );
+    try {
+      await waitForPort(relayPort);
+      await waitForPort(mcpPort);
+      // The parent closing the pipe is the signal to stop: both servers must go.
+      child.stdin.end();
+      await waitForClosed(relayPort);
+      await waitForClosed(mcpPort);
+    } finally {
+      child.kill('SIGTERM');
+    }
+  }, 90_000);
 });
+
+function withoutVitest(): NodeJS.ProcessEnv {
+  const { VITEST: _unused, ...env } = process.env;
+  return env;
+}
+
+function isListening(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = connect(port, '127.0.0.1');
+    socket.once('connect', () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once('error', () => resolve(false));
+  });
+}
+
+async function waitForPort(port: number, timeoutMs = 30_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await isListening(port)) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`port ${port} never listened`);
+}
+
+async function waitForClosed(port: number, timeoutMs = 10_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!(await isListening(port))) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`port ${port} is still open after the pipe closed`);
+}
