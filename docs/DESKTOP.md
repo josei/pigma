@@ -225,8 +225,8 @@ platform file over it: `src-tauri/tauri.linux.conf.json` sets `deb` for Linux. T
 build was checked locally: `cargo tauri build --debug` produced one bundle,
 `Pigma_0.1.0_amd64.deb`, which contains `usr/bin/pigma-desktop` and a desktop entry.
 Windows (`msi`, `nsis`) is set in `src-tauri/tauri.windows.conf.json`. The CI workflow builds
-the bundles on Windows, macOS and Linux and uploads them as artifacts. The app is unsigned, so
-Windows and macOS show a warning on first launch until signing is set up. AppImage is left out of Linux: it needs an extra tool download at
+the bundles on Windows, macOS and Linux and uploads them as artifacts. The app is unsigned by
+decision, so Windows and macOS show a warning on first launch (DECISIONS.md). AppImage is left out of Linux: it needs an extra tool download at
 build time, and `deb` is enough for the first release.
 
 ## Local servers for the desktop app

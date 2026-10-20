@@ -48,8 +48,8 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
-- **Hosted deployment (owner decision).** The online copy is published to GitHub Pages (docs/ONLINE.md).
-  Running a relay and MCP server for others waits for the owner's go-ahead; the server mode is built and
+- **Hosted deployment: decided, not yet.** The online copy is published to GitHub Pages (docs/ONLINE.md).
+  The owner decided not to host a relay or MCP server for others yet. The server mode is built and
   tested. See `docs/DECISIONS.md`.
 
 ## Resolved
