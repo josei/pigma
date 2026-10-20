@@ -214,3 +214,13 @@ while the editor, the relay and the MCP server run on Node alone. The asset
 update logic therefore exists twice on purpose — the JavaScript reference client
 (`src/desktop/assets.ts`, tested by `npm test`) and the shell's Rust port
 (`src-tauri/src/assets.rs`, tested by `cargo test`).
+
+## Packaging per platform
+
+`src-tauri/tauri.conf.json` keeps the macOS targets (`app`, `dmg`). Tauri merges a
+platform file over it: `src-tauri/tauri.linux.conf.json` sets `deb` for Linux. The Linux
+build was checked locally: `cargo tauri build --debug` produced one bundle,
+`Pigma_0.1.0_amd64.deb`, which contains `usr/bin/pigma-desktop` and a desktop entry.
+Windows (`msi`, `nsis`) has no platform file yet and is built in CI when that workflow
+exists (ROADMAP M17). AppImage is left out of Linux: it needs an extra tool download at
+build time, and `deb` is enough for the first release.
