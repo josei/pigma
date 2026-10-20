@@ -260,3 +260,13 @@ works; the `/relay` in the advertised base is a label, not the path used.
 Tests: `src/desktop/servers.bundle.test.ts` builds the bundles, starts the relay from the bundle
 directory, checks the MCP bundle's usage, and checks that the supervisor runs both servers and
 stops them when its pipe closes.
+
+## Packaged-app check in CI
+
+`scripts/check-desktop-servers.mjs <binary>` starts the app, waits for MCP to answer `initialize`,
+calls `tools/list`, opens a rooms socket on `/collab`, then stops the app and checks that both ports
+close. The desktop workflow runs it on each platform after the build: Linux runs the extracted `.deb`
+under `xvfb-run`, macOS runs the `.app`'s binary, and Windows installs the NSIS setup silently and runs
+the installed `pigma-desktop.exe`. Run locally on Linux, it passes; on a binary that starts no servers it
+fails after 90 seconds.
+

@@ -12,6 +12,7 @@ on:
       - 'scripts/build-servers.mjs'
       - 'scripts/prepare-sidecar.mjs'
       - 'scripts/sidecar-supervisor.mjs'
+      - 'scripts/check-desktop-servers.mjs'
       - 'server/**'
       - 'src/mcp/**'
       - '.github/workflows/desktop.yml'
@@ -50,10 +51,27 @@ jobs:
         if: matrix.name == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xvfb
       - run: npm ci
       - name: Build the desktop app
         run: npx --yes @tauri-apps/cli@2 build
+      # The packaged app must start, serve MCP and rooms, and stop them when it quits (ROADMAP M17).
+      - name: Check the packaged app's servers (Linux)
+        if: matrix.name == 'linux'
+        run: |
+          dpkg-deb -x src-tauri/target/release/bundle/deb/*.deb "$RUNNER_TEMP/pkg"
+          xvfb-run -a node scripts/check-desktop-servers.mjs "$RUNNER_TEMP/pkg/usr/bin/pigma-desktop"
+      - name: Check the packaged app's servers (macOS)
+        if: matrix.name == 'macos'
+        run: node scripts/check-desktop-servers.mjs src-tauri/target/release/bundle/macos/Pigma.app/Contents/MacOS/pigma-desktop
+      - name: Check the packaged app's servers (Windows)
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait
+          $app = Get-ChildItem -Path $env:LOCALAPPDATA, $env:ProgramFiles -Filter pigma-desktop.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          node scripts/check-desktop-servers.mjs $app.FullName
       - uses: actions/upload-artifact@v4
         with:
           name: pigma-desktop-${{ matrix.name }}
