@@ -18,6 +18,7 @@ test('B107a Export PNG with nothing selected exports the page, not a stale selec
   await page.locator('.menu__item', { hasText: 'Export PNG…' }).click();
 
   await expect(page.locator('[aria-label="Export scope"]')).toHaveValue('page');
+  await expect(page.getByText('Exports every layer on the current page.'), 'the description still describes the stale selection').toBeVisible();
   const download = page.waitForEvent('download');
   await page.locator('[aria-label="Export now"]').click();
   expect((await download).suggestedFilename()).toMatch(/\.png$/);

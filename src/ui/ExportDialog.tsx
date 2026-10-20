@@ -43,14 +43,16 @@ export function ExportDialog() {
     setExportOptions({ open: false });
   };
 
+  // The description says what the Scope control shows, which is the scope that will export.
+  const scope = scopeFor(options.format);
   const description =
     options.format === 'pdf'
       ? 'Writes every layer on the current page as vector paths.'
       : options.format === 'svg'
-        ? options.scope === 'selection'
+        ? scope === 'selection'
           ? 'Writes only the selected layers as vector paths.'
           : 'Writes every layer on the current page as vector paths.'
-        : options.scope === 'selection'
+        : scope === 'selection'
           ? 'Exports only the selected layers.'
           : 'Exports every layer on the current page.';
 
