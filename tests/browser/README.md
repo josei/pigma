@@ -78,6 +78,10 @@ It needs system libraries once: `sudo npx playwright install-deps`.
 | `b31-libraries.spec.ts` | Library publish status; instance insertion; master edit + republish vs an out-of-date instance |
 | `b32-conflict.spec.ts` | Relay conflict resolution: different nodes both survive; same node converges |
 | `b33-animate-scroll.spec.ts` | Frame scrolling in presentation; smart-animate interpolation |
+| `b98-landing.spec.ts` | Landing page at the site root: CTA into the editor, the AI section's desktop download link, no overflow at phone and tablet widths |
+| `b99-hollow-features.spec.ts` | Menu items and keys that looked present and did nothing: empty-menu Frame selection, disabled Group, Ungroup and Paste with reasons, C selects Comment |
+| `b100-zoom-keys.spec.ts` | Zoom keys: Shift+0 to 100%, Cmd/Ctrl+= and -, Shift+1 back to fit, Shift+2 to the selection |
+| `b101-nested-draw.spec.ts` | A shape drawn in a frame nested in another frame goes into the innermost frame; one outside it stays in the outer frame |
 
 ## Known defects (tracked)
 
@@ -106,9 +110,9 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **375 browser tests passing / 0 failing** on Chromium (Firefox 343
-passed, 5 skipped; WebKit 342 passed, 6 skipped) with **0 orphan processes**. `npx vitest run` =
-1142 passing across 122 files.
+Current state: **387 browser tests passing / 0 failing** on Chromium (Firefox 375
+passed, 5 skipped; WebKit 374 passed, 6 skipped) with **0 orphan processes**. `npx vitest run` =
+1147 passing across 123 files.
 
 ### Round 12 - what is and is not covered
 
