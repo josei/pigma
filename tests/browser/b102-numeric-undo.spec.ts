@@ -21,6 +21,8 @@ test('B102a Enter in the Size field is one undo step, not two', async ({ page })
   await expect(field(page, 'Size'), 'one undo did not revert the size change').toHaveValue('14');
 });
 
+// B102b is a guard, not the reproduction: it passes on the old code too. B102a is the
+// edit that recorded two undo steps.
 test('B102b Enter in the W field of a shape is one undo step too', async ({ page }) => {
   await boot(page);
   await drawShape(page, 'Rectangle', 100, 80);
