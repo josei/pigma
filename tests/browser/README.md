@@ -82,6 +82,7 @@ It needs system libraries once: `sudo npx playwright install-deps`.
 | `b99-hollow-features.spec.ts` | Menu items and keys that looked present and did nothing: empty-menu Frame selection, disabled Group, Ungroup and Paste with reasons, C selects Comment |
 | `b100-zoom-keys.spec.ts` | Zoom keys: Shift+0 to 100%, Cmd/Ctrl+= and -, Shift+1 back to fit, Shift+2 to the selection |
 | `b101-nested-draw.spec.ts` | A shape drawn in a frame nested in another frame goes into the innermost frame; one outside it stays in the outer frame |
+| `b102-numeric-undo.spec.ts` | Enter in a numeric field (Size, W) is one undo step: the blur does not commit the same value again |
 
 ## Known defects (tracked)
 
@@ -110,7 +111,7 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **387 browser tests passing / 0 failing** on Chromium (Firefox 375
+Current state: **389 browser tests passing / 0 failing** on Chromium (Firefox 375
 passed, 5 skipped; WebKit 374 passed, 6 skipped) with **0 orphan processes**. `npx vitest run` =
 1147 passing across 123 files.
 

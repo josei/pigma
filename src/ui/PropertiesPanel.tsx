@@ -128,12 +128,10 @@ function NumberField({
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => commit(display)}
         onKeyDown={(event) => {
-          // Enter commits and leaves the field, so the next key is a shortcut again
-          // (otherwise "t" after a rotation typed into the box instead of picking Text).
-          if (event.key === 'Enter') {
-            commit(display);
-            event.currentTarget.blur();
-          }
+          // Enter leaves the field, so the next key is a shortcut again (otherwise "t"
+          // after a rotation typed into the box instead of picking Text). The blur
+          // commits the value once; committing here as well recorded two undo steps.
+          if (event.key === 'Enter') event.currentTarget.blur();
           if (event.key === 'Escape') setDraft(null);
           if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
             event.preventDefault();
