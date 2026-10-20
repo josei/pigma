@@ -25,4 +25,10 @@ cpSync(join('dist-servers', 'node_modules'), join(OUT, 'node_modules'), { recurs
 const runtime = join(OUT, process.platform === 'win32' ? 'node.exe' : 'node');
 copyFileSync(process.execPath, runtime);
 chmodSync(runtime, 0o755);
+// Symbols are not needed to run Node: stripping saves about 17 MB here. Linux only for now;
+// the other platforms ship the unstripped copy until they are tested.
+if (process.platform === 'linux') {
+  const stripped = spawnSync('strip', [runtime], { stdio: 'inherit' });
+  if (stripped.status !== 0) console.warn('sidecar: strip failed; shipping the unstripped runtime');
+}
 console.log(`sidecar: ${OUT}/ holds relay.mjs, mcp.mjs, the rasterizer and the Node runtime`);
