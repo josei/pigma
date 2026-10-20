@@ -2,7 +2,7 @@
 
 The desktop app is planned for macOS, Windows and Linux, built in GitHub Actions. The
 plan and its acceptance criteria are milestone M17 in `docs/ROADMAP.md`. Linux `cargo test`
-and `cargo build` pass locally; the CI packaging is not built yet.
+and `cargo build` pass locally. CI (`.github/workflows/desktop.yml`) builds the app on Linux, macOS and Windows and uploads the bundles; the first run passed on all three (unsigned).
 The desktop build is the **same editor** in a thin native shell. Nothing about
 the product forks: the document model, the editor, the Rooms client, the plugin
 sandbox and the MCP tools are the shared code in `src/`. The shell adds exactly
@@ -221,6 +221,7 @@ update logic therefore exists twice on purpose — the JavaScript reference clie
 platform file over it: `src-tauri/tauri.linux.conf.json` sets `deb` for Linux. The Linux
 build was checked locally: `cargo tauri build --debug` produced one bundle,
 `Pigma_0.1.0_amd64.deb`, which contains `usr/bin/pigma-desktop` and a desktop entry.
-Windows (`msi`, `nsis`) has no platform file yet and is built in CI when that workflow
-exists (ROADMAP M17). AppImage is left out of Linux: it needs an extra tool download at
+Windows (`msi`, `nsis`) is set in `src-tauri/tauri.windows.conf.json`. The CI workflow builds
+the bundles on Windows, macOS and Linux and uploads them as artifacts. The app is unsigned, so
+Windows and macOS show a warning on first launch until signing is set up. AppImage is left out of Linux: it needs an extra tool download at
 build time, and `deb` is enough for the first release.
