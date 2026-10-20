@@ -1,4 +1,5 @@
 import { useEditor, type ExportFormat } from '../store/editorStore';
+import { useEscapeToClose } from './useEscapeToClose';
 
 const SCALES = [1, 2, 3, 4];
 
@@ -18,6 +19,8 @@ export function ExportDialog() {
   const setExportOptions = useEditor((state) => state.setExportOptions);
   // Hooks must run before the early return, or opening the dialog reorders them.
   const selection = useEditor((state) => state.selection);
+  const close = () => setExportOptions({ open: false });
+  useEscapeToClose(options.open, close);
   if (!options.open) return null;
 
   const hasSelection = selection.length > 0;

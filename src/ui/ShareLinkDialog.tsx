@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useEditor } from '../store/editorStore';
 import { buildDocumentLink, editorBase } from '../share/openLink';
 import { copyText } from './clipboard';
+import { useEscapeToClose } from './useEscapeToClose';
 
 /**
  * "Copy link to this document".
@@ -22,6 +23,7 @@ export function ShareLinkDialog() {
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
   const [copied, setCopied] = useState(false);
+  useEscapeToClose(open, () => setOpen(false));
 
   useEffect(() => {
     if (!open) return;
