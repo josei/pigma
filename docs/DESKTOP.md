@@ -4,7 +4,7 @@ The desktop app is built in GitHub Actions for macOS, Windows and Linux (`.githu
 the bundles are uploaded as artifacts. The builds are unsigned. The app starts its own MCP server and rooms relay on
 loopback, as a sidecar (see "Local servers for the desktop app" below). The plan and acceptance criteria are milestone
 M17 in `docs/ROADMAP.md`. Verified: `cargo test` and `cargo build` on Linux, and the packaged Linux app serves MCP and
-rooms. The packaged app is not yet run on macOS or Windows; CI only builds those.
+rooms. CI runs the packaged app on all three platforms and checks its servers (run 39492897817).
 
 The desktop build is the **same editor** in a thin native shell. Nothing about
 the product forks: the document model, the editor, the Rooms client, the plugin
