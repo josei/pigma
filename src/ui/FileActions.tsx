@@ -221,7 +221,8 @@ export function runFileAction(action: FileAction): void {
       return;
     }
     case 'export-pdf': {
-      const scene = store.exportScene();
+      // The whole page, whatever is selected (the panel's PDF scope is always the page).
+      const scene = store.exportScene(scopeIds('page'));
       if (!scene) {
         store.pushToast('Nothing to export on this page');
         return;
@@ -291,7 +292,8 @@ export function runFileAction(action: FileAction): void {
       return;
     }
     case 'export-svg': {
-      const svg = store.exportSvgString();
+      // The whole page, whatever is selected: the selection has its own entry.
+      const svg = store.exportSvgString(scopeIds('page'));
       if (!svg) {
         store.pushToast('Nothing to export on this page');
         return;

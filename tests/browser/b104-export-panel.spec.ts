@@ -67,3 +67,42 @@ test('B104d the PNG path still downloads a PNG at the chosen scale', async ({ pa
   expect(file.suggestedFilename()).toMatch(/-2x\.png$/);
   expect(readFileSync(await file.path()).subarray(1, 4).toString('latin1')).toBe('PNG');
 });
+
+/** A rectangle and an ellipse, with the rectangle selected: the page holds both, the selection one. */
+async function twoShapesWithOneSelected(page: import('@playwright/test').Page) {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 100, 80, -150, 0);
+  await drawShape(page, 'Ellipse', 80, 80, 150, 0);
+  await page.locator('.layer-row', { hasText: 'Rectangle 1' }).first().click();
+}
+
+function countShapes(svg: string) {
+  return { rects: (svg.match(/<rect/g) ?? []).length, ellipses: (svg.match(/<ellipse/g) ?? []).length };
+}
+
+test('B104e Export SVG from the menu exports the whole page, even with a layer selected', async ({ page }) => {
+  await twoShapesWithOneSelected(page);
+  await openMenu(page);
+  const download = page.waitForEvent('download');
+  await page.locator('.menu__item', { hasText: 'Export SVG' }).first().click();
+  const svg = readFileSync(await (await download).path(), 'utf8');
+  expect(countShapes(svg), 'the page export left out a layer that was not selected').toEqual({ rects: 1, ellipses: 1 });
+});
+
+test('B104f the panel exports the page with its page scope, and only the selection with its selection scope', async ({ page }) => {
+  await twoShapesWithOneSelected(page);
+
+  await openExportPanel(page);
+  await page.locator('[aria-label="Export format"]').selectOption('svg');
+  await page.locator('[aria-label="Export scope"]').selectOption('page');
+  let download = page.waitForEvent('download');
+  await page.locator('[aria-label="Export now"]').click();
+  expect(countShapes(readFileSync(await (await download).path(), 'utf8'))).toEqual({ rects: 1, ellipses: 1 });
+
+  await openExportPanel(page);
+  await page.locator('[aria-label="Export format"]').selectOption('svg');
+  await page.locator('[aria-label="Export scope"]').selectOption('selection');
+  download = page.waitForEvent('download');
+  await page.locator('[aria-label="Export now"]').click();
+  expect(countShapes(readFileSync(await (await download).path(), 'utf8'))).toEqual({ rects: 1, ellipses: 0 });
+});
