@@ -35,3 +35,27 @@ test('B105b Copy as SVG with a layer selected copies that layer as SVG', async (
   await copyViaMenu(page);
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()), { timeout: 15000 }).toMatch(/<svg[\s\S]*<rect/);
 });
+
+test('B105c Copy as PNG with nothing selected says what to do and shows no copied confirmation', async ({ page, context }) => {
+  test.skip(test.info().project.name !== 'chromium', 'Playwright grants clipboard permissions only in Chromium');
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: APP_ORIGIN });
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 200, 120);
+  await page.locator('.canvas').first().click({ position: { x: 10, y: 10 } });
+
+  await openMenu(page);
+  await page.locator('.menu__item', { hasText: 'Copy as PNG' }).first().click();
+  await expect(page.locator('.toast, [role="status"]').filter({ hasText: 'Select a layer to copy as PNG' })).toBeVisible();
+  await expect(page.locator('.toast, [role="status"]').filter({ hasText: 'Copied PNG to the clipboard' })).toHaveCount(0);
+});
+
+test('B105d Copy as PNG with a layer selected copies it to the clipboard', async ({ page, context }) => {
+  test.skip(test.info().project.name !== 'chromium', 'Playwright grants clipboard permissions only in Chromium');
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: APP_ORIGIN });
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 200, 120);
+
+  await openMenu(page);
+  await page.locator('.menu__item', { hasText: 'Copy as PNG' }).first().click();
+  await expect(page.locator('.toast, [role="status"]').filter({ hasText: 'Copied PNG to the clipboard' })).toBeVisible({ timeout: 15000 });
+});

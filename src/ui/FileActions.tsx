@@ -267,8 +267,12 @@ export function runFileAction(action: FileAction): void {
       return;
     }
     case 'copy-png': {
-      const ids = store.selection.length > 0 ? [...store.selection] : undefined;
-      const scene = store.exportScene(ids);
+      // Copy as PNG takes the selection, as Copy as SVG does: nothing selected copies nothing.
+      if (store.selection.length === 0) {
+        store.pushToast('Select a layer to copy as PNG');
+        return;
+      }
+      const scene = store.exportScene([...store.selection]);
       if (!scene) {
         store.pushToast('Nothing to copy');
         return;
