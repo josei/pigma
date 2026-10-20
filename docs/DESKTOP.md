@@ -1,5 +1,8 @@
-# Pigma desktop (macOS / Tauri)
+# Pigma desktop (Tauri)
 
+The desktop app is planned for macOS, Windows and Linux, built in GitHub Actions. The
+plan and its acceptance criteria are milestone M17 in `docs/ROADMAP.md`. Linux `cargo test`
+and `cargo build` pass locally; the CI packaging is not built yet.
 The desktop build is the **same editor** in a thin native shell. Nothing about
 the product forks: the document model, the editor, the Rooms client, the plugin
 sandbox and the MCP tools are the shared code in `src/`. The shell adds exactly
