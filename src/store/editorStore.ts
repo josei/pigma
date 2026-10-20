@@ -527,7 +527,7 @@ export interface EditorState {
   setPanelWidth: (side: 'left' | 'right', width: number) => void;
   /** Open/close a panel drawer (mobile layout); passing the open side closes it. */
   setMobileDrawer: (drawer: 'left' | 'right' | null) => void;
-  /** PNG export options dialog. */
+  /** The export panel: opened from the menu or Ctrl/Cmd+Shift+E. */
   setExportOptions: (
     patch: Partial<{ open: boolean; format: ExportFormat; scale: number; transparent: boolean; scope: 'selection' | 'page' }>,
   ) => void;

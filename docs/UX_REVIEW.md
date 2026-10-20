@@ -134,7 +134,7 @@ other than Chromium. Nothing below should be read as a claim about those.
   join that is not end-to-end encrypted (`plaintext-refused`), and the client refuses a
   join without a key. Decided by the owner.
 - Export PNG 1x/2x/3x duplicated the main-menu entry: the scale now lives in the
-  Export PNG dialog only.
+  export panel only (the Export… dialog, which also covers SVG and PDF).
 - Disabled controls with nothing to act on: alignment, boolean, size limits, effects
   and layout-grid add rows now appear only when usable, or fold away until used.
 - Layout grid rows had no heading: the add row is labelled "Add a layout grid".
