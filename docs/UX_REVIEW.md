@@ -48,15 +48,13 @@ other than Chromium. Nothing below should be read as a claim about those.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
-- **Other engines.** Firefox passes the suite (375, 5 clipboard specs skipped), run
-  with `PIGMA_FIREFOX=1`. WebKit passes 374 with 6 skipped (5 clipboard specs and the
-  offline reload, which Playwright's WebKit build cannot run), run with `PIGMA_WEBKIT=1`.
 - **Hosted deployment (owner decision).** The online copy is published to GitHub Pages (docs/ONLINE.md).
   Running a relay and MCP server for others waits for the owner's go-ahead; the server mode is built and
   tested. See `docs/DECISIONS.md`.
 
 ## Resolved
 
+- Other engines: Firefox and WebKit were not run after the Pages work. Both are re-run and green: Firefox 375 passed, 5 skipped (clipboard); WebKit 374 passed, 6 skipped (5 clipboard, and the offline reload that Playwright's WebKit build cannot run). Measured on the Pages-era code, with `PIGMA_FIREFOX=1` and `PIGMA_WEBKIT=1`.
 - Alignment had no keyboard shortcuts; Alt+A, Alt+H, Alt+D, Alt+W, Alt+V and Alt+S align the selection (B96a).
 - The pixel grid and snap-to-grid keys were Shift+G and Shift+X; they are Cmd/Ctrl+' and Cmd/Ctrl+Shift+' (B94a, DECISIONS.md).
 - Detach instance had no keyboard shortcut; Ctrl/Cmd+Alt+B now detaches the selected instance (B93a).
