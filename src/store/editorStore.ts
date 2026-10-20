@@ -237,6 +237,9 @@ export function panelWidthLimit(): number {
   return Math.max(PANEL_WIDTH_MIN, Math.min(PANEL_WIDTH_MAX, Math.round(window.innerWidth - 600)));
 }
 
+/** What the export panel writes. PDF is vector and whole-page; SVG is vector; PNG is a bitmap. */
+export type ExportFormat = 'png' | 'svg' | 'pdf';
+
 export interface EditorState {
   file: PigmaFile;
   pageId: string;
@@ -325,8 +328,8 @@ export interface EditorState {
     advertised: McpAdvertisement | null;
     desktopToken: string | null;
   };
-  /** PNG export options (M16): scale and transparent background. */
-  pngOptions: { open: boolean; scale: number; transparent: boolean; scope: 'selection' | 'page' };
+  /** The export panel (M16): format, scale, transparent background and scope. */
+  exportOptions: { open: boolean; format: ExportFormat; scale: number; transparent: boolean; scope: 'selection' | 'page' };
   /** Dev-mode measurement overlays (M14). */
   showRedlines: boolean;
   /** Installed plugins: built-ins plus the user's own (M15). */
@@ -525,7 +528,9 @@ export interface EditorState {
   /** Open/close a panel drawer (mobile layout); passing the open side closes it. */
   setMobileDrawer: (drawer: 'left' | 'right' | null) => void;
   /** PNG export options dialog. */
-  setPngOptions: (patch: Partial<{ open: boolean; scale: number; transparent: boolean; scope: 'selection' | 'page' }>) => void;
+  setExportOptions: (
+    patch: Partial<{ open: boolean; format: ExportFormat; scale: number; transparent: boolean; scope: 'selection' | 'page' }>,
+  ) => void;
   setRedlines: (on: boolean) => void;
   /** Run a plugin against the open document; the whole run is one undo entry. */
   runPlugin: (id: string) => Promise<void>;
@@ -885,7 +890,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   linkedDirty: false,
   mcpEnvironment: { desktop: null, advertised: null, desktopToken: null },
   // Figma's export dialog starts at 1x; the menu also offers fixed 1x/2x/3x.
-  pngOptions: { open: false, scale: 1, transparent: false, scope: 'page' },
+  exportOptions: { open: false, format: 'png', scale: 1, transparent: false, scope: 'page' },
   showRedlines: false,
   plugins: BUILTIN_PLUGINS,
   documents: [],
@@ -2360,20 +2365,21 @@ export const useEditor = create<EditorState>((set, get) => ({
     }
   },
 
-  setPngOptions: (patch) => {
-    const current = get().pngOptions;
+  setExportOptions: (patch) => {
+    const current = get().exportOptions;
     const next = { ...current, ...patch };
     // Scales are whole numbers from 1x to 4x; anything else is ignored.
     if (patch.scale !== undefined) next.scale = Math.min(4, Math.max(1, Math.round(patch.scale)));
     if (
       next.open === current.open &&
+      next.format === current.format &&
       next.scale === current.scale &&
       next.transparent === current.transparent &&
       next.scope === current.scope
     ) {
       return;
     }
-    set({ pngOptions: next });
+    set({ exportOptions: next });
   },
 
   setMobileDrawer: (drawer) => {

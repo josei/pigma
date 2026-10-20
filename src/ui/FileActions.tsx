@@ -22,6 +22,7 @@ export type FileAction =
   | 'export-png-2x'
   | 'export-png-3x'
   | 'export-pdf'
+  | 'export-options'
   | 'export-png-options'
   | 'export-selection-svg'
   | 'export-selection-png-options'
@@ -196,8 +197,13 @@ export function runFileAction(action: FileAction): void {
         );
       });
       return;
+    case 'export-options': {
+      // The panel opens on the selection when there is one (Figma's default scope).
+      store.setExportOptions({ open: true, scope: store.selection.length > 0 ? 'selection' : 'page' });
+      return;
+    }
     case 'export-png-options': {
-      store.setPngOptions({ open: true });
+      store.setExportOptions({ open: true, format: 'png' });
       return;
     }
     case 'export-selection-png-options': {
@@ -205,7 +211,7 @@ export function runFileAction(action: FileAction): void {
         store.pushToast('Select something to export');
         return;
       }
-      store.setPngOptions({ open: true, scope: 'selection' });
+      store.setExportOptions({ open: true, format: 'png', scope: 'selection' });
       return;
     }
     case 'export-png-1x':
@@ -264,10 +270,10 @@ export function runFileAction(action: FileAction): void {
         svg: scene.svg,
         viewBox: scene.viewBox,
         backgroundBlurs: scene.backgroundBlurs,
-        scale: store.pngOptions.scale,
+        scale: store.exportOptions.scale,
         // A clipboard bitmap is for quick pasting: skip the webfont round trip.
         embedFont: false,
-        ...(store.pngOptions.transparent ? {} : { background: '#ffffff' }),
+        ...(store.exportOptions.transparent ? {} : { background: '#ffffff' }),
       });
       void (async () => {
         try {
@@ -355,6 +361,7 @@ export function useFileActionEvents(): void {
       ['pigma:import-figma-json', 'import-figma-json'],
       ['pigma:export-svg', 'export-svg'],
       ['pigma:place-image', 'place-image'],
+      ['pigma:export-options', 'export-options'],
       ['pigma:export-png-options', 'export-png-options'],
       ['pigma:export-selection-png-options', 'export-selection-png-options'],
       ['pigma:export-png-1x', 'export-png-1x'],

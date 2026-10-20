@@ -7,7 +7,7 @@ import { Toolbar } from './ui/Toolbar';
 import { Menu } from './ui/Menu';
 import { ContextMenu } from './ui/ContextMenu';
 import { Toasts } from './ui/Toasts';
-import { ExportPngDialog } from './ui/ExportPngDialog';
+import { ExportDialog } from './ui/ExportDialog';
 import { ShareLinkDialog } from './ui/ShareLinkDialog';
 import { PanelResizer } from './ui/PanelResizer';
 import { useIsMobile } from './ui/useIsMobile';
@@ -59,7 +59,7 @@ export function App() {
       <Menu />
       <ContextMenu />
       <Toasts />
-      <ExportPngDialog />
+      <ExportDialog />
       <ShareLinkDialog />
       {presentation ? <Presentation /> : null}
     </div>

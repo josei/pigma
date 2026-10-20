@@ -36,7 +36,7 @@ function reset() {
     presentationOverlays: [],
     libraries: [],
     mobileDrawer: null,
-    pngOptions: { open: false, scale: 1, transparent: false, scope: 'page' },
+    exportOptions: { open: false, format: 'png', scale: 1, transparent: false, scope: 'page' },
   });
 }
 
@@ -575,31 +575,39 @@ describe('png export options', () => {
   beforeEach(reset);
 
   it('opens, clamps the scale and toggles transparency', () => {
-    expect(store().pngOptions).toEqual({ open: false, scale: 1, transparent: false, scope: 'page' });
-    store().setPngOptions({ open: true });
-    expect(store().pngOptions.open).toBe(true);
-    store().setPngOptions({ scale: 9 });
-    expect(store().pngOptions.scale).toBe(4);
-    store().setPngOptions({ scale: 0.2 });
-    expect(store().pngOptions.scale).toBe(1);
-    store().setPngOptions({ scale: 3, transparent: true });
-    expect(store().pngOptions).toMatchObject({ scale: 3, transparent: true });
-    store().setPngOptions({ open: false });
-    expect(store().pngOptions.open).toBe(false);
+    expect(store().exportOptions).toEqual({ open: false, format: 'png', scale: 1, transparent: false, scope: 'page' });
+    store().setExportOptions({ open: true });
+    expect(store().exportOptions.open).toBe(true);
+    store().setExportOptions({ scale: 9 });
+    expect(store().exportOptions.scale).toBe(4);
+    store().setExportOptions({ scale: 0.2 });
+    expect(store().exportOptions.scale).toBe(1);
+    store().setExportOptions({ scale: 3, transparent: true });
+    expect(store().exportOptions).toMatchObject({ scale: 3, transparent: true });
+    store().setExportOptions({ open: false });
+    expect(store().exportOptions.open).toBe(false);
+  });
+
+  it('chooses the format the panel exports, and a repeat of the same format changes nothing', () => {
+    store().setExportOptions({ format: 'svg' });
+    expect(store().exportOptions.format).toBe('svg');
+    const before = store().exportOptions;
+    store().setExportOptions({ format: 'svg' });
+    expect(store().exportOptions).toBe(before);
     // The document is untouched by export options.
     expect(store().past).toEqual([]);
   });
 
   it('ignores a no-op update', () => {
-    const before = store().pngOptions;
-    store().setPngOptions({ scale: 1, transparent: false, open: false, scope: 'page' });
-    expect(store().pngOptions).toBe(before);
+    const before = store().exportOptions;
+    store().setExportOptions({ scale: 1, transparent: false, open: false, scope: 'page' });
+    expect(store().exportOptions).toBe(before);
   });
 
   it('switches the export scope to the selection', () => {
-    store().setPngOptions({ open: true, scope: 'selection' });
-    expect(store().pngOptions.scope).toBe('selection');
-    expect(store().pngOptions.open).toBe(true);
+    store().setExportOptions({ open: true, scope: 'selection' });
+    expect(store().exportOptions.scope).toBe('selection');
+    expect(store().exportOptions.open).toBe(true);
   });
 });
 

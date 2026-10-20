@@ -20,7 +20,7 @@ async function exportPngAt(page: Page, scale: number) {
   await page.locator('select[aria-label="PNG scale"]').selectOption(String(scale));
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.locator('button[aria-label="Export PNG now"]').click(),
+    page.locator('button[aria-label="Export now"]').click(),
   ]);
   return download;
 }

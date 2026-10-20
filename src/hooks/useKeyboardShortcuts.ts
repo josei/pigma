@@ -148,7 +148,7 @@ export function useKeyboardShortcuts(): void {
       if (meta && event.shiftKey && !event.altKey && event.key.toLowerCase() === 'e') {
         event.preventDefault();
         if (state.selection.length === 0) state.pushToast('Select something to export');
-        else state.setPngOptions({ open: true, scope: 'selection' });
+        else state.setExportOptions({ open: true, scope: 'selection' });
         return;
       }
       // Figma's Flatten: Cmd/Ctrl+E.
