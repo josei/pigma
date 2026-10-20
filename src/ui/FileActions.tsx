@@ -159,9 +159,15 @@ export function runFileAction(action: FileAction): void {
       return;
     }
     case 'copy-svg': {
-      const svg = store.exportSvgString();
+      // Copy as SVG takes the selection, as Copy CSS does. With nothing selected it says so,
+      // rather than copying the whole page without being asked.
+      if (store.selection.length === 0) {
+        store.pushToast('Select a layer to copy as SVG');
+        return;
+      }
+      const svg = store.exportSvgString(store.selection);
       if (!svg) {
-        store.pushToast('Select a layer or draw something to copy as SVG');
+        store.pushToast('Nothing to copy in the selection');
         return;
       }
       void copyText(svg).then((ok) =>

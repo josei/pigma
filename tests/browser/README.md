@@ -85,6 +85,7 @@ It needs system libraries once: `sudo npx playwright install-deps`.
 | `b102-numeric-undo.spec.ts` | Enter in a numeric field (Size, W) is one undo step: the blur does not commit the same value again |
 | `b103-single-undo.spec.ts` | Opacity, Rotation and a layer rename each come back in one undo step |
 | `b104-export-panel.spec.ts` | One export panel: Export… opens it; SVG hides the PNG-only controls; SVG, PDF and PNG downloads are read back; the menu SVG and the panel page scope export the whole page, not the selection |
+| `b105-copy-svg-selection.spec.ts` | Copy as SVG takes the selection: with nothing selected it says so and copies nothing; with a layer selected it copies that layer |
 
 ## Known defects (tracked)
 
@@ -113,7 +114,7 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **397 browser tests passing / 0 failing** on Chromium (Firefox 386
+Current state: **399 browser tests passing / 0 failing** on Chromium (Firefox 386
 passed, 5 skipped; WebKit 385 passed, 6 skipped) with **0 orphan processes**. `npx vitest run` =
 1148 passing across 123 files.
 
