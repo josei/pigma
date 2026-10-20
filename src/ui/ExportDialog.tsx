@@ -24,8 +24,9 @@ export function ExportDialog() {
   if (!options.open) return null;
 
   const hasSelection = selection.length > 0;
-  // PDF is written for the whole page; a selection cannot be chosen for it.
-  const scopeFor = (format: ExportFormat) => (format === 'pdf' ? 'page' : options.scope);
+  // PDF is written for the whole page, and so is anything exported with nothing selected: a
+  // stale 'selection' scope must not survive into a panel that has no selection to export.
+  const scopeFor = (format: ExportFormat) => (format === 'pdf' || !hasSelection ? 'page' : options.scope);
   const exportNow = () => {
     const scope = scopeFor(options.format);
     if (options.format === 'png') {
