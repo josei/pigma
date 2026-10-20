@@ -13,6 +13,7 @@ import type {
   TextStyle,
 } from '../model/types';
 import { hasChildren, isComponentNode } from '../model/types';
+import { layersInRect } from '../model/keyboardSelect';
 import { firstVisibleFill, gradientEnds, withGradientEnds, withRadialHandle } from '../model/paint';
 import { flattenFrameOp, toVectorOp } from '../model/flatten';
 import type { Paint } from '../model/types';
@@ -244,6 +245,8 @@ export interface EditorState {
   file: PigmaFile;
   pageId: string;
   selection: string[];
+  /** Keyboard box selection (Ctrl/Option+Space): the box in document coordinates, or null. */
+  keyboardBox: Rect | null;
   tool: Tool;
   viewport: Viewport;
   canvasSize: { width: number; height: number };
@@ -368,6 +371,11 @@ export interface EditorState {
   zoomTo: (zoom: number) => void;
   zoomToSelection: () => void;
   select: (ids: string[], mode?: 'replace' | 'add' | 'toggle') => void;
+  /** Keyboard box selection: start a 1px box at the centre of the view, grow or shrink it, select what it touches, or leave without selecting. */
+  toggleKeyboardBox: () => void;
+  moveKeyboardBox: (dx: number, dy: number) => void;
+  finishKeyboardBox: () => void;
+  cancelKeyboardBox: () => void;
   selectAll: () => void;
   clearSelection: () => void;
   setEnteredContainer: (id: string | null) => void;
@@ -850,6 +858,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   file: initialFile,
   pageId: firstPageId(initialFile),
   selection: [],
+  keyboardBox: null,
   tool: 'select',
   viewport: { x: 0, y: 0, zoom: 1 },
   canvasSize: { width: 1200, height: 800 },
@@ -962,6 +971,45 @@ export const useEditor = create<EditorState>((set, get) => ({
       pendingFit: false,
       viewport: { zoom: clamped, x: width / 2 - focus.x * clamped, y: height / 2 - focus.y * clamped },
     });
+  },
+
+  toggleKeyboardBox: () => {
+    const state = get();
+    if (state.keyboardBox) {
+      set({ keyboardBox: null });
+      return;
+    }
+    // Figma starts the box at the cursor; with no cursor in this editor, the centre of the view.
+    const x = (state.canvasSize.width / 2 - state.viewport.x) / state.viewport.zoom;
+    const y = (state.canvasSize.height / 2 - state.viewport.y) / state.viewport.zoom;
+    set({ keyboardBox: { x, y, width: 1, height: 1 } });
+  },
+
+  moveKeyboardBox: (dx, dy) => {
+    const box = get().keyboardBox;
+    if (!box) return;
+    // The bottom-right corner moves; the box never has zero size, so it always touches something.
+    set({
+      keyboardBox: {
+        x: box.x,
+        y: box.y,
+        width: Math.max(1, box.width + dx),
+        height: Math.max(1, box.height + dy),
+      },
+    });
+  },
+
+  finishKeyboardBox: () => {
+    const state = get();
+    const box = state.keyboardBox;
+    if (!box) return;
+    const ids = layersInRect(state.file.document, activeContainer(state), box);
+    set({ keyboardBox: null });
+    get().select(ids, 'replace');
+  },
+
+  cancelKeyboardBox: () => {
+    if (get().keyboardBox) set({ keyboardBox: null });
   },
 
   select: (ids, mode = 'replace') => {

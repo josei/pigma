@@ -29,6 +29,7 @@ import {
   type VectorPath,
 } from '../model/vector';
 import { localPoint } from '../model/tree';
+import { layersInRect } from '../model/keyboardSelect';
 import { Rulers } from './Rulers';
 import { Icon } from './icons';
 import { decodeImageFile, imageFromDataTransfer } from './imageInput';
@@ -788,18 +789,7 @@ export function Canvas() {
     if (current.kind === 'marquee') {
       const rect = rectFromPoints(current.start, current.current);
       if (rect.width > 1 || rect.height > 1) {
-        const ids: string[] = [];
-        for (const child of container.children as SceneNode[]) {
-          if (!child.visible) continue;
-          const bounds = absoluteBounds(state.file.document, child.id);
-          if (!bounds) continue;
-          const intersects =
-            bounds.x < rect.x + rect.width &&
-            rect.x < bounds.x + bounds.width &&
-            bounds.y < rect.y + rect.height &&
-            rect.y < bounds.y + bounds.height;
-          if (intersects) ids.push(child.id);
-        }
+        const ids = layersInRect(state.file.document, container, rect);
         state.select(ids, current.additive ? 'add' : 'replace');
       }
     }
@@ -1027,6 +1017,7 @@ export function Canvas() {
       ? 'default'
       : 'crosshair';
 
+  const keyboardBox = useEditor((state) => state.keyboardBox);
   const marqueeRect = interaction?.kind === 'marquee' ? rectFromPoints(interaction.start, interaction.current) : null;
   const drawRect = interaction?.kind === 'draw' ? rectFromPoints(interaction.start, interaction.current) : null;
   const hoverNode = hoverId ? findNode(file.document, hoverId) : null;
@@ -1618,6 +1609,21 @@ export function Canvas() {
             height={marqueeRect.height}
             fill="rgba(13, 153, 255, 0.08)"
             stroke="#0d99ff"
+            strokeWidth={1 / viewport.zoom}
+          />
+        ) : null}
+
+        {keyboardBox ? (
+          <rect
+            className="canvas__keyboard-box"
+            data-testid="keyboard-box"
+            x={keyboardBox.x}
+            y={keyboardBox.y}
+            width={keyboardBox.width}
+            height={keyboardBox.height}
+            fill="rgba(13, 153, 255, 0.08)"
+            stroke="#0d99ff"
+            strokeDasharray={`${4 / viewport.zoom} ${3 / viewport.zoom}`}
             strokeWidth={1 / viewport.zoom}
           />
         ) : null}

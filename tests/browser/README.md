@@ -88,6 +88,7 @@ It needs system libraries once: `sudo npx playwright install-deps`.
 | `b105-copy-svg-selection.spec.ts` | Copy as SVG and Copy as PNG take the selection: with nothing selected each says so and shows no copy; with a layer selected each copies it |
 | `b106-modal-escape.spec.ts` | Escape closes the export panel and the copy-link dialog; the selection behind the panel stays |
 | `b107-export-stale-scope.spec.ts` | The export panel opened with nothing selected offers the whole page, not a stale selection scope |
+| `b108-keyboard-box-select.spec.ts` | Keyboard box selection: Ctrl/Option+Space opens the box, Enter selects what it touches, Escape leaves, and the arrows grow the box without nudging the selection |
 
 ## Known defects (tracked)
 
@@ -116,9 +117,9 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **404 browser tests passing / 0 failing** on Chromium (Firefox 395
+Current state: **407 browser tests passing / 0 failing** on Chromium (Firefox 395
 passed, 9 skipped; WebKit 393 passed, 10 skipped) with **0 orphan processes**. `npx vitest run` =
-1148 passing across 123 files.
+1153 passing across 124 files.
 
 ### Round 12 - what is and is not covered
 

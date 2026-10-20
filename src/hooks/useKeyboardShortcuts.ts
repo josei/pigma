@@ -67,6 +67,33 @@ export function useKeyboardShortcuts(): void {
         return;
       }
 
+      // Keyboard box selection (Figma's Ctrl/Option+Space): while the box is open, the arrows
+      // grow it, Enter selects the layers it touches, and Escape leaves without selecting.
+      if (!typing && event.code === 'Space' && (meta || event.altKey)) {
+        event.preventDefault();
+        state.toggleKeyboardBox();
+        return;
+      }
+      if (state.keyboardBox && !typing) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          state.cancelKeyboardBox();
+          return;
+        }
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          state.finishKeyboardBox();
+          return;
+        }
+        const arrow = NUDGE[event.key];
+        if (arrow) {
+          event.preventDefault();
+          const step = event.shiftKey ? 10 : 1;
+          state.moveKeyboardBox(arrow[0] * step, arrow[1] * step);
+          return;
+        }
+      }
+
       if (event.key === 'Escape') {
         if (state.followingId) {
           // Leaving follow mode is the most local thing Escape can undo.
