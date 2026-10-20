@@ -225,3 +225,12 @@ Windows (`msi`, `nsis`) is set in `src-tauri/tauri.windows.conf.json`. The CI wo
 the bundles on Windows, macOS and Linux and uploads them as artifacts. The app is unsigned, so
 Windows and macOS show a warning on first launch until signing is set up. AppImage is left out of Linux: it needs an extra tool download at
 build time, and `deb` is enough for the first release.
+
+## Local servers for the desktop app (in progress)
+
+`scripts/build-servers.mjs` bundles the collaboration relay and the MCP server into
+`dist-servers/`. Each bundle starts from that directory without the repository: the native
+rasterizer `@resvg/resvg-js` stays external and ships beside the bundles, because it carries a
+binary per platform. `src/desktop/servers.bundle.test.ts` checks both. The shell does not start
+them yet; that step, the Node runtime and the packaged-app check are open (ROADMAP M17).
+
