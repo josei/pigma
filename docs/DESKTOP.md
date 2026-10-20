@@ -1,8 +1,11 @@
 # Pigma desktop (Tauri)
 
-The desktop app is planned for macOS, Windows and Linux, built in GitHub Actions. The
-plan and its acceptance criteria are milestone M17 in `docs/ROADMAP.md`. Linux `cargo test`
-and `cargo build` pass locally. CI (`.github/workflows/desktop.yml`) builds the app on Linux, macOS and Windows and uploads the bundles; the first run passed on all three (unsigned).
+The desktop app is built in GitHub Actions for macOS, Windows and Linux (`.github/workflows/desktop.yml`), and
+the bundles are uploaded as artifacts. The builds are unsigned. The app starts its own MCP server and rooms relay on
+loopback, as a sidecar (see "Local servers for the desktop app" below). The plan and acceptance criteria are milestone
+M17 in `docs/ROADMAP.md`. Verified: `cargo test` and `cargo build` on Linux, and the packaged Linux app serves MCP and
+rooms. The packaged app is not yet run on macOS or Windows; CI only builds those.
+
 The desktop build is the **same editor** in a thin native shell. Nothing about
 the product forks: the document model, the editor, the Rooms client, the plugin
 sandbox and the MCP tools are the shared code in `src/`. The shell adds exactly
