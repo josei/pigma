@@ -26,7 +26,6 @@ async function frameWithChildren(page: Page, count: number): Promise<void> {
     await drag(-120 + i * 25, -60, -100 + i * 25, -40);
   }
   await page.locator('.layer-row', { hasText: 'Frame' }).first().click();
-  await page.waitForTimeout(300);
   await expect(page.locator('[role="group"][aria-label="Direction"]')).toBeVisible();
 }
 

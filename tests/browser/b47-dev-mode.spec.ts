@@ -56,6 +56,5 @@ test('B47b the toggle reflects its state and is reversible', async ({ page }) =>
 
   // And the design surface is usable again, not just present.
   await page.locator('.tab', { hasText: 'Design' }).click();
-  await page.waitForTimeout(300);
   await expect(page.locator('input[aria-label="W"]')).toBeVisible();
 });

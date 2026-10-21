@@ -172,7 +172,6 @@ test('B59f the authored swap plays back IN PLACE: the stack and the frame are un
   await page.waitForTimeout(350);
 
   await tool(page, 'Present').click();
-  await page.waitForTimeout(600);
   await expect(page.locator('.present__stage'), 'presentation has no stage to play in').toHaveCount(1);
 
   // Snapshot AFTER entering: `presentationFrameId` is set on entering, so reading

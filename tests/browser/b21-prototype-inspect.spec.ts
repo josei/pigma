@@ -149,7 +149,6 @@ test('B21f an interaction produces a navigable hotspot in presentation', async (
   await page.waitForTimeout(300);
 
   await tool(page, 'Present').click();
-  await page.waitForTimeout(500);
   await expect(page.locator('.present__hotspot')).toHaveCount(1);
 });
 

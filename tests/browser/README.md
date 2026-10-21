@@ -585,3 +585,17 @@ clean at 118 files / 1072 passing.** It is recorded rather than dropped, and it 
 consistent with the documented concurrent-writer condition: a source file written **while
 vite transforms it** fails to collect. The failing test's name was not captured by the
 pass script, so this entry states what was measured and not more.
+
+## Fixed waits: policy and what remains
+
+A test waits on the condition it checks, never on a fixed time: `expect(locator)` and `expect.poll(...)` retry
+until the state holds. A fixed `waitForTimeout` passes on a fast machine and fails on a slow one (WebKit finished a
+layer drop later than Chromium, and B85c failed once because of one; see docs/DECISIONS.md).
+
+Done: the 16 fixed waits that sat directly before a retrying locator assertion were removed, and the layer drag spec
+(`b85-layer-drag`) has none left.
+
+Open: about 309 fixed waits remain across the other specs. Each one sits before a plain read or an action, not a
+retrying assertion, so removing it needs that read turned into a poll. They are listed by file with
+`grep -c waitForTimeout tests/browser/*.spec.ts`.
+

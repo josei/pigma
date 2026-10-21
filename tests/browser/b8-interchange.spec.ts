@@ -40,7 +40,6 @@ test('B8b an exported document re-imports with its content intact', async ({ pag
     page.locator('.menu__item', { hasText: 'Import Pigma document' }).first().click(),
   ]);
   await chooser.setFiles('/tmp/pigma-qa-roundtrip.pigma');
-  await page.waitForTimeout(500);
 
   await expect(page.locator('.layer-row')).toHaveCount(expected);
 });

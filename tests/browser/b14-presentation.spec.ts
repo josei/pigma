@@ -4,7 +4,6 @@ import { boot, drawShape, tool } from './helpers';
 test('B14a presentation without a start frame shows the fallback view', async ({ page }) => {
   await boot(page, { blank: true });
   await tool(page, 'Present').click();
-  await page.waitForTimeout(500);
 
   await expect(page.locator('.present')).toHaveCount(1);
   await expect(page.locator('.present__toolbar')).toContainText('Close');
@@ -28,7 +27,6 @@ test('B14b a start frame gives presentation a real stage', async ({ page }) => {
   await page.waitForTimeout(250);
 
   await tool(page, 'Present').click();
-  await page.waitForTimeout(500);
 
   await expect(page.locator('.present__stage')).toHaveCount(1);
   await expect(page.locator('.present__frame')).toHaveCount(1);

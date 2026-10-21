@@ -45,7 +45,6 @@ test('B30b a comment can be replied to in its thread', async ({ page }) => {
   await reply.fill('Looks good to me');
   const post = page.locator('.app__left button', { hasText: /reply|post|send|comment/i }).first();
   await post.click();
-  await page.waitForTimeout(500);
 
   await expect(page.locator('.app__left')).toContainText('Looks good to me');
 });
@@ -102,7 +101,6 @@ test('B30e saving a version adds it to the snapshot timeline', async ({ page }) 
 
   await page.locator('input[aria-label="Version name"]').fill('Milestone A');
   await page.locator('button[aria-label="Save version"]').click();
-  await page.waitForTimeout(700);
 
   await expect(page.locator('.app__left')).toContainText('Milestone A');
 });

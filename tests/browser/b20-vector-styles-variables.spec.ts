@@ -88,7 +88,6 @@ test('B20d Subtract and Exclude each merge to one node', async ({ page }) => {
     await boot(page, { blank: true });
     await twoOverlappingRects(page);
     await page.locator(`[aria-label="${op}"]`).click();
-    await page.waitForTimeout(400);
     await expect(page.locator('.layer-row--selected')).toHaveCount(1);
   }
 });
@@ -97,7 +96,6 @@ test('B20e Intersect merges two overlapping shapes into one', async ({ page }) =
   await boot(page, { blank: true });
   await twoOverlappingRects(page);
   await page.locator('[aria-label="Intersect"]').click();
-  await page.waitForTimeout(500);
   await expect(page.locator('.layer-row--selected')).toHaveCount(1);
 });
 

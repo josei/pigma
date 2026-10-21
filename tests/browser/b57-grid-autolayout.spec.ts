@@ -40,7 +40,6 @@ async function frameWithChildren(page: Page, count: number): Promise<void> {
 
   // Children are selected last; select the frame itself through the layers tree.
   await page.locator('.layer-row', { hasText: 'Frame' }).first().click();
-  await page.waitForTimeout(300);
   await expect(page.locator('[role="group"][aria-label="Direction"]')).toBeVisible();
 }
 

@@ -36,7 +36,6 @@ test('B89a a click that sets a variable holds its value for the presentation', a
   await expect(hotspot).toBeVisible();
   await expect(page.locator('.present')).toHaveAttribute('data-variables', '{}');
   await hotspot.click();
-  await page.waitForTimeout(200);
   await expect(page.locator('.present'), 'the click did not set the variable').toHaveAttribute('data-variables', '{"open":true}');
 });
 
@@ -77,10 +76,8 @@ test('B90a a Set variable link is authored in the Prototype tab and sets the var
   // Play it: the click sets the variable, which the presentation then holds.
   await page.evaluate((id) => window.__pigmaStore!.getState().setPrototypeStart(id), frameId);
   await tool(page, 'Present').click();
-  await page.waitForTimeout(500);
   await expect(page.locator('.present')).toHaveAttribute('data-variables', '{}');
   await page.locator('.present__hotspot').first().click();
-  await page.waitForTimeout(200);
   await expect(page.locator('.present')).toHaveAttribute('data-variables', `{"${variableId}":false}`);
 });
 
@@ -117,7 +114,6 @@ test('B91a a conditional hotspot appears only after a click sets its variable', 
   await expect(page.locator('.present__hotspot[aria-label*="Ellipse"]'), 'a conditional hotspot showed before its condition held').toHaveCount(0);
 
   await page.locator('.present__hotspot[aria-label*="Rectangle"]').click();
-  await page.waitForTimeout(250);
   await expect(page.locator('.present__hotspot[aria-label*="Ellipse"]'), 'the conditional hotspot did not appear').toHaveCount(1);
 });
 
