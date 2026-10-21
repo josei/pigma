@@ -644,6 +644,8 @@ export function pasteAtTarget(
   // Both boxes are measured in the parent's own space, so a shift of `tx`/`ty` moves them exactly.
   const parentSpace = worldTransform(file.document, parent.id);
   const targetBox = boundsInSpace(file.document, [targetId], parentSpace);
+  // Paste to replace keeps the replaced layer's stacking position: the copy takes its slot.
+  const slot = parent.children.findIndex((child) => child.id === targetId);
   const base = replace ? { ...file, document: removeNodes(file.document, [targetId]).root } : file;
   const inserted = instantiateClipboard(base, payload, parent.id);
   const parentNode = findNode(inserted.file.document, parent.id);
@@ -656,6 +658,15 @@ export function pasteAtTarget(
   const dy = targetBox.y - pastedBox.y;
   const constraints = replace ? target.constraints : undefined;
   let document = inserted.file.document;
+  if (replace) {
+    document = updateNode(document, parent.id, (node) => {
+      if (!hasChildren(node)) return node;
+      const others = node.children.filter((child) => !newIds.includes(child.id));
+      const moved = node.children.filter((child) => newIds.includes(child.id));
+      const at = Math.min(slot, others.length);
+      return { ...node, children: [...others.slice(0, at), ...moved, ...others.slice(at)] } as AnyNode;
+    });
+  }
   for (const id of newIds) {
     document = updateNode(document, id, (node) => ({
       ...node,

@@ -258,18 +258,28 @@ export function createRoomClient(handlers: RoomClientHandlers, createSocket?: (u
    * encrypted. A payload that will not decrypt (wrong key, tampered ciphertext,
    * or a ciphertext from another room) is reported rather than applied.
    */
+  // Decryption is asynchronous, so payloads that arrive close together finish in any order. Deliveries
+  // are chained, so each one is applied in the order it arrived (a welcome snapshot before the
+  // updates that follow it), and a failed one does not stop the chain.
+  let inArrivalOrder: Promise<void> = Promise.resolve();
   const deliver = (epoch: number, kind: 'ops' | 'snapshot', payload: unknown, apply: (value: unknown) => void): void => {
     const key = docKey;
     if (!key) {
-      apply(payload);
+      inArrivalOrder = inArrivalOrder.then(() => {
+        if (epoch === generation) apply(payload);
+      });
       return;
     }
-    void key
+    inArrivalOrder = inArrivalOrder
+      .then(() => key)
       .then((resolved) => decryptPayload(resolved, roomId, kind, payload))
       .then((result) => {
         if (epoch !== generation) return;
         if (result.ok) apply(result.value);
         else emit({ ...state, phase: 'error', error: `Could not decrypt a room ${kind === 'ops' ? 'update' : 'snapshot'} (${result.reason})` });
+      })
+      .catch((error: unknown) => {
+        console.error('A room update could not be applied', error);
       });
   };
 

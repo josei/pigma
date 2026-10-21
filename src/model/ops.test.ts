@@ -340,7 +340,7 @@ describe('document operations', () => {
   });
 
   it('paste to replace removes the target, places the copy where it was and gives it the target constraints', () => {
-    const { file, a, b, pageId } = setup();
+    const { file, a, b, c, pageId } = setup();
     const target = findNode(file.document, b) as ShapeNode;
     target.constraints = { horizontal: 'MAX', vertical: 'MIN' };
     const payload = [findNode(file.document, a) as SceneNode];
@@ -350,6 +350,8 @@ describe('document operations', () => {
     expect(copy.transform.tx).toBe(200);
     expect(copy.constraints).toEqual({ horizontal: 'MAX', vertical: 'MIN' });
     expect(container(findNode(result.file.document, pageId)).children).toHaveLength(3);
+    // The copy takes the replaced layer's place in the stack, between a and c.
+    expect(container(findNode(result.file.document, pageId)).children.map((child) => child.id)).toEqual([a, result.newIds[0], c]);
   });
 
   it('refuses a target with no parent to paste into', () => {
