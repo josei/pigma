@@ -745,7 +745,7 @@ Everything the earlier rounds landed still survives; these are what is still ope
 | Gap | Nature |
 | --- | --- |
 | **Style bindings** | **BLOCKED ON A MODEL DECISION** - a third cause is established (Figma styles are NODES, ours are a table) and three options are with the product owner, so this is **awaiting that decision, not in progress**. The EXPORT half landed; the IMPORT does not survive; plus a **model gap** (5 wire fields vs 3) and a `StyleType` that has **7** members against our **3** |
-| **Variable bindings** | the **LAST kind-1 divergence**: we write `variableBindings`, which the schema does not define, so `kiwi` drops it silently. The real field is **`variableConsumptionMap`** (`{ entries }`, each with **`variableField`**). **Being written this round - not done** |
+| **Variable bindings** | the earlier divergence (`variableBindings`, which the schema does not define) is **fixed**: the export writes `variableConsumptionMap` (`{ entries }`, each with `variableField`). The importer still reads the old name as a fallback (`adapters.ts`). Test-backed: `src/figma/native/modelExport.test.ts` | done |
 | **Component property definitions** | **landed BOTH ways** (`componentPropDefs`: VARIANT/BOOLEAN/TEXT with names and defaults; two negatives pinned). What it *found* is a **SHAPE** loss - a map written under the RIGHT name as an EMPTY LIST - which is **instance 9** and which the name check is blind to; a **shape check is being built** |
 | **Grid track sizes** | still lost (the **track guids** half is closed) |
 | **`assetRef`** | not carried |
