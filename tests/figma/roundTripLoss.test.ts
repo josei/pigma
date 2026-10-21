@@ -269,6 +269,19 @@ describe('batch 2: layout grids round-trip', () => {
 });
 
 describe('prototype interactions: the export side writes them', () => {
+  it('a Set variable action survives a file: the variable and the value come back', async () => {
+    const file = emptyFile('Set variable round trip');
+    const page = file.document.children[0]!;
+    const toggle = createFrameNode(file.document, 0, 0, 80, 40);
+    toggle.name = 'Toggle';
+    // A variable id in session:local form, which is how Figma's own variables are identified.
+    toggle.interactions = [{ trigger: { type: 'ON_CLICK' }, actions: [{ type: 'SET_VARIABLE', variableId: '1:5', variableValue: 3.5 }] }];
+    page.children = [toggle];
+    const reimported = await roundTrip(file, 'circle.fig');
+    const action = (byName(reimported, 'Toggle') as unknown as { interactions: Array<{ actions: Array<Record<string, unknown>> }> }).interactions[0]!.actions[0]!;
+    expect(action).toEqual({ type: 'SET_VARIABLE', variableId: '1:5', variableValue: 3.5 });
+  });
+
   it('writes a Set variable action as the schema has it: SET_VARIABLE, the variable GUID and the value', () => {
     const file = emptyFile('Set variable export');
     const page = file.document.children[0]!;

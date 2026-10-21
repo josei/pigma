@@ -587,6 +587,16 @@ const idOfGuid = (guid: unknown): string | null => {
 
 /** One native `PrototypeAction` as the model's action. */
 function fromNativeAction(raw: Record<string, unknown>): PrototypeAction | null {
+  // Set variable: the variable GUID and the value the exporter writes (see modelExport.ts). An
+  // action without a readable variable or value is dropped, as an unknown connection is.
+  if (raw.connectionType === 'SET_VARIABLE') {
+    const variableId = idOfGuid(raw.targetVariableID);
+    const value = isRecord(raw.targetVariableValue) ? raw.targetVariableValue : null;
+    const variableValue =
+      value && typeof value.boolValue === 'boolean' ? value.boolValue : value && typeof value.floatValue === 'number' ? value.floatValue : undefined;
+    if (!variableId || variableValue === undefined) return null;
+    return { type: 'SET_VARIABLE', variableId, variableValue };
+  }
   const type = NATIVE_CONNECTIONS[String(raw.connectionType)];
   if (!type) return null;
   const action: PrototypeAction = { type };
