@@ -598,9 +598,9 @@ association we could not find**.
 schema does not define, so `kiwi` drops it **silently**. **That is the last silent
 drop in the inventory.**
 
-**Not done:** the `variableConsumptionMap` write is **being written this round** -
-nothing here claims it landed, and the inventory's **kind-1 count stays at 2** until
-the round reports the new number.
+**Done since (commit bb47186):** the `variableConsumptionMap` write is in `modelExport.ts`
+(`change.variableConsumptionMap = { entries }`) and covered by `modelExport.test.ts`. The
+**kind-1 count of 2** above was taken before that write and has not been re-counted.
 
 ### The two name mismatches are MAPPERS, not renames - and the writes stay
 

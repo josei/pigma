@@ -681,10 +681,10 @@ their result path and keep their operands as children, but the model does not
 store the operation kind itself (Figma's `booleanOperation`) — the node name is
 the only record — so `get_design_context` reports the geometry, fill rule, and
 operands, not a `booleanOperation` field. Variables and variable collections are
-first-class in the model and fully served by the MCP tools, but no importer
-populates them yet: Figma's file JSON has no variables table (they come from the
-separate `/variables/local` endpoint) and the native `.fig` reader does not
-extract the document's variable tables.
+first-class in the model and fully served by the MCP tools, but no REST importer
+populates them: Figma's file JSON has no variables table (they come from the separate
+`/variables/local` endpoint). The native `.fig` reader does extract the variable tables from
+the `VARIABLE_SET` and `VARIABLE` nodes that the exporter writes (see docs/DECISIONS.md).
 Native `.fig` **export** is implemented for both native round-trips and the
 editor model — see [`docs/FIGMA_IMPORT.md`](./FIGMA_IMPORT.md) for the mapping
 and its documented limitations (component sets, numeric font weight).
