@@ -376,6 +376,8 @@ export interface BaseNode {
   /** Rounded corners; Figma allows these on rectangles, frames and components. */
   cornerRadius?: number;
   rectangleCornerRadii?: [number, number, number, number];
+  /** Corner smoothing, 0 (circular corners) to 1. Figma's Corner smoothing; rendered as an approximation. */
+  cornerSmoothing?: number;
   /** Style bindings for this node (fill/text/effect). */
   styles?: NodeStyleBinding;
   /**

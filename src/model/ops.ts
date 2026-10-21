@@ -757,6 +757,8 @@ export interface NodePatch {
   innerRadius?: number;
   /** Per-corner radii; set to undefined to fall back to `cornerRadius`. */
   rectangleCornerRadii?: [number, number, number, number];
+  /** Corner smoothing, 0 to 1 (Figma's Corner smoothing). */
+  cornerSmoothing?: number;
   /** Size limits (M10); `undefined` clears a limit. */
   minWidth?: number;
   minHeight?: number;

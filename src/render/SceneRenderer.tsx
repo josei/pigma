@@ -71,13 +71,39 @@ export function cornerRadii(node: BaseNode): [number, number, number, number] {
   return [radius, radius, radius, radius];
 }
 
-/** Rounded-rect path with independent corner radii (Figma's `rectangleCornerRadii`). */
-export function roundedRectPath(width: number, height: number, radii: [number, number, number, number]): string {
+/** Corner smoothing of a shape, 0 (a circular arc) to 1 (the fullest smoothing). */
+export function cornerSmoothingOf(node: BaseNode): number {
+  const value = (node as { cornerSmoothing?: number }).cornerSmoothing ?? 0;
+  return Math.min(1, Math.max(0, value));
+}
+
+/**
+ * Corner smoothing, an approximation. Figma's exact curve is not published, so these two constants are fitted to
+ * the common description of the feature: at full smoothing the corner's tangent points sit about 1.53 times the
+ * radius from the corner, and the curve's handles lengthen, so the corner flattens toward a square. At 0 the
+ * corner is the circular arc, unchanged. See docs/DECISIONS.md.
+ */
+const SMOOTH_EXTENT = 0.5287;
+const SMOOTH_HANDLE = 0.2;
+const ARC_HANDLE = 0.5523;
+
+/**
+ * Rounded-rect path with independent corner radii (Figma's `rectangleCornerRadii`). `smoothing` (0 to 1) replaces
+ * each rounded corner with a smoothed curve; 0 keeps the circular arcs.
+ */
+export function roundedRectPath(
+  width: number,
+  height: number,
+  radii: [number, number, number, number],
+  smoothing = 0,
+): string {
   const max = Math.min(width, height) / 2;
   const [tl, tr, br, bl] = radii.map((r) => Math.max(0, Math.min(r, max))) as [number, number, number, number];
   if (tl === 0 && tr === 0 && br === 0 && bl === 0) {
     return `M 0 0 H ${width} V ${height} H 0 Z`;
   }
+  const s = Math.min(1, Math.max(0, smoothing));
+  if (s > 0) return smoothedRectPath(width, height, [tl, tr, br, bl], s, max);
   return [
     `M ${tl} 0`,
     `H ${width - tr}`,
@@ -88,6 +114,45 @@ export function roundedRectPath(width: number, height: number, radii: [number, n
     bl > 0 ? `A ${bl} ${bl} 0 0 1 0 ${height - bl}` : `L 0 ${height}`,
     `V ${tl}`,
     tl > 0 ? `A ${tl} ${tl} 0 0 1 ${tl} 0` : `L 0 0`,
+    'Z',
+  ].join(' ');
+}
+
+/** The smoothed outline: each rounded corner is one cubic from one edge to the next, extended by `extent`. */
+function smoothedRectPath(
+  width: number,
+  height: number,
+  [tl, tr, br, bl]: [number, number, number, number],
+  smoothing: number,
+  max: number,
+): string {
+  const extent = (r: number) => (r > 0 ? Math.min(r * (1 + SMOOTH_EXTENT * smoothing), max) : 0);
+  const handle = (e: number) => e * (ARC_HANDLE + SMOOTH_HANDLE * smoothing);
+  const eTL = extent(tl);
+  const eTR = extent(tr);
+  const eBR = extent(br);
+  const eBL = extent(bl);
+  const w = width;
+  const h = height;
+  const f = (n: number) => `${Math.round(n * 1000) / 1000}`;
+  return [
+    `M ${f(eTL)} 0`,
+    `H ${f(w - eTR)}`,
+    eTR > 0
+      ? `C ${f(w - eTR + handle(eTR))} 0 ${f(w)} ${f(eTR - handle(eTR))} ${f(w)} ${f(eTR)}`
+      : `L ${f(w)} 0`,
+    `V ${f(h - eBR)}`,
+    eBR > 0
+      ? `C ${f(w)} ${f(h - eBR + handle(eBR))} ${f(w - eBR + handle(eBR))} ${f(h)} ${f(w - eBR)} ${f(h)}`
+      : `L ${f(w)} ${f(h)}`,
+    `H ${f(eBL)}`,
+    eBL > 0
+      ? `C ${f(eBL - handle(eBL))} ${f(h)} 0 ${f(h - eBL + handle(eBL))} 0 ${f(h - eBL)}`
+      : `L 0 ${f(h)}`,
+    `V ${f(eTL)}`,
+    eTL > 0
+      ? `C 0 ${f(eTL - handle(eTL))} ${f(eTL - handle(eTL))} 0 ${f(eTL)} 0`
+      : `L 0 0`,
     'Z',
   ].join(' ');
 }
@@ -161,7 +226,7 @@ export function shapePath(node: SceneNode): string | null {
     case 'SECTION':
     case 'GROUP': {
       const radii = cornerRadii(node);
-      if (radii.some((r) => r > 0)) return roundedRectPath(node.width, node.height, radii);
+      if (radii.some((r) => r > 0)) return roundedRectPath(node.width, node.height, radii, cornerSmoothingOf(node));
       return null;
     }
     case 'ELLIPSE': {
@@ -558,7 +623,7 @@ function maskDef(node: SceneNode, file: PigmaFile): ReactNode | null {
         {path ? (
           <path d={path} transform={transformToCss(node.transform)} />
         ) : radii.some((r) => r > 0) ? (
-          <path d={roundedRectPath(node.width, node.height, radii)} transform={transformToCss(node.transform)} />
+          <path d={roundedRectPath(node.width, node.height, radii, cornerSmoothingOf(node))} transform={transformToCss(node.transform)} />
         ) : (
           <rect x={0} y={0} width={Math.max(node.width, 0)} height={Math.max(node.height, 0)} transform={transformToCss(node.transform)} />
         )}
@@ -608,7 +673,7 @@ function clipDefs(node: SceneNode, siblings: SceneNode[], file: PigmaFile): Reac
     defs.push(
       <clipPath key={id} id={id}>
         {radii.some((r) => r > 0) ? (
-          <path d={roundedRectPath(node.width, node.height, radii)} />
+          <path d={roundedRectPath(node.width, node.height, radii, cornerSmoothingOf(node))} />
         ) : (
           <rect x={0} y={0} width={Math.max(node.width, 0)} height={Math.max(node.height, 0)} />
         )}

@@ -15,7 +15,7 @@ import { CONSTRAINT_TYPES, constraintLabel } from '../model/constraints';
 import { VariableBindInline, VariableBindRow } from './VariablesPanel';
 import { InspectPanel } from './InspectPanel';
 import { BOOLEAN_MODES, booleanLabel } from '../model/boolean';
-import { cornerRadii } from '../render/SceneRenderer';
+import { cornerRadii, cornerSmoothingOf } from '../render/SceneRenderer';
 import { useIsMobile } from './useIsMobile';
 import {
   TRIGGERS,
@@ -690,6 +690,19 @@ function AppearanceSection({ node }: { node: SceneNode }) {
               />
               Independent corners
             </label>
+          </div>
+        ) : null}
+        {node.type === 'RECTANGLE' || node.type === 'FRAME' || node.type === 'COMPONENT' ? (
+          <div className="prop-grid prop-grid--2">
+            <NumberField
+              label="Smoothing"
+              value={Math.round(cornerSmoothingOf(node) * 100)}
+              min={0}
+              max={100}
+              onCommit={(value) =>
+                updateSelected({ cornerSmoothing: Math.min(1, Math.max(0, value / 100)) }, 'Set corner smoothing')
+              }
+            />
           </div>
         ) : null}
         {imageFill ? <ImageFillControls /> : null}
