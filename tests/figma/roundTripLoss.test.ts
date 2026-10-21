@@ -269,6 +269,26 @@ describe('batch 2: layout grids round-trip', () => {
 });
 
 describe('prototype interactions: the export side writes them', () => {
+  it('writes a Set variable action as the schema has it: SET_VARIABLE, the variable GUID and the value', () => {
+    const file = emptyFile('Set variable export');
+    const page = file.document.children[0]!;
+    const toggle = createFrameNode(file.document, 0, 0, 80, 40);
+    toggle.name = 'Toggle';
+    toggle.interactions = [
+      {
+        trigger: { type: 'ON_CLICK' },
+        actions: [{ type: 'SET_VARIABLE', variableId: 'var-dark-mode', variableValue: true }],
+      },
+    ];
+    page.children = [toggle];
+    const { message } = pigmaToFigMessage(file, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors });
+    const change = (message.nodeChanges as Array<Record<string, unknown>>).find((entry) => entry.name === 'Toggle')!;
+    const action = (change.prototypeInteractions as Array<Record<string, unknown>>)[0]!.actions as Array<Record<string, unknown>>;
+    expect(action[0]!.connectionType).toBe('SET_VARIABLE');
+    expect(action[0]!.targetVariableValue).toEqual({ boolValue: true });
+    expect(typeof action[0]!.targetVariableID).toBe('object');
+  });
+
   it('writes the container, the event, the destination and the transition', () => {
     const file = emptyFile('Prototype export');
     const page = file.document.children[0]!;

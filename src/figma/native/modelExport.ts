@@ -697,6 +697,21 @@ const CONNECTION_TO_NATIVE: Record<string, string> = { NODE: 'INTERNAL_NODE', BA
 
 /** One prototype action as the schema's `PrototypeAction`. */
 function toNativeAction(action: PrototypeAction, ctx: ExportContext): Record<string, unknown> {
+  // SET_VARIABLE: the schema's `connectionType` SET_VARIABLE, with the variable as a GUID
+  // (`targetVariableID`, the same id the variables section writes) and the value as a
+  // `VariableAnyValue` (`boolValue` or `floatValue`). The field names and types come from the
+  // schema embedded in a `.fig` file; no file written by Figma has been checked against this yet.
+  if (action.type === 'SET_VARIABLE') {
+    return {
+      connectionType: 'SET_VARIABLE',
+      ...(action.variableId ? { targetVariableID: guidFor(action.variableId, ctx.sessionID) } : {}),
+      ...(typeof action.variableValue === 'boolean'
+        ? { targetVariableValue: { boolValue: action.variableValue } }
+        : typeof action.variableValue === 'number'
+          ? { targetVariableValue: { floatValue: action.variableValue } }
+          : {}),
+    };
+  }
   const out: Record<string, unknown> = {
     connectionType: CONNECTION_TO_NATIVE[action.type] ?? 'NONE',
     // The destination is a node GUID, which is what `transitionNodeID` holds —
