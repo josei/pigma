@@ -474,7 +474,8 @@ export function figDocumentToPigmaFile(source: FigDocument, options: ConvertOpti
       // pulls them out of the tree and hands them here instead.
       styles: Object.keys(nativeStyles).length > 0 ? nativeStyles : undefined,
       // Native .fig documents carry their own variable tables in the message.
-      variables: mapVariableTables(options.variables ?? source.message, report),
+      // The native file's own variable nodes first (VARIABLE_SET / VARIABLE), then the REST-shaped tables.
+      variables: mapVariableTables(options.variables ?? adapted.variables ?? source.message, report),
       meta: {
         figmaFormat: source.header.prelude,
         formatVersion: source.header.version,

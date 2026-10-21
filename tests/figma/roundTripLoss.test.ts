@@ -269,6 +269,34 @@ describe('batch 2: layout grids round-trip', () => {
 });
 
 describe('prototype interactions: the export side writes them', () => {
+  it('variables survive a file: the collection, the variable with its value, and the action that sets it', async () => {
+    const file = emptyFile('Variables round trip');
+    const page = file.document.children[0]!;
+    const toggle = createFrameNode(file.document, 0, 0, 80, 40);
+    toggle.name = 'Toggle';
+    toggle.interactions = [{ trigger: { type: 'ON_CLICK' }, actions: [{ type: 'SET_VARIABLE', variableId: 'var-dark', variableValue: true }] }];
+    page.children = [toggle];
+    file.variableCollections = {
+      'col-theme': { id: 'col-theme', name: 'Theme', modes: [{ modeId: 'mode-light', name: 'Light' }], defaultModeId: 'mode-light', variableIds: ['var-dark'] },
+    };
+    file.variables = {
+      'var-dark': { id: 'var-dark', name: 'dark', resolvedType: 'BOOLEAN', variableCollectionId: 'col-theme', valuesByMode: { 'mode-light': true } },
+    };
+    const reimported = await roundTrip(file, 'circle.fig');
+    const variableIds = Object.keys(reimported.variables ?? {});
+    expect(variableIds, 'the variable did not come back').toHaveLength(1);
+    const variable = reimported.variables![variableIds[0]!]!;
+    expect(variable.name).toBe('dark');
+    expect(variable.resolvedType).toBe('BOOLEAN');
+    expect(Object.values(variable.valuesByMode)).toEqual([true]);
+    const collectionIds = Object.keys(reimported.variableCollections ?? {});
+    expect(collectionIds, 'the collection did not come back').toHaveLength(1);
+    expect(variable.variableCollectionId).toBe(collectionIds[0]);
+    // The action names the variable it came back as.
+    const action = (byName(reimported, 'Toggle') as unknown as { interactions: Array<{ actions: Array<{ variableId: string }> }> }).interactions[0]!.actions[0]!;
+    expect(action.variableId).toBe(variableIds[0]);
+  });
+
   it('a Pigma-made variable id gets the same GUID every time, so the action reads back the same id', async () => {
     // A variable id that is not session:local form used to get a counter GUID, different on each export.
     const build = () => {

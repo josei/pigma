@@ -15,6 +15,9 @@ import type {
   ComponentPropertyDefinition,
   DocumentNode,
   PrototypeAction,
+  VariableCollection,
+  VariableDefinition,
+  VariableValue,
   StyleDefinition,
   TextStyle,
   LayoutGrid,
@@ -987,6 +990,60 @@ function styleCanvas(root: DocumentNode, nodeChanges: Array<Record<string, unkno
   return guid;
 }
 
+/** The schema's VariableResolvedDataType and VariableDataType for a model variable type. */
+const VARIABLE_TYPE_NAMES: Record<string, string> = { BOOLEAN: 'BOOLEAN', FLOAT: 'FLOAT', STRING: 'STRING', COLOR: 'COLOR' };
+
+/** A variable collection as a `VARIABLE_SET` node: its name and its modes. */
+function variableSetChange(
+  collection: VariableCollection,
+  canvas: Guid,
+  index: number,
+  ctx: ExportContext,
+): Record<string, unknown> {
+  return {
+    guid: guidFor(collection.id, ctx.sessionID),
+    phase: 'CREATED',
+    parentIndex: { guid: canvas, position: positionFor(index, index + 1) },
+    type: 'VARIABLE_SET',
+    name: collection.name,
+    variableSetModes: collection.modes.map((mode, position) => ({
+      id: guidFor(mode.modeId, ctx.sessionID),
+      name: mode.name,
+      sortPosition: positionFor(position, collection.modes.length),
+    })),
+    sortPosition: positionFor(index, index + 1),
+  };
+}
+
+/** A model value as the schema's `VariableAnyValue`: one of boolValue, floatValue, textValue, colorValue. */
+function variableAnyValue(value: VariableValue): Record<string, unknown> {
+  if (typeof value === 'boolean') return { boolValue: value };
+  if (typeof value === 'number') return { floatValue: value };
+  if (typeof value === 'string') return { textValue: value };
+  return { colorValue: { r: value.r, g: value.g, b: value.b, a: value.a } };
+}
+
+/** A variable as a `VARIABLE` node: its type, its collection and its value in each mode. */
+function variableChange(variable: VariableDefinition, canvas: Guid, index: number, ctx: ExportContext): Record<string, unknown> {
+  const typeName = VARIABLE_TYPE_NAMES[variable.resolvedType] ?? 'STRING';
+  return {
+    guid: guidFor(variable.id, ctx.sessionID),
+    phase: 'CREATED',
+    parentIndex: { guid: canvas, position: positionFor(index, index + 1) },
+    type: 'VARIABLE',
+    name: variable.name,
+    variableResolvedType: typeName,
+    variableSetID: { guid: guidFor(variable.variableCollectionId, ctx.sessionID) },
+    variableDataValues: {
+      entries: Object.entries(variable.valuesByMode).map(([modeId, value]) => ({
+        modeID: guidFor(modeId, ctx.sessionID),
+        variableData: { value: variableAnyValue(value), dataType: typeName, resolvedDataType: typeName },
+      })),
+    },
+    sortPosition: positionFor(index, index + 1),
+  };
+}
+
 /** One style entry, in the observed shape. Null when the kind is unobserved. */
 function styleChange(
   styleId: string,
@@ -1149,6 +1206,19 @@ export function pigmaToFigMessage(
       const entry = styleChange(id, definition, canvas, index, ctx);
       if (entry) nodeChanges.push(entry);
     });
+  }
+
+  // VARIABLES AS NODE ENTRIES, on the same internal canvas as the styles. The schema
+  // defines `VARIABLE_SET` and `VARIABLE` node types with these fields: a collection's
+  // `variableSetModes`; a variable's `variableResolvedType`, `variableSetID` and
+  // `variableDataValues` (one entry per mode). The canvas is the INFERRED place (styles are
+  // observed there; variables are assumed to be too). Not confirmed by a Figma-made file.
+  const collections = Object.values(file.variableCollections ?? {});
+  const variables = Object.values(file.variables ?? {});
+  if (collections.length > 0 || variables.length > 0) {
+    const canvas = styleCanvas(root, nodeChanges, ctx);
+    collections.forEach((collection, index) => nodeChanges.push(variableSetChange(collection, canvas, index, ctx)));
+    variables.forEach((variable, index) => nodeChanges.push(variableChange(variable, canvas, index, ctx)));
   }
 
   // Report what the schema cannot carry, before the caller encodes. A seed whose

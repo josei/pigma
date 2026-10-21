@@ -1005,10 +1005,66 @@ function nativeStyleDefinition(node: FigNode): StyleDefinition | null {
   return definition;
 }
 
+/** A native variable value (`VariableAnyValue`) as the model's plain value, or undefined when unreadable. */
+function nativeVariableValue(raw: unknown): boolean | number | string | { r: number; g: number; b: number; a: number } | undefined {
+  if (!isRecord(raw)) return undefined;
+  if (typeof raw.boolValue === 'boolean') return raw.boolValue;
+  if (typeof raw.floatValue === 'number') return raw.floatValue;
+  if (typeof raw.textValue === 'string') return raw.textValue;
+  const color = raw.colorValue;
+  if (isRecord(color) && typeof color.r === 'number' && typeof color.g === 'number' && typeof color.b === 'number') {
+    return { r: color.r, g: color.g, b: color.b, a: typeof color.a === 'number' ? color.a : 1 };
+  }
+  return undefined;
+}
+
+/**
+ * The native `VARIABLE_SET` and `VARIABLE` nodes as the REST-shaped variable tables the converter
+ * already maps (`mapVariableTables`). A collection's modes come from `variableSetModes`; a variable's
+ * values from `variableDataValues`, keyed by mode. Ids are the `session:local` form of their GUIDs,
+ * the same form the exporter reverses, so a variable and an action that names it agree.
+ */
+function nativeVariableTables(sets: FigNode[], variables: FigNode[]): Record<string, unknown> | undefined {
+  if (sets.length === 0 && variables.length === 0) return undefined;
+  const variableCollections: Record<string, unknown> = {};
+  for (const set of sets) {
+    const id = figNodeId(set);
+    if (!id) continue;
+    const modes = (Array.isArray(set.variableSetModes) ? set.variableSetModes : [])
+      .filter(isRecord)
+      .map((mode) => ({ modeId: idOfGuid(mode.id) ?? '', name: typeof mode.name === 'string' ? mode.name : 'Mode' }))
+      .filter((mode) => mode.modeId !== '');
+    variableCollections[id] = { id, name: typeof set.name === 'string' ? set.name : id, modes, defaultModeId: modes[0]?.modeId ?? '' };
+  }
+  const variableTable: Record<string, unknown> = {};
+  for (const node of variables) {
+    const id = figNodeId(node);
+    if (!id) continue;
+    const resolved = typeof node.variableResolvedType === 'string' ? node.variableResolvedType : 'STRING';
+    const valuesByMode: Record<string, unknown> = {};
+    const entries = isRecord(node.variableDataValues) && Array.isArray(node.variableDataValues.entries) ? node.variableDataValues.entries : [];
+    for (const entry of entries.filter(isRecord)) {
+      const modeId = idOfGuid(entry.modeID);
+      const data = isRecord(entry.variableData) ? entry.variableData : null;
+      const value = nativeVariableValue(data?.value);
+      if (modeId && value !== undefined) valuesByMode[modeId] = value;
+    }
+    const collectionId = isRecord(node.variableSetID) ? idOfGuid(node.variableSetID.guid) : null;
+    variableTable[id] = {
+      id,
+      name: typeof node.name === 'string' ? node.name : id,
+      resolvedType: resolved,
+      variableCollectionId: collectionId ?? '',
+      valuesByMode,
+    };
+  }
+  return { variableCollections, variables: variableTable };
+}
+
 export function adaptNativeTree(
   doc: FigDocument,
   report: ReportBuilder,
-): { roots: NormalizedNode[]; styles: Record<string, StyleDefinition> } {
+): { roots: NormalizedNode[]; styles: Record<string, StyleDefinition>; variables?: Record<string, unknown> } {
   const root = doc.nodes.find((node) => node.type === 'DOCUMENT' && node.phase !== 'REMOVED');
   if (!root) {
     throw new FigmaImportError('INVALID_DOCUMENT', 'Native document has no DOCUMENT root node');
@@ -1028,6 +1084,8 @@ export function adaptNativeTree(
   // z-order, no MCP enumeration, no export — one filter at the boundary instead of
   // six places downstream.
   const styles: Record<string, StyleDefinition> = {};
+  const variableSets: FigNode[] = [];
+  const variableNodes: FigNode[] = [];
   while (stack.length > 0) {
     const frame = stack.pop();
     if (!frame) break;
@@ -1041,6 +1099,15 @@ export function adaptNativeTree(
     if (typeof node.styleType === 'string' && node.styleType !== 'NONE') {
       const style = nativeStyleDefinition(node);
       if (style) styles[id] = style;
+      continue;
+    }
+    // Variables live on the same hidden canvas; they are tables, not layers.
+    if (node.type === 'VARIABLE_SET') {
+      variableSets.push(node);
+      continue;
+    }
+    if (node.type === 'VARIABLE') {
+      variableNodes.push(node);
       continue;
     }
     byId.set(id, adaptNativeNode(doc, node, path, report));
@@ -1062,7 +1129,7 @@ export function adaptNativeTree(
   }
 
   const normalizedRoot = byId.get(rootId);
-  return { roots: normalizedRoot ? [normalizedRoot] : [], styles };
+  return { roots: normalizedRoot ? [normalizedRoot] : [], styles, variables: nativeVariableTables(variableSets, variableNodes) };
 }
 
 export type { BaseNode };
