@@ -32,6 +32,7 @@ import {
   frameSelection as frameSelectionOp,
   groupNodes,
   instantiateClipboard,
+  pasteAtTarget,
   positionNodes,
   reorderNodes,
   setAutoLayout as setAutoLayoutOp,
@@ -406,6 +407,8 @@ export interface EditorState {
   copyProperties: () => void;
   pasteProperties: () => void;
   pasteClipboard: () => void;
+  /** Paste over the first selected layer (`replace` false), or replace it (`replace` true). */
+  pasteAtSelection: (replace: boolean) => void;
   updateSelected: (patch: NodePatch, label?: string) => void;
   /** Drop an image into the document, or fill the selection with it. */
   placeImage: (dataUrl: string, options: { width: number; height: number; x?: number; y?: number }) => void;
@@ -1241,6 +1244,24 @@ export const useEditor = create<EditorState>((set, get) => ({
     const result = instantiateClipboard(state.file, payload, parent);
     get().apply('Paste', () => result.file);
     set({ selection: result.newIds.filter((id) => !!findNode(result.file.document, id)) });
+  },
+
+  pasteAtSelection: (replace) => {
+    const state = get();
+    const payload = state.clipboard;
+    const targetId = state.selection[0];
+    if (!payload || payload.length === 0) return;
+    if (!targetId) {
+      get().pushToast(replace ? 'Select a layer to replace' : 'Select a layer to paste over');
+      return;
+    }
+    const result = pasteAtTarget(state.file, payload, targetId, replace);
+    if (result.newIds.length === 0) {
+      get().pushToast('That layer cannot be pasted over');
+      return;
+    }
+    get().apply(replace ? 'Paste to replace' : 'Paste over selection', () => result.file);
+    set({ selection: result.newIds });
   },
 
   updateSelected: (patch, label = 'Change properties') => {

@@ -625,6 +625,47 @@ export function instantiateClipboard(
   return { file: touch({ ...file, document: document as PigmaFile['document'] }), newIds: [...idMap.values()] };
 }
 
+/**
+ * Paste over selection, and Paste to replace (Figma Help Center, "Copy and paste objects"). The copy
+ * goes into the target's parent, on top of the target, at the target's x and y. With `replace` the
+ * target is removed and the copy takes its constraints. Returns the copy's top-level ids only.
+ */
+export function pasteAtTarget(
+  file: PigmaFile,
+  payload: SceneNode[],
+  targetId: string,
+  replace: boolean,
+): { file: PigmaFile; newIds: string[] } {
+  const target = findNode(file.document, targetId);
+  const parent = findParent(file.document, targetId);
+  if (!target || !parent || target.type === 'DOCUMENT' || target.type === 'CANVAS' || payload.length === 0) {
+    return { file, newIds: [] };
+  }
+  // Both boxes are measured in the parent's own space, so a shift of `tx`/`ty` moves them exactly.
+  const parentSpace = worldTransform(file.document, parent.id);
+  const targetBox = boundsInSpace(file.document, [targetId], parentSpace);
+  const base = replace ? { ...file, document: removeNodes(file.document, [targetId]).root } : file;
+  const inserted = instantiateClipboard(base, payload, parent.id);
+  const parentNode = findNode(inserted.file.document, parent.id);
+  const newIds = parentNode && hasChildren(parentNode)
+    ? parentNode.children.filter((child) => inserted.newIds.includes(child.id)).map((child) => child.id)
+    : [];
+  if (newIds.length === 0) return { file, newIds: [] };
+  const pastedBox = boundsInSpace(inserted.file.document, newIds, parentSpace);
+  const dx = targetBox.x - pastedBox.x;
+  const dy = targetBox.y - pastedBox.y;
+  const constraints = replace ? target.constraints : undefined;
+  let document = inserted.file.document;
+  for (const id of newIds) {
+    document = updateNode(document, id, (node) => ({
+      ...node,
+      transform: { ...node.transform, tx: node.transform.tx + dx, ty: node.transform.ty + dy },
+      ...(constraints ? { constraints } : {}),
+    }));
+  }
+  return { file: touch({ ...inserted.file, document: document as PigmaFile['document'] }), newIds };
+}
+
 /** Wrap a node in a frame sized to the node (Figma "frame selection"). */
 export function frameSelection(file: PigmaFile, ids: string[]): { file: PigmaFile; frameId: string | null } {
   const first = ids[0];

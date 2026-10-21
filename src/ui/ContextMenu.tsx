@@ -68,6 +68,20 @@ function nodeItems(): ContextItem[] {
       run: () => store().pasteClipboard(),
       ...((store().clipboard?.length ?? 0) === 0 ? { disabledReason: 'the clipboard is empty' } : {}),
     },
+    {
+      label: 'Paste over selection',
+      icon: 'duplicate',
+      shortcut: '⇧⌘V',
+      run: () => store().pasteAtSelection(false),
+      ...((store().clipboard?.length ?? 0) === 0 ? { disabledReason: 'the clipboard is empty' } : {}),
+    },
+    {
+      label: 'Paste to replace',
+      icon: 'duplicate',
+      shortcut: '⇧⌘R',
+      run: () => store().pasteAtSelection(true),
+      ...((store().clipboard?.length ?? 0) === 0 ? { disabledReason: 'the clipboard is empty' } : {}),
+    },
     { label: 'Copy properties', icon: 'copy', shortcut: '⌘⌥C', run: () => store().copyProperties() },
     {
       label: 'Paste properties',

@@ -90,6 +90,7 @@ It needs system libraries once: `sudo npx playwright install-deps`.
 | `b107-export-stale-scope.spec.ts` | The export panel opened with nothing selected offers the whole page, not a stale selection scope |
 | `b108-keyboard-box-select.spec.ts` | Keyboard box selection: Ctrl/Option+Space opens the box, Enter selects what it touches, Escape leaves, and the arrows grow the box without nudging the selection |
 | `b109-grid-track-move.spec.ts` | Grid track reorder in the properties panel: Move down swaps a column track with its neighbour, the size travels with it, and the edge buttons are disabled |
+| `b110-paste-over.spec.ts` | Paste over selection (Cmd/Ctrl+Shift+V) lands the copy at the selected layer's x and y; Paste to replace (Cmd/Ctrl+Shift+R) also removes it; with nothing selected it says so |
 
 ## Known defects (tracked)
 
@@ -118,9 +119,9 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **408 browser tests passing / 0 failing** on Chromium (Firefox 398
+Current state: **411 browser tests passing / 0 failing** on Chromium (Firefox 398
 passed, 9 skipped; WebKit 396 passed, 10 skipped) with **0 orphan processes**. `npx vitest run` =
-1168 passing across 126 files.
+1171 passing across 126 files.
 
 ### Round 12 - what is and is not covered
 

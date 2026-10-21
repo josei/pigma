@@ -9,6 +9,7 @@ import {
   groupNodes,
   instantiateClipboard,
   isEffectivelyVisible,
+  pasteAtTarget,
   positionNodes,
   reorderNodes,
   resizeFromHandle,
@@ -324,6 +325,39 @@ describe('document operations', () => {
     expect(newIds).toHaveLength(1);
     expect(newIds[0]).not.toBe(a);
     expect(parentAndIndex(pasted.document, newIds[0]!)?.parent.id).toBe(pageId);
+  });
+
+  it('paste over selection puts the copy on top of the target, at its x and y, and keeps the target', () => {
+    const { file, a, c, pageId } = setup();
+    const payload = [findNode(file.document, a) as SceneNode];
+    const result = pasteAtTarget(file, payload, c, false);
+    expect(result.newIds).toHaveLength(1);
+    const copy = findNode(result.file.document, result.newIds[0]!)!;
+    expect(copy.transform.tx).toBe(400);
+    expect(copy.transform.ty).toBe(0);
+    expect(parentAndIndex(result.file.document, c)?.parent.id).toBe(pageId);
+    expect(container(findNode(result.file.document, pageId)).children).toHaveLength(4);
+  });
+
+  it('paste to replace removes the target, places the copy where it was and gives it the target constraints', () => {
+    const { file, a, b, pageId } = setup();
+    const target = findNode(file.document, b) as ShapeNode;
+    target.constraints = { horizontal: 'MAX', vertical: 'MIN' };
+    const payload = [findNode(file.document, a) as SceneNode];
+    const result = pasteAtTarget(file, payload, b, true);
+    expect(findNode(result.file.document, b)).toBeNull();
+    const copy = findNode(result.file.document, result.newIds[0]!)!;
+    expect(copy.transform.tx).toBe(200);
+    expect(copy.constraints).toEqual({ horizontal: 'MAX', vertical: 'MIN' });
+    expect(container(findNode(result.file.document, pageId)).children).toHaveLength(3);
+  });
+
+  it('refuses a target with no parent to paste into', () => {
+    const { file, a } = setup();
+    const payload = [findNode(file.document, a) as SceneNode];
+    const result = pasteAtTarget(file, payload, file.document.id, false);
+    expect(result.newIds).toEqual([]);
+    expect(result.file).toBe(file);
   });
 
   it('remaps prototype destinations when duplicating linked nodes', () => {

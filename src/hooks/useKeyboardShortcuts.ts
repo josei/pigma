@@ -205,7 +205,18 @@ export function useKeyboardShortcuts(): void {
         state.cutSelection();
         return;
       }
-      if (meta && event.key.toLowerCase() === 'v') {
+      // Figma's Paste over selection (Cmd/Ctrl+Shift+V) and Paste to replace (Cmd/Ctrl+Shift+R).
+      if (meta && event.shiftKey && !event.altKey && event.key.toLowerCase() === 'v') {
+        event.preventDefault();
+        state.pasteAtSelection(false);
+        return;
+      }
+      if (meta && event.shiftKey && !event.altKey && event.code === 'KeyR') {
+        event.preventDefault();
+        state.pasteAtSelection(true);
+        return;
+      }
+      if (meta && !event.shiftKey && event.key.toLowerCase() === 'v') {
         state.pasteClipboard();
         return;
       }

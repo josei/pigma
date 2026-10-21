@@ -122,6 +122,7 @@ centre does document, so a menu can be built from them and the rest declared.
 | --- | --- | --- |
 | a selected layer | `Copy the layer`; `Copy/paste as code` (CSS / iOS / Android) · `SVG` · `PNG` · copy the link · copy its properties; select a different layer within the selected one | `articles/360039832014-Design-prototype-and-explore-layer-properties-in-the-right-sidebar` |
 | nested objects under the cursor | `Select layer` — a submenu listing the layers under the cursor, in Layers-panel order | `articles/360040449873-Select-layers-and-objects` |
+| a selected layer, with a copy on the clipboard | `Paste over selection` (⇧⌘V) puts the copy on top of the selected layer, at its x and y; `Paste to replace` (⇧⌘R) also removes that layer and gives the copy its constraints (B110a–b) | `articles/4409078832791-Copy-and-paste-objects` |
 | a layer, for properties | `Copy/Paste as` → `Copy properties` / `Paste properties` | `articles/4412765442967-Copy-and-paste-properties-between-layers` |
 | an instance whose main component was deleted | `Go to main component` → `Restore` | `articles/360038663154-Create-components-to-reuse-in-designs` |
 | any layer | `Create component` | same article as above |
