@@ -31,6 +31,8 @@ past drawing:
 
 - Canvas, tools (rect/ellipse/frame/text/line/section/pen), selection,
   move/resize/flip, smart snapping, min/max sizing, pages, undo/redo
+- Ruler guides (drag from the rulers, snap to them, Delete to remove), select all
+  matching (Cmd/Ctrl+Alt+A), Shift-range selection in the layers panel, corner smoothing
 - Properties incl. text depth and effects; auto layout with wrap, line gap and
   counter alignment; booleans; styles and variables; components and variants
 - Figma import (`.fig` + REST), JSON/SVG interchange, PNG 1x/2x/3x and PDF
