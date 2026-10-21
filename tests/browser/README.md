@@ -127,8 +127,8 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **426 browser tests passing / 0 failing** on Chromium (Firefox 411
-passed, 9 skipped; WebKit 410 passed, 10 skipped) with **0 orphan processes**. `npx vitest run` =
+Current state: **426 browser tests passing / 0 failing** on Chromium (Firefox 416
+passed, 9 skipped; WebKit 416 passed, 10 skipped) with **0 orphan processes**. `npx vitest run` =
 1205 passing across 133 files.
 
 ### Round 12 - what is and is not covered
@@ -610,3 +610,12 @@ reloaded shapes. No spec waits on a fixed time now. A new fixed `waitForTimeout`
 the reason beside it.
 
 Check: `grep -n waitForTimeout tests/browser/*.spec.ts` should print nothing.
+
+## Paint barrier is not a condition
+
+`nextPaint` waits for a frame, not for the state a read depends on. It is right before a pixel or DOM read of a change
+the page has already made. It is wrong before a read of data that is written asynchronously: an IndexedDB database, a
+saved comment, a relay message. Those reads poll (`expect.poll`). Two specs failed on Firefox for this reason after the
+fixed waits were converted (`b25-round11`, creating the database; `b30-comments-versions`, comments after a reload); both
+poll now. Before converting a fixed wait to `nextPaint`, check what the next line reads.
+

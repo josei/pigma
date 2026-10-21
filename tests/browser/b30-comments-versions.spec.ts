@@ -72,7 +72,8 @@ test('B30d comments persist across a reload', async ({ page }) => {
   await page.goto('/app/');
   await page.waitForSelector('.app');
   await openComments(page);
-  expect(await openCount(page), 'the comment did not survive the reload').toBe(1);
+  // Comments load from storage after the reload: poll for them, not one read.
+  await expect.poll(() => openCount(page), { message: 'the comment did not survive the reload' }).toBe(1);
 });
 
 // ------------------------------------------------------------ versions ----

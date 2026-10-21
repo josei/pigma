@@ -77,15 +77,13 @@ test('B25b the document library exists and persists a document in IndexedDB', as
   // Saving stores the document in IndexedDB (created on demand).
   await openMenu(page);
   await page.locator('.menu__item', { hasText: 'New file' }).first().click();
-  await nextPaint(page);
 
-  const databasesAfter = await page.evaluate(async () =>
-    (await indexedDB.databases()).map((d) => d.name),
-  );
-  expect(
-    databasesAfter.length,
-    `no IndexedDB database was created (before ${JSON.stringify(databasesBefore)}, after ${JSON.stringify(databasesAfter)})`,
-  ).toBeGreaterThan(0);
+  // The database is created asynchronously: poll for it (Firefox takes longer than two frames).
+  await expect
+    .poll(() => page.evaluate(async () => (await indexedDB.databases()).map((d) => d.name).length), {
+      message: `no IndexedDB database was created (before ${JSON.stringify(databasesBefore)})`,
+    })
+    .toBeGreaterThan(0);
 });
 
 test('B25c the File System Access open/save entries are offered', async ({ page }) => {
