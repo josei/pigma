@@ -13,7 +13,7 @@ interface MenuItem {
   run?: () => void;
 }
 
-const ITEMS: MenuItem[] = [
+export const MENU_ITEMS: MenuItem[] = [
   { group: 'File', label: 'New file', icon: 'file', run: () => useEditor.getState().newFile() },
   { label: 'Open starter design', icon: 'frame', run: () => useEditor.getState().loadStarterDocument() },
   { group: 'Import', label: 'Import Pigma document…', icon: 'file', action: 'import-json' },
@@ -47,6 +47,7 @@ const ITEMS: MenuItem[] = [
   { label: 'Toggle dark theme', icon: 'eye', run: () => useEditor.getState().toggleTheme() },
   { label: 'Connect AI agent…', icon: 'sparkle', run: () => useEditor.getState().setLeftTab('tools') },
   { label: 'Plugins…', icon: 'instance', run: () => useEditor.getState().setLeftTab('plugins') },
+  { group: 'Help', label: 'Keyboard shortcuts…', icon: 'sparkle', shortcut: '⇧⌘/', run: () => useEditor.getState().setShortcutsOpen(true) },
 ];
 
 /** Main menu, opened from the toolbar's menu button (`pigma:toggle-menu`). */
@@ -90,7 +91,7 @@ export function Menu() {
       role="menu"
       aria-label="Main menu"
     >
-      {ITEMS.map((item) => (
+      {MENU_ITEMS.map((item) => (
         <Fragment key={item.label}>
         {item.group ? <div className="menu__heading">{item.group}</div> : null}
         <button

@@ -242,6 +242,12 @@ export function useKeyboardShortcuts(): void {
         else state.groupSelection();
         return;
       }
+      // The shortcut reference: Ctrl/Cmd+Shift+? (the key is ? with Shift, or / on some layouts).
+      if (meta && event.shiftKey && (event.key === '?' || event.code === 'Slash')) {
+        event.preventDefault();
+        state.setShortcutsOpen(true);
+        return;
+      }
       // Figma's documented zoom shortcuts (Shift+0/1/2, plus +/- for stepping).
       if (event.shiftKey && !meta && event.code === 'Digit0') {
         event.preventDefault();
