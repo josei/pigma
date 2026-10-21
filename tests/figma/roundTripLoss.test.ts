@@ -269,6 +269,25 @@ describe('batch 2: layout grids round-trip', () => {
 });
 
 describe('prototype interactions: the export side writes them', () => {
+  it('a Pigma-made variable id gets the same GUID every time, so the action reads back the same id', async () => {
+    // A variable id that is not session:local form used to get a counter GUID, different on each export.
+    const build = () => {
+      const file = emptyFile('Stable guid');
+      const page = file.document.children[0]!;
+      const toggle = createFrameNode(file.document, 0, 0, 80, 40);
+      toggle.name = 'Toggle';
+      toggle.interactions = [{ trigger: { type: 'ON_CLICK' }, actions: [{ type: 'SET_VARIABLE', variableId: 'var-dark-mode', variableValue: true }] }];
+      page.children = [toggle];
+      return file;
+    };
+    const actionOf = (file: PigmaFile) =>
+      (byName(file, 'Toggle') as unknown as { interactions: Array<{ actions: Array<{ variableId: string }> }> }).interactions[0]!.actions[0]!;
+    const first = actionOf(await roundTrip(build(), 'circle.fig'));
+    const second = actionOf(await roundTrip(build(), 'circle.fig'));
+    expect(first.variableId, 'the id did not survive the file').toBeTruthy();
+    expect(second.variableId, 'the same id came back different on a second export').toBe(first.variableId);
+  });
+
   it('a Set variable action survives a file: the variable and the value come back', async () => {
     const file = emptyFile('Set variable round trip');
     const page = file.document.children[0]!;

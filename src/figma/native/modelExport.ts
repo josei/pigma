@@ -179,7 +179,6 @@ interface Guid {
   localID: number;
 }
 
-let fallbackCounter = 0;
 
 function guidFor(id: string, sessionID: number): Guid {
   const match = /^([0-9a-f]+):(\d+)$/.exec(id);
@@ -187,8 +186,14 @@ function guidFor(id: string, sessionID: number): Guid {
     const session = Number.parseInt(match[1] as string, 16);
     return { sessionID: Number.isFinite(session) ? session : sessionID, localID: Number(match[2]) };
   }
-  fallbackCounter += 1;
-  return { sessionID, localID: 1_000_000 + fallbackCounter };
+  // Not a session:local id: a GUID derived from the text, so the same id always gets the same GUID,
+  // wherever it is written (a variable and the action that sets it must agree). FNV-1a, 32 bits.
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < id.length; i += 1) {
+    hash ^= id.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return { sessionID, localID: 1_000_000 + (hash % 1_000_000_000) };
 }
 
 const NATIVE_TYPE: Record<string, string> = {
