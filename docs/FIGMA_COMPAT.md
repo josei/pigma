@@ -84,7 +84,7 @@ real nodes. The cause is that its matching **falls back to NAME**, and a real fi
 everything empty.
 
 **The round trip itself is fine.** This is recorded as a **KNOWN LIMITATION OF THE
-TOOL**, being fixed this round - **not** as a finding about the exporter.
+TOOL**, not as a finding about the exporter.
 
 ### The inventory, measured
 
@@ -205,7 +205,7 @@ wrong the **other** way: the real change is **smaller**, not larger.
 
 **And a parser finding from the same probe:** `parseFigBinary` reads **only
 `rawChunks[1]`**, so a file carrying a **second message** would be **silently
-truncated**. That is being guarded this round.
+truncated**. It is guarded now: extra chunks are recorded and reported (`tests/figma/extraChunks.test.ts`).
 
 ### The style row, confirmed
 
@@ -242,8 +242,8 @@ both. (Both are since fixed: `bindingKey` returns `grid`, `defaultStyleName` ret
 **And the GRID round trip is NOT DONE.** The model's `LayoutGridPattern` is
 **`COLUMNS | ROWS | GRID`** with a **count**, while the wire's is only
 **`STRIPES | GRID`** with the **axis** carried in `type` + `axis`; the encoder
-**rejected `COLUMNS` LOUDLY**. A **mapper** is being written this round. **The GRID
-style is not claimed to work.**
+**rejected `COLUMNS` LOUDLY**. A **mapper** now writes the wire's shape (`modelExport.ts`, the GRID/STRIPES pattern with the axis in `type`). **The GRID
+style is not claimed to work** beyond that mapping.
 
 ### The three evidence labels for style node kinds - keep them distinct
 
@@ -573,7 +573,7 @@ Measured, not claimed:
 
 | Was a kind-1 divergence | State |
 | --- | --- |
-| `variableBindings` | **GONE** - now written as **`variableConsumptionMap`**, the real field (this round) |
+| `variableBindings` | **GONE** - now written as **`variableConsumptionMap`**, the real field |
 | `componentPropertyDefinitions` | **GONE** - now written as **`componentPropDefs`** (round 103) |
 | **`overflowDirection`** | **REMAINS - the last one** |
 
@@ -581,7 +581,7 @@ Measured, not claimed:
 does not define. The wire's overflow-ish fields are **`scrollDirection`**,
 **`scrollOffset`**, **`scrollBehavior`**, **`scrollContractedState`** and
 **`transitionPreserveScroll`** - and **WHICH ONE IS OURS IS NOT ESTABLISHED**. It is
-being established this round.
+This was left open when recorded, and the count below is the state that was measured.
 
 **The count is 1.** It is **not** rounded down to 0, and the category is **not
 closed** - a single named, still-open divergence is the honest state.
