@@ -117,6 +117,15 @@ describe('grid auto layout', () => {
     expect(laid[2]!.transform.tx).toBeCloseTo(100, 3);
   });
 
+  it('sizes each declared row on its own: a fixed row takes its pixels and the fractional row takes the rest', () => {
+    // 200 tall, rows 50px fixed then 1fr, no gap: the 1fr row gets the 150px left over.
+    // Figma's gridRowSizes is this per-row choice (FIXED or FLEX) in our model.
+    const { file, id } = grid(300, 200, 2, { gridColumns: [FLEX(1)], gridRows: [FIXED(50), FLEX(1)] });
+    const laid = childrenOf({ ...file, document: reflowTree(file.document) }, id);
+    expect(laid[0]!.transform.ty, 'the fixed row did not start at the top').toBeCloseTo(0, 3);
+    expect(laid[1]!.transform.ty, 'the fractional row did not start after the 50px row').toBeCloseTo(50, 3);
+  });
+
   it('counts the rows a grid uses, including the implicit ones the children need', () => {
     // Two columns, three children, no declared rows: the children wrap onto two rows.
     const { file, id } = grid(300, 200, 3, { gridColumns: [FLEX(1), FLEX(1)] });
