@@ -116,3 +116,65 @@ describe('moveGridTrack', () => {
     expect(moveGridTrack(file, frame.id, 'column', 0, 1)).toBe(file);
   });
 });
+
+/** A grid frame with fixed columns of the given widths, and children anchored with spans. */
+function gridWithSpans(widths: number[], spans: Array<{ anchor: number; span: number }>): { file: PigmaFile; id: string } {
+  const file = emptyFile('Spans');
+  const page = file.document.children[0]!;
+  const frame = createFrameNode(file.document, 0, 0, 400, 100);
+  frame.autoLayout = {
+    layoutMode: 'GRID',
+    primaryAxisSizingMode: 'FIXED',
+    counterAxisSizingMode: 'FIXED',
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    gridColumns: widths.map((value) => FIXED(value)),
+    gridRows: [FLEX(1)],
+  };
+  frame.children = spans.map(({ anchor, span }) => {
+    const child = createRectNode(file.document, 0, 0, 40, 30);
+    child.gridColumnAnchorIndex = anchor;
+    child.gridColumnSpan = span;
+    child.gridRowAnchorIndex = 0;
+    return child;
+  });
+  page.children = [frame];
+  return { file, id: frame.id };
+}
+
+describe('moveGridTrack with spanning children', () => {
+  it('moves the tracks a spanning child covers together, so its span stays together', () => {
+    // Columns 10, 20, 30, 40. A child spans columns 0 and 1. Drag column 0 to the end.
+    const { file, id } = gridWithSpans([10, 20, 30, 40], [
+      { anchor: 0, span: 2 },
+      { anchor: 2, span: 1 },
+      { anchor: 3, span: 1 },
+    ]);
+    const moved = moveGridTrack(file, id, 'column', 0, 2);
+    const frame = findNode(moved.document, id) as ContainerNode & { autoLayout: { gridColumns: GridTrackSize[] } };
+
+    // The pair 0-1 moves as one block behind columns 2 and 3.
+    expect(frame.autoLayout.gridColumns).toEqual([FIXED(30), FIXED(40), FIXED(10), FIXED(20)]);
+    const kids = (findNode(moved.document, id) as ContainerNode).children as Array<{ gridColumnAnchorIndex?: number; gridColumnSpan?: number }>;
+    // The spanning child now covers columns 2 and 3, which are contiguous.
+    expect(kids[0]!.gridColumnAnchorIndex).toBe(2);
+    expect(kids[0]!.gridColumnSpan).toBe(2);
+    expect(kids[1]!.gridColumnAnchorIndex).toBe(0);
+    expect(kids[2]!.gridColumnAnchorIndex).toBe(1);
+  });
+
+  it('follows a chain of spans: a track pulls in the next span, and that span pulls in the next track', () => {
+    // A child spans 0-1 and another spans 1-2. Dragging column 0 takes 0, 1 and 2 together.
+    const { file, id } = gridWithSpans([10, 20, 30, 40], [
+      { anchor: 0, span: 2 },
+      { anchor: 1, span: 2 },
+    ]);
+    const moved = moveGridTrack(file, id, 'column', 0, 1);
+    const frame = findNode(moved.document, id) as ContainerNode & { autoLayout: { gridColumns: GridTrackSize[] } };
+
+    // Column 3 is the only track left outside the group, so the group goes behind it.
+    expect(frame.autoLayout.gridColumns).toEqual([FIXED(40), FIXED(10), FIXED(20), FIXED(30)]);
+  });
+});
