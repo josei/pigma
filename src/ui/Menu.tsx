@@ -3,7 +3,7 @@ import { Icon, type IconName } from './icons';
 import { useEditor } from '../store/editorStore';
 import { runFileAction, type FileAction } from './FileActions';
 
-interface MenuItem {
+export interface MenuItem {
   /** Starts a new visual group, with this heading. */
   group?: string;
   label: string;
@@ -11,6 +11,12 @@ interface MenuItem {
   shortcut?: string;
   action?: FileAction;
   run?: () => void;
+}
+
+/** Run a menu entry: a file action, or the entry's own command. Quick actions use the same path. */
+export function runMenuItem(item: MenuItem): void {
+  if (item.action) runFileAction(item.action);
+  else item.run?.();
 }
 
 export const MENU_ITEMS: MenuItem[] = [
@@ -100,8 +106,7 @@ export function Menu() {
           className="menu__item"
           onClick={() => {
             setOpen(false);
-            if (item.action) runFileAction(item.action);
-            else item.run?.();
+            runMenuItem(item);
           }}
         >
           <span className="menu__label">

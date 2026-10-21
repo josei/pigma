@@ -242,6 +242,12 @@ export function useKeyboardShortcuts(): void {
         else state.groupSelection();
         return;
       }
+      // Quick actions: Cmd/Ctrl+/ searches the menu's commands (Figma's Quick actions).
+      if (meta && !event.shiftKey && !event.altKey && (event.key === '/' || event.code === 'Slash')) {
+        event.preventDefault();
+        state.setQuickActionsOpen(true);
+        return;
+      }
       // The shortcut reference: Ctrl/Cmd+Shift+? (the key is ? with Shift, or / on some layouts).
       if (meta && event.shiftKey && (event.key === '?' || event.code === 'Slash')) {
         event.preventDefault();

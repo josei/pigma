@@ -10,6 +10,7 @@ import { Toasts } from './ui/Toasts';
 import { ExportDialog } from './ui/ExportDialog';
 import { ShareLinkDialog } from './ui/ShareLinkDialog';
 import { ShortcutsDialog } from './ui/ShortcutsDialog';
+import { QuickActions } from './ui/QuickActions';
 import { PanelResizer } from './ui/PanelResizer';
 import { useIsMobile } from './ui/useIsMobile';
 import { Presentation } from './ui/Presentation';
@@ -63,6 +64,7 @@ export function App() {
       <ExportDialog />
       <ShareLinkDialog />
       <ShortcutsDialog />
+      <QuickActions />
       {presentation ? <Presentation /> : null}
     </div>
   );

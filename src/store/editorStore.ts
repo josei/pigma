@@ -320,6 +320,8 @@ export interface EditorState {
   shareLinkOpen: boolean;
   /** The keyboard shortcut reference (⇧⌘/). */
   shortcutsOpen: boolean;
+  /** Quick actions, the command search (⌘/). */
+  quickActionsOpen: boolean;
   /**
    * True once the user has changed a linked document. Until then the document
    * stays "loaded from a link": on screen, but not written to the library.
@@ -615,6 +617,7 @@ export interface EditorState {
   /** Open or close the "Copy link to this document" dialog. */
   setShareLinkOpen: (open: boolean) => void;
   setShortcutsOpen: (open: boolean) => void;
+  setQuickActionsOpen: (open: boolean) => void;
   importJsonText: (text: string) => { ok: boolean; errors: string[]; warnings: string[] };
   exportJsonString: () => string;
   /** SVG of exactly these layers; an empty list exports nothing. Callers say selection or page. */
@@ -908,6 +911,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   linkedSource: null,
   shareLinkOpen: false,
   shortcutsOpen: false,
+  quickActionsOpen: false,
   linkedDirty: false,
   mcpEnvironment: { desktop: null, advertised: null, desktopToken: null },
   // Figma's export dialog starts at 1x; the menu also offers fixed 1x/2x/3x.
@@ -2749,6 +2753,7 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   setShareLinkOpen: (open) => set({ shareLinkOpen: open }),
   setShortcutsOpen: (open) => set({ shortcutsOpen: open }),
+  setQuickActionsOpen: (open) => set({ quickActionsOpen: open }),
 
   keepLinkedDocument: () => {
     // The user's explicit choice to keep a linked document: it becomes theirs,
