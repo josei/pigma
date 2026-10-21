@@ -2021,7 +2021,11 @@ export const useEditor = create<EditorState>((set, get) => ({
     const node = selected[0];
     // Any single layer can become a component, containers included (Figma turns a
     // frame into a component directly). Several layers, or a component, cannot.
-    if (selected.length !== 1 || !node || node.type === 'COMPONENT') {
+    if (selected.length === 1 && node?.type === 'COMPONENT') {
+      get().pushToast('This layer is already a component');
+      return;
+    }
+    if (selected.length !== 1 || !node) {
       get().pushToast('Select a single layer, a frame or a shape, to create a component');
       return;
     }

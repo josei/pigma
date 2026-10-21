@@ -99,6 +99,7 @@ It needs system libraries once: `sudo npx playwright install-deps`.
 | `b116-guides.spec.ts` | Ruler guides: a drag from the top ruler makes a horizontal guide, from the left ruler a vertical one; a guide is moved by dragging and removed by dragging it onto a ruler; one undo restores a move |
 | `b117-guide-select-delete.spec.ts` | A ruler guide is selected by pressing it; Delete removes the selected guide; selecting a layer clears the guide selection |
 | `b118-select-matching.spec.ts` | Select all matching (Cmd/Ctrl+Alt+A): with one layer selected, the layers in its frame with the same type and name are selected, and no others |
+| `b119-component-messages.spec.ts` | Create component says why it did nothing: a layer that is already a component is told so, and several layers are told to select one |
 
 ## Known defects (tracked)
 
@@ -127,7 +128,7 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **426 browser tests passing / 0 failing** on Chromium (Firefox 416
+Current state: **428 browser tests passing / 0 failing** on Chromium (Firefox 416
 passed, 9 skipped; WebKit 416 passed, 10 skipped) with **0 orphan processes**. `npx vitest run` =
 1205 passing across 133 files.
 
