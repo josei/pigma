@@ -16,6 +16,8 @@ import { createsOnDrag, toolDraw } from '../model/toolDraw';
 import { positionNodes, reorderByDrag, resizeFromHandle, scaleSelection, setWorldRotation } from '../model/ops';
 import type { ResizeHandle } from '../model/ops';
 import { computeSnap, type Guide } from '../model/snapping';
+import { guideOffsets } from '../model/guides';
+import { Guides } from './Guides';
 import { commentsForPage } from '../model/comments';
 import { RedlineOverlay } from './RedlineOverlay';
 import {
@@ -689,6 +691,7 @@ export function Canvas() {
               snapToObjects,
               snapToGrid,
               gridSize,
+              guides: { x: guideOffsets(live.base, pageId, 'x'), y: guideOffsets(live.base, pageId, 'y') },
             });
         const dx = roundedDx + snap.dx;
         const dy = roundedDy + snap.dy;
@@ -1649,6 +1652,13 @@ export function Canvas() {
           selection={multiBounds ?? (singleId ? absoluteBounds(file.document, singleId) : null)}
         />
       ) : null}
+      <Guides
+        viewport={viewport}
+        width={containerRef.current?.clientWidth ?? 1200}
+        height={containerRef.current?.clientHeight ?? 800}
+        guides={activePage({ file, pageId }).guides ?? []}
+        rulers={showRulers}
+      />
 
       {previewVersionId ? (
         <div

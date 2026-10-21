@@ -15,6 +15,7 @@ import type {
 import { hasChildren, isComponentNode } from '../model/types';
 import { layersInRect } from '../model/keyboardSelect';
 import { moveGridTrack } from '../model/gridTracks';
+import { addPageGuide, movePageGuide, removePageGuide } from '../model/guides';
 import { firstVisibleFill, gradientEnds, withGradientEnds, withRadialHandle } from '../model/paint';
 import { flattenFrameOp, toVectorOp } from '../model/flatten';
 import type { Paint } from '../model/types';
@@ -620,6 +621,10 @@ export interface EditorState {
   setShareLinkOpen: (open: boolean) => void;
   setShortcutsOpen: (open: boolean) => void;
   setLayerAnchor: (id: string | null) => void;
+  /** Ruler guides on the active page (page coordinates). */
+  addGuide: (axis: 'x' | 'y', offset: number) => void;
+  moveGuide: (index: number, offset: number) => void;
+  removeGuide: (index: number) => void;
   setQuickActionsOpen: (open: boolean) => void;
   importJsonText: (text: string) => { ok: boolean; errors: string[]; warnings: string[] };
   exportJsonString: () => string;
@@ -2758,6 +2763,18 @@ export const useEditor = create<EditorState>((set, get) => ({
   setShareLinkOpen: (open) => set({ shareLinkOpen: open }),
   setShortcutsOpen: (open) => set({ shortcutsOpen: open }),
   setLayerAnchor: (id) => set({ layerAnchor: id }),
+  addGuide: (axis, offset) => {
+    const pageId = get().pageId;
+    get().apply('Add guide', (file) => addPageGuide(file, pageId, { axis, offset }));
+  },
+  moveGuide: (index, offset) => {
+    const pageId = get().pageId;
+    get().apply('Move guide', (file) => movePageGuide(file, pageId, index, offset));
+  },
+  removeGuide: (index) => {
+    const pageId = get().pageId;
+    get().apply('Remove guide', (file) => removePageGuide(file, pageId, index));
+  },
   setQuickActionsOpen: (open) => set({ quickActionsOpen: open }),
 
   keepLinkedDocument: () => {

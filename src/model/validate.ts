@@ -97,6 +97,7 @@ const BASE_KEYS = [
   'backgroundColor',
   'prototypeStartNodeId',
   'flows',
+  'guides',
 ] as const;
 
 const KNOWN_KEYS = new Set<string>(BASE_KEYS);
@@ -518,6 +519,12 @@ function normalizeCanvas(value: unknown, warnings: string[], index: number): Can
           startNodeId: str(flow.startNodeId, ''),
           ...(typeof flow.description === 'string' ? { description: flow.description } : {}),
         })).filter((flow) => flow.id !== '' && flow.startNodeId !== '') }
+      : {}),
+    ...(Array.isArray(value.guides)
+      ? { guides: value.guides.filter(isRecord).map((guide) => ({
+          axis: guide.axis === 'y' ? ('y' as const) : ('x' as const),
+          offset: typeof guide.offset === 'number' && Number.isFinite(guide.offset) ? guide.offset : 0,
+        })) }
       : {}),
   };
 }

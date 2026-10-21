@@ -575,11 +575,21 @@ export interface PrototypeFlow {
   description?: string;
 }
 
+/**
+ * A ruler guide on a page (Figma's guides): a vertical line at `offset` on the x axis, or a horizontal one on the y
+ * axis, in page coordinates. Frame-level guides are not modelled.
+ */
+export interface UserGuide {
+  axis: 'x' | 'y';
+  offset: number;
+}
+
 export interface CanvasNode extends BaseNode, ChildrenMixin {
   type: 'CANVAS';
   backgroundColor?: RGBA;
   prototypeStartNodeId?: string | null;
   flows?: PrototypeFlow[];
+  guides?: UserGuide[];
 }
 
 /** Every scene node, discriminated by `type`. */

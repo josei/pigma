@@ -34,6 +34,8 @@ export interface SnapOptions {
   snapToObjects: boolean;
   snapToGrid: boolean;
   gridSize: number;
+  /** The page's ruler guides, as snap targets when snapping to objects is on. */
+  guides?: { x: number[]; y: number[] };
 }
 
 export interface SnapResult {
@@ -129,6 +131,10 @@ export function computeSnap(
 
   if (options.snapToObjects) {
     const { x, y } = collectTargets(root, ids, parent ? parent.id : null);
+    // A ruler guide is an edge that spans the whole page, so the moving box snaps to it on that axis.
+    const span: [number, number] = [-Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
+    for (const offset of options.guides?.x ?? []) x.push({ value: offset, kind: 'edge', span });
+    for (const offset of options.guides?.y ?? []) y.push({ value: offset, kind: 'edge', span });
     const xSnap = snapAxis([proposed.x, proposed.x + proposed.width / 2, proposed.x + proposed.width], x, 'x', [proposed.y, proposed.y + proposed.height], options.threshold);
     const ySnap = snapAxis([proposed.y, proposed.y + proposed.height / 2, proposed.y + proposed.height], y, 'y', [proposed.x, proposed.x + proposed.width], options.threshold);
     dx += xSnap.delta;

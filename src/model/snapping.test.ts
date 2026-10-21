@@ -15,6 +15,21 @@ function scene() {
 }
 
 describe('snapping', () => {
+  it('snaps the moving box to a ruler guide, even with no sibling nearby', () => {
+    const { file, moverId } = scene();
+    // The guide sits 3px right of the proposed left edge. The box is 90 wide, so its centre (192) and right edge (237)
+    // are out of reach of the anchor's edges and centre, and only the guide is in range.
+    const result = computeSnap(file.document, [moverId], { x: 147, y: 300, width: 90, height: 50 }, { ...OPTIONS, guides: { x: [150], y: [] } });
+    expect(result.dx).toBeCloseTo(3);
+    expect(result.guides.some((entry) => entry.axis === 'x' && entry.position === 150)).toBe(true);
+  });
+
+  it('ignores a ruler guide when snapping to objects is off', () => {
+    const { file, moverId } = scene();
+    const result = computeSnap(file.document, [moverId], { x: 147, y: 300, width: 90, height: 50 }, { ...OPTIONS, snapToObjects: false, guides: { x: [150], y: [] } });
+    expect(result).toEqual(NO_SNAP);
+  });
+
   it('snaps the moving box to a sibling edge and reports a guide', () => {
     const { file, moverId } = scene();
     // Proposed left edge is 2px away from the anchor's left edge (100).
