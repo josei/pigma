@@ -34,7 +34,8 @@ past drawing:
 - Properties incl. text depth and effects; auto layout with wrap, line gap and
   counter alignment; booleans; styles and variables; components and variants
 - Figma import (`.fig` + REST), JSON/SVG interchange, PNG 1x/2x/3x and PDF
-  export, selection-scoped export, Copy as SVG/PNG/CSS (selection-scoped)
+  export, selection-scoped export, per-layer PNG/SVG exports with suffixes (Figma's
+  Export section), Copy as SVG/PNG/CSS (selection-scoped)
 - Dev Mode inspect with CSS/React codegen; in-app plugins; dark theme
 - MCP bridge (connect, resilience, remote edit + undo round trip) and
   collaboration presence (cursors, follow)
