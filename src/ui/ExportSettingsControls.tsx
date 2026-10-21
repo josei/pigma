@@ -24,6 +24,7 @@ export function ExportSettingsControls({ node }: { node: BaseNode }) {
         <button
           type="button"
           className="button"
+          style={{ width: 32, flex: '0 0 auto' }}
           aria-label="Add export setting"
           onClick={() => write([...settings, { format: 'PNG', scale: 1, suffix: '' }])}
         >
@@ -35,6 +36,7 @@ export function ExportSettingsControls({ node }: { node: BaseNode }) {
           <select
             className="input"
             aria-label="Export format"
+            style={{ width: 76, flex: '0 0 auto' }}
             value={setting.format}
             onChange={(event) => patch(index, { format: event.target.value as ExportSetting['format'] })}
           >
@@ -45,6 +47,7 @@ export function ExportSettingsControls({ node }: { node: BaseNode }) {
             <select
               className="input"
               aria-label="Export scale"
+              style={{ width: 60, flex: '0 0 auto' }}
               value={setting.scale}
               onChange={(event) => patch(index, { scale: Number(event.target.value) })}
             >
@@ -58,6 +61,7 @@ export function ExportSettingsControls({ node }: { node: BaseNode }) {
           <input
             className="input"
             aria-label="Export suffix"
+            style={{ minWidth: 0, flex: 1 }}
             placeholder="Suffix"
             value={setting.suffix}
             onChange={(event) => patch(index, { suffix: event.target.value })}
@@ -65,6 +69,7 @@ export function ExportSettingsControls({ node }: { node: BaseNode }) {
           <button
             type="button"
             className="button"
+            style={{ width: 32, flex: '0 0 auto' }}
             aria-label="Remove export setting"
             onClick={() => write(settings.filter((_, position) => position !== index))}
           >
