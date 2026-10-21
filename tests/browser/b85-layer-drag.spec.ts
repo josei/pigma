@@ -17,13 +17,10 @@ test('B85a dragging a layer above another reorders them, and one undo restores t
   const polygonRow = rows.filter({ hasText: 'Polygon' }).first();
   const rectangleRow = rows.filter({ hasText: 'Rectangle' }).first();
   await rectangleRow.dragTo(polygonRow, { targetPosition: { x: 20, y: 3 } });
-  await page.waitForTimeout(250);
-
-  expect(await order(), 'the dragged layer did not move to the front').toEqual(['ELLIPSE', 'POLYGON', 'RECTANGLE']);
+  await expect.poll(order, { message: 'the dragged layer did not move to the front' }).toEqual(['ELLIPSE', 'POLYGON', 'RECTANGLE']);
 
   await page.keyboard.press('Control+z');
-  await page.waitForTimeout(200);
-  expect(await order(), 'one undo did not restore the order').toEqual(before);
+  await expect.poll(order, { message: 'one undo did not restore the order' }).toEqual(before);
 });
 
 /** A drop beside a row moves the layer into that row's parent, and it keeps its place on the canvas. */
@@ -37,7 +34,7 @@ test('B85b a layer dropped above a row inside a group joins that group, and keep
   await page.locator('.app__left .layer-row', { hasText: 'Polygon' }).first().click();
   await page.locator('.app__left .layer-row', { hasText: 'Rectangle' }).first().click({ modifiers: ['Control'] });
   await page.keyboard.press('Control+g');
-  await page.waitForTimeout(250);
+  await expect.poll(() => page.evaluate(() => (window.__pigmaStore!.getState().file.document.children[0]!.children as Array<{ type: string }>).map((n) => n.type)), { message: 'the layers were not grouped' }).toContain('GROUP');
   const topLevel = () => page.evaluate(() => (window.__pigmaStore!.getState().file.document.children[0]!.children as Array<{ type: string; children?: Array<{ type: string }> }>).map((n) => ({ type: n.type, kids: (n.children ?? []).map((c) => c.type) })));
   // The ellipse's absolute x, summing the offsets of its ancestors (the moves keep it in place).
   const ellipseId = await page.evaluate(() => (window.__pigmaStore!.getState().file.document.children[0]!.children as any[]).find((n) => n.type === 'ELLIPSE').id as string);
@@ -62,15 +59,12 @@ test('B85b a layer dropped above a row inside a group joins that group, and keep
   const insideRow = page.locator('.app__left .layer-row', { hasText: 'Polygon' }).first();
   if ((await insideRow.count()) === 0) {
     await page.locator('.app__left .layer-row', { hasText: 'Group' }).first().locator('.layer-row__chevron').click();
-    await page.waitForTimeout(200);
   }
   await expect(insideRow).toBeVisible();
   const ellipseRow = page.locator('.app__left .layer-row', { hasText: 'Ellipse' }).first();
   await ellipseRow.dragTo(insideRow, { targetPosition: { x: 20, y: 3 } });
-  await page.waitForTimeout(250);
-
+  await expect.poll(async () => (await topLevel()).map((n) => n.type), { message: 'the ellipse did not leave the top level' }).toEqual(['GROUP']);
   const after = await topLevel();
-  expect(after.map((n) => n.type), 'the ellipse did not leave the top level').toEqual(['GROUP']);
   expect(after[0]!.kids, 'the ellipse did not join the group').toContain('ELLIPSE');
   expect(await ellipseX(), 'the ellipse moved on the canvas').toBeCloseTo(x as number, 3);
 });
@@ -87,10 +81,9 @@ test('B85c a layer dropped onto the middle of a frame goes inside it', async ({ 
   const frameRow = page.locator('.app__left .layer-row', { hasText: 'Frame' }).first();
   const ellipseRow = page.locator('.app__left .layer-row', { hasText: 'Ellipse' }).first();
   await ellipseRow.dragTo(frameRow, { targetPosition: { x: 40, y: 10 } });
-  await page.waitForTimeout(250);
-
+  // Wait for the move to land rather than for a fixed time: WebKit finishes the drop later than Chromium.
+  await expect.poll(async () => (await topLevel()).map((n) => n.type), { message: 'the ellipse did not leave the top level' }).toEqual(['FRAME']);
   const after = await topLevel();
-  expect(after.map((n) => n.type), 'the ellipse did not leave the top level').toEqual(['FRAME']);
   expect(after[0]!.kids).toEqual(['ELLIPSE']);
   // Moved to fit: the ellipse is inside the frame's bounds, so the frame's clip does not hide it.
   const fits = await page.evaluate(() => {

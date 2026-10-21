@@ -124,8 +124,8 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **420 browser tests passing / 0 failing** on Chromium (Firefox 404
-passed, 9 skipped; WebKit 403 passed, 10 skipped) with **0 orphan processes**. `npx vitest run` =
+Current state: **420 browser tests passing / 0 failing** on Chromium (Firefox 411
+passed, 9 skipped; WebKit 410 passed, 10 skipped) with **0 orphan processes**. `npx vitest run` =
 1195 passing across 131 files.
 
 ### Round 12 - what is and is not covered
