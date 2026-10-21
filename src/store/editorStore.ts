@@ -14,6 +14,7 @@ import type {
 } from '../model/types';
 import { hasChildren, isComponentNode } from '../model/types';
 import { layersInRect } from '../model/keyboardSelect';
+import { moveGridTrack } from '../model/gridTracks';
 import { firstVisibleFill, gradientEnds, withGradientEnds, withRadialHandle } from '../model/paint';
 import { flattenFrameOp, toVectorOp } from '../model/flatten';
 import type { Paint } from '../model/types';
@@ -425,6 +426,8 @@ export interface EditorState {
   clearAutoLayout: () => void;
   resetOverrides: (instanceId: string) => void;
   updateSelectedTextStyle: (patch: Partial<TextStyle>, label?: string) => void;
+  /** Move a declared row or column of the selected grid frame, and the children anchored to it. */
+  moveSelectedGridTrack: (axis: 'column' | 'row', from: number, to: number) => void;
   /**
    * Move a layer beside a row ('before' / 'after', in DATA order: the layers panel shows
    * children reversed), into the row's parent; or 'inside' a frame or section, as its
@@ -1413,6 +1416,13 @@ export const useEditor = create<EditorState>((set, get) => ({
         node.type === 'INSTANCE' ? ({ ...node, overrides: {} } as Node) : node,
       ),
     }));
+  },
+
+  moveSelectedGridTrack: (axis, from, to) => {
+    const state = get();
+    if (state.selection.length !== 1) return;
+    const frameId = state.selection[0]!;
+    get().apply('Move grid track', (file) => settleDocument(moveGridTrack(file, frameId, axis, from, to)));
   },
 
   updateSelectedTextStyle: (patch, label = 'Change text style') => {

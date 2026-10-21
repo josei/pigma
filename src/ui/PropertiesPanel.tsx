@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './icons';
 import { selectedNodes, useEditor } from '../store/editorStore';
 import type { AlignMode, ReorderMode } from '../model/ops';
@@ -1326,6 +1326,7 @@ const SIZING_OPTIONS: Array<{ value: 'FIXED' | 'AUTO'; label: string }> = [
  * over a frame without moving anything.
  */
 function GridTracks({ layout, rowCount, onChange }: { layout: AutoLayout; rowCount: number; onChange: (patch: Partial<AutoLayout>) => void }) {
+  const moveTrack = useEditor((state) => state.moveSelectedGridTrack);
   const track = (list: GridTrackSize[] | undefined, index: number): GridTrackSize => list?.[index] ?? { type: 'FLEX', value: 1 };
   const edit = (key: 'gridColumns' | 'gridRows', list: GridTrackSize[] | undefined, index: number, patch: Partial<GridTrackSize>) => {
     const next = [...(list ?? [])];
@@ -1366,7 +1367,8 @@ function GridTracks({ layout, rowCount, onChange }: { layout: AutoLayout; rowCou
             {Array.from({ length: count }, (_, index) => {
               const value = track(list, index);
               return (
-                <div className="prop-row" key={`${key}-${index}`}>
+                <Fragment key={`${key}-${index}`}>
+                <div className="prop-row">
                   <button
                     type="button"
                     className="segmented__option"
@@ -1382,7 +1384,27 @@ function GridTracks({ layout, rowCount, onChange }: { layout: AutoLayout; rowCou
                     min={value.type === 'FIXED' ? 0 : 1}
                     onCommit={(next) => edit(key, list, index, { value: next })}
                   />
-                  {count > 1 ? (
+                </div>
+                {count > 1 ? (
+                  <div className="prop-row" style={{ justifyContent: 'flex-end', gap: 4 }}>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Move ${label.toLowerCase().replace(/s$/, '')} track ${index + 1} up`}
+                      disabled={index === 0}
+                      onClick={() => moveTrack(key === 'gridColumns' ? 'column' : 'row', index, index - 1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`Move ${label.toLowerCase().replace(/s$/, '')} track ${index + 1} down`}
+                      disabled={index === count - 1}
+                      onClick={() => moveTrack(key === 'gridColumns' ? 'column' : 'row', index, index + 1)}
+                    >
+                      ↓
+                    </button>
                     <button
                       type="button"
                       className="icon-button"
@@ -1391,8 +1413,9 @@ function GridTracks({ layout, rowCount, onChange }: { layout: AutoLayout; rowCou
                     >
                       <Icon name="trash" size={12} />
                     </button>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
+                </Fragment>
               );
             })}
             <NumberField label={gapLabel} value={layout[gapKey] ?? 0} min={0} onCommit={(next) => onChange({ [gapKey]: next })} />
