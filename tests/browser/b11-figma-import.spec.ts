@@ -73,9 +73,10 @@ test('B11f unsupported Figma features are reported, not silently dropped', async
 test('B11g a .fig file with an embedded image imports it', async ({ page }) => {
   await importFixture(page, 'Import .fig…', 'with-image.fig');
 
-  const rendered = await page.evaluate(() => {
-    const svg = document.querySelector('.canvas__svg')!;
-    return svg.querySelectorAll('image, pattern').length;
-  });
-  expect(rendered).toBeGreaterThan(0);
+  // The embedded image is decoded after the import, so poll for it rather than read the SVG once.
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.querySelector('.canvas__svg')?.querySelectorAll('image, pattern').length ?? 0),
+    )
+    .toBeGreaterThan(0);
 });

@@ -46,6 +46,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: '⌘⌥B', label: 'Detach instance' },
       { keys: '⌘⌥M', label: 'Use as mask' },
       { keys: '⌘⌥G', label: 'Frame selection' },
+      { keys: '⌘⌥A', label: 'Select all matching layers' },
     ],
   },
   {

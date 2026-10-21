@@ -145,7 +145,8 @@ export function useKeyboardShortcuts(): void {
         state.redo();
         return;
       }
-      if (meta && event.key.toLowerCase() === 'a') {
+      // Cmd/Ctrl+A selects all; with Alt held it is Select all matching (below), not this.
+      if (meta && !event.altKey && event.key.toLowerCase() === 'a') {
         event.preventDefault();
         state.selectAll();
         return;
@@ -185,6 +186,12 @@ export function useKeyboardShortcuts(): void {
         return;
       }
       // Figma's Frame selection: Cmd/Ctrl+Alt+G.
+      // Figma's Select all matching layers: Cmd/Ctrl+Alt+A.
+      if (meta && event.altKey && !event.shiftKey && event.code === 'KeyA' && state.selection.length > 0) {
+        event.preventDefault();
+        state.selectMatching();
+        return;
+      }
       if (meta && event.altKey && event.code === 'KeyG') {
         event.preventDefault();
         state.frameSelection();

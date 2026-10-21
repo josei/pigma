@@ -16,6 +16,7 @@ import { hasChildren, isComponentNode } from '../model/types';
 import { layersInRect } from '../model/keyboardSelect';
 import { moveGridTrack } from '../model/gridTracks';
 import { addPageGuide, movePageGuide, removePageGuide } from '../model/guides';
+import { matchingLayerIds } from '../model/matching';
 import { firstVisibleFill, gradientEnds, withGradientEnds, withRadialHandle } from '../model/paint';
 import { flattenFrameOp, toVectorOp } from '../model/flatten';
 import type { Paint } from '../model/types';
@@ -388,6 +389,8 @@ export interface EditorState {
   finishKeyboardBox: () => void;
   cancelKeyboardBox: () => void;
   selectAll: () => void;
+  /** Select every layer that matches the first selected one (Figma's Select all matching). */
+  selectMatching: () => void;
   clearSelection: () => void;
   setEnteredContainer: (id: string | null) => void;
 
@@ -1062,6 +1065,16 @@ export const useEditor = create<EditorState>((set, get) => ({
   selectAll: () => {
     closeBurst();
     set({ selection: activeContainer(get()).children.map((child) => child.id) });
+  },
+
+  selectMatching: () => {
+    closeBurst();
+    const state = get();
+    const first = state.selection[0];
+    if (!first) return;
+    const ids = matchingLayerIds(state.file, first);
+    // Nothing matches an id that is not in the file: keep the selection as it was.
+    if (ids.length > 0) set({ selection: ids });
   },
 
   clearSelection: () => {
