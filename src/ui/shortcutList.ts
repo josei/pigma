@@ -35,7 +35,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     title: 'Edit',
     rows: [
       { keys: '⌘Z / ⇧⌘Z / ⌘Y', label: 'Undo / redo' },
-      { keys: 'Delete / Backspace', label: 'Delete the selection (an anchor, while editing a vector)' },
+      { keys: 'Delete / Backspace', label: 'Delete the selection' },
       { keys: '⌘C / ⌘X / ⌘V', label: 'Copy / cut / paste' },
       { keys: '⇧⌘V', label: 'Paste over selection' },
       { keys: '⇧⌘R', label: 'Paste to replace' },

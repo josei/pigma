@@ -20,9 +20,9 @@ export function ShortcutsDialog() {
             <section key={group.title} style={{ marginBottom: 12 }}>
               <h3 style={{ margin: '0 0 4px', fontSize: 12, color: 'var(--figma-text-secondary)' }}>{group.title}</h3>
               {group.rows.map((row) => (
-                <div key={row.label} className="prop-row" style={{ justifyContent: 'space-between' }}>
+                <div key={row.label} className="prop-row" style={{ justifyContent: 'space-between', gap: 16 }}>
                   <span>{row.label}</span>
-                  <kbd>{row.keys}</kbd>
+                  <kbd style={{ whiteSpace: 'nowrap' }}>{row.keys}</kbd>
                 </div>
               ))}
             </section>
