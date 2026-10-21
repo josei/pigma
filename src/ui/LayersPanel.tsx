@@ -4,6 +4,7 @@ import { activePage, useEditor } from '../store/editorStore';
 import type { SceneNode } from '../model/types';
 import { hasChildren } from '../model/types';
 import { findPath } from '../model/tree';
+import { layerRowOrder } from './layerOrder';
 
 const NODE_ICON: Record<string, IconName> = {
   FRAME: 'frame',
@@ -36,6 +37,7 @@ interface RowProps {
 function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRename, masked }: RowProps) {
   const selection = useEditor((state) => state.selection);
   const select = useEditor((state) => state.select);
+  const setLayerAnchor = useEditor((state) => state.setLayerAnchor);
   const toggleVisible = useEditor((state) => state.toggleVisible);
   const toggleLock = useEditor((state) => state.toggleLock);
   const renameNode = useEditor((state) => state.renameNode);
@@ -91,7 +93,33 @@ function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRe
           if (from) moveLayer(from, node.id, dropEdge === 'inside' ? 'inside' : dropEdge === 'above' ? 'after' : 'before');
           setDropEdge(null);
         }}
-        onClick={(event) => select([node.id], event.shiftKey || event.metaKey || event.ctrlKey ? 'toggle' : 'replace')}
+        onClick={(event) => {
+          // Shift selects the rows from the anchor to this one, as drawn (Figma's range select). Cmd/Ctrl toggles
+          // this row. A plain click replaces the selection and becomes the anchor.
+          if (event.shiftKey) {
+            const state = useEditor.getState();
+            const page = activePage({ file: state.file, pageId: state.pageId });
+            const order = layerRowOrder(page.children, expanded);
+            const anchor = state.layerAnchor ?? selection[0] ?? node.id;
+            const from = order.indexOf(anchor);
+            const to = order.indexOf(node.id);
+            if (from >= 0 && to >= 0) {
+              const [start, end] = from < to ? [from, to] : [to, from];
+              select(order.slice(start, end + 1), 'replace');
+              return;
+            }
+            select([node.id], 'toggle');
+            setLayerAnchor(node.id);
+            return;
+          }
+          if (event.metaKey || event.ctrlKey) {
+            select([node.id], 'toggle');
+            setLayerAnchor(node.id);
+            return;
+          }
+          select([node.id], 'replace');
+          setLayerAnchor(node.id);
+        }}
         // Right-click selects the row first (unless it is already part of the
         // selection), so the context menu acts on what was clicked, as in Figma.
         onContextMenu={() => {

@@ -320,6 +320,8 @@ export interface EditorState {
   shareLinkOpen: boolean;
   /** The keyboard shortcut reference (⇧⌘/). */
   shortcutsOpen: boolean;
+  /** The Layers panel row a Shift-click ranges from (the last row clicked without Shift). */
+  layerAnchor: string | null;
   /** Quick actions, the command search (⌘/). */
   quickActionsOpen: boolean;
   /**
@@ -617,6 +619,7 @@ export interface EditorState {
   /** Open or close the "Copy link to this document" dialog. */
   setShareLinkOpen: (open: boolean) => void;
   setShortcutsOpen: (open: boolean) => void;
+  setLayerAnchor: (id: string | null) => void;
   setQuickActionsOpen: (open: boolean) => void;
   importJsonText: (text: string) => { ok: boolean; errors: string[]; warnings: string[] };
   exportJsonString: () => string;
@@ -911,6 +914,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   linkedSource: null,
   shareLinkOpen: false,
   shortcutsOpen: false,
+  layerAnchor: null,
   quickActionsOpen: false,
   linkedDirty: false,
   mcpEnvironment: { desktop: null, advertised: null, desktopToken: null },
@@ -2753,6 +2757,7 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   setShareLinkOpen: (open) => set({ shareLinkOpen: open }),
   setShortcutsOpen: (open) => set({ shortcutsOpen: open }),
+  setLayerAnchor: (id) => set({ layerAnchor: id }),
   setQuickActionsOpen: (open) => set({ quickActionsOpen: open }),
 
   keepLinkedDocument: () => {

@@ -32,9 +32,10 @@ test('B85b a layer dropped above a row inside a group joins that group, and keep
   await drawShape(page, 'Rectangle', 80, 80, -120, 0);
   await drawShape(page, 'Ellipse', 80, 80, 0, 0);
   await drawShape(page, 'Polygon', 80, 80, 120, 0);
-  // Group the polygon and the rectangle, leaving the ellipse at the top level.
+  // Group the polygon and the rectangle, leaving the ellipse at the top level. The ellipse sits between them in the
+  // panel, so Cmd/Ctrl adds the two rows; Shift would select the range, ellipse included (B115).
   await page.locator('.app__left .layer-row', { hasText: 'Polygon' }).first().click();
-  await page.locator('.app__left .layer-row', { hasText: 'Rectangle' }).first().click({ modifiers: ['Shift'] });
+  await page.locator('.app__left .layer-row', { hasText: 'Rectangle' }).first().click({ modifiers: ['Control'] });
   await page.keyboard.press('Control+g');
   await page.waitForTimeout(250);
   const topLevel = () => page.evaluate(() => (window.__pigmaStore!.getState().file.document.children[0]!.children as Array<{ type: string; children?: Array<{ type: string }> }>).map((n) => ({ type: n.type, kids: (n.children ?? []).map((c) => c.type) })));
