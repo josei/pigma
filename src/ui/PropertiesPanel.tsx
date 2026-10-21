@@ -16,6 +16,7 @@ import { VariableBindInline, VariableBindRow } from './VariablesPanel';
 import { InspectPanel } from './InspectPanel';
 import { BOOLEAN_MODES, booleanLabel } from '../model/boolean';
 import { cornerRadii, cornerSmoothingOf } from '../render/SceneRenderer';
+import { ExportSettingsControls } from './ExportSettingsControls';
 import { useIsMobile } from './useIsMobile';
 import {
   TRIGGERS,
@@ -706,6 +707,7 @@ function AppearanceSection({ node }: { node: SceneNode }) {
           </div>
         ) : null}
         {imageFill ? <ImageFillControls /> : null}
+        {node ? <ExportSettingsControls node={node} /> : null}
         <div className="prop-row">
           <span className="prop-row__label">Blend</span>
           <select

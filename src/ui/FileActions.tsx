@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { loadDecompressors, parseFigFile, parseFigmaRest, toPigmaFile } from '../figma';
 import { useEditor } from '../store/editorStore';
 import { safeFileName } from '../model/serialize';
+import { findNode } from '../model/tree';
+import type { ExportSetting } from '../model/types';
 import { PIGMA_ACCEPT, PIGMA_MIME, pigmaFileName } from '../model/format';
 import { isRecord } from '../model/guards';
 import { decodeImageFile } from './imageInput';
@@ -312,6 +314,48 @@ export function runFileAction(action: FileAction): void {
       store.pushToast('Exported SVG', 'success');
     }
   }
+}
+
+/** The file name one per-layer export setting produces: the layer's name, its suffix, and the format's extension. */
+export function nodeExportFileName(name: string, setting: ExportSetting): string {
+  return safeFileName(`${name}${setting.suffix}`, setting.format === 'PNG' ? 'png' : 'svg');
+}
+
+/**
+ * Export every setting on each layer given (Figma's Export section): one file per setting, named from its layer.
+ * A PNG keeps the layer's own paint and has no background, as Figma's node export does.
+ */
+export function exportLayerSettings(nodeIds: string[]): void {
+  const store = useEditor.getState();
+  const layers = nodeIds
+    .map((id) => findNode(store.file.document, id))
+    .filter((node): node is NonNullable<typeof node> => !!node && (node.exportSettings?.length ?? 0) > 0);
+  if (layers.length === 0) {
+    store.pushToast('This layer has no export settings yet');
+    return;
+  }
+  let files = 0;
+  for (const node of layers) {
+    const scene = store.exportScene([node.id]);
+    for (const setting of node.exportSettings ?? []) {
+      files += 1;
+      const fileName = nodeExportFileName(node.name, setting);
+      if (setting.format === 'SVG') {
+        download(fileName, 'image/svg+xml', store.exportSvgString([node.id]));
+      } else if (scene) {
+        void renderScenePng({
+          svg: scene.svg,
+          viewBox: scene.viewBox,
+          backgroundBlurs: scene.backgroundBlurs,
+          scale: setting.scale,
+        }).then(
+          (blob) => downloadBlob(fileName, blob),
+          (error: unknown) => useEditor.getState().pushToast(`PNG export failed: ${String(error)}`),
+        );
+      }
+    }
+  }
+  store.pushToast(`Exported ${files} file${files === 1 ? '' : 's'}`, 'success');
 }
 
 /** Bridges window events (raised by the menu and the left panel) to file actions. */

@@ -329,12 +329,26 @@ export interface PrototypeInteraction {
   condition?: { variableId: string; value: boolean | number };
 }
 
+/**
+ * One export a layer asks for (Figma's Export section): a PNG at a scale, or an SVG, named with its suffix.
+ * PDF is page-level only, so it is not a per-layer setting.
+ */
+export interface ExportSetting {
+  format: 'PNG' | 'SVG';
+  /** PNG scale; ignored for SVG. */
+  scale: number;
+  /** Appended to the layer's name in the file name, e.g. `-2x`. */
+  suffix: string;
+}
+
 export interface BaseNode {
   id: string;
   name: string;
   type: NodeType;
   visible: boolean;
   locked: boolean;
+  /** Per-layer exports (Figma's Export section); exported with the layer's own name and suffix. */
+  exportSettings?: ExportSetting[];
   /** Size limits (M10): clamp resizes, HUG/FILL layout and constraints. */
   minWidth?: number;
   minHeight?: number;

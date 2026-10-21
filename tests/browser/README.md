@@ -94,6 +94,7 @@ It needs system libraries once: `sudo npx playwright install-deps`.
 | `b111-shortcut-reference.spec.ts` | The keyboard shortcut reference: Ctrl/Cmd+Shift+/ and the Help menu entry open it, Escape closes it |
 | `b112-quick-actions.spec.ts` | Quick actions (Ctrl/Cmd+/): typing lists matching menu commands, Enter runs the highlighted one, arrows move it, Escape closes, a no-match word says so |
 | `b113-corner-smoothing.spec.ts` | The Smoothing field in the properties panel turns a rectangle's circular corners into smoothed curves, and 0 turns them back |
+| `b114-layer-export.spec.ts` | Per-layer export (Figma's Export section): a 2x PNG and an SVG of one layer download, named from the layer and its suffix; a setting can be removed |
 
 ## Known defects (tracked)
 
@@ -122,9 +123,9 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **416 browser tests passing / 0 failing** on Chromium (Firefox 404
+Current state: **418 browser tests passing / 0 failing** on Chromium (Firefox 404
 passed, 9 skipped; WebKit 403 passed, 10 skipped) with **0 orphan processes**. `npx vitest run` =
-1189 passing across 129 files.
+1192 passing across 130 files.
 
 ### Round 12 - what is and is not covered
 

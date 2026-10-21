@@ -2,6 +2,7 @@ import type {
   AnyNode,
   AutoLayout,
   BaseNode,
+  ExportSetting,
   ChildrenMixin,
   Constraints,
   ContainerNode,
@@ -759,6 +760,8 @@ export interface NodePatch {
   rectangleCornerRadii?: [number, number, number, number];
   /** Corner smoothing, 0 to 1 (Figma's Corner smoothing). */
   cornerSmoothing?: number;
+  /** Per-layer exports (Figma's Export section); `[]` clears them. */
+  exportSettings?: ExportSetting[];
   /** Size limits (M10); `undefined` clears a limit. */
   minWidth?: number;
   minHeight?: number;
