@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { boot, drawShape, tool } from './helpers';
+import { boot, drawShape, tool, nextPaint } from './helpers';
 
 /** A frame inside a component can be made a slot from the context menu. */
 test('B88a Make slot turns a frame inside a component into a slot, from the context menu', async ({ page }) => {
@@ -8,17 +8,17 @@ test('B88a Make slot turns a frame inside a component into a slot, from the cont
   await drawShape(page, 'Frame', 100, 80, -200, 0);
   await page.locator('.app__left .layer-row', { hasText: 'Frame' }).first().click();
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   // Open the component in the layers panel and pick the frame inside it.
   await page.locator('.app__left .layer-row__chevron').first().click();
-  await page.waitForTimeout(200);
+  await nextPaint(page);
   const inner = page.locator('.app__left .layer-row').nth(1);
   await inner.click({ button: 'right' });
   const slot = page.locator('.menu__item', { hasText: 'Make slot' });
   await expect(slot, 'Make slot is not offered for a frame inside a component').toBeVisible();
   await expect(slot).not.toHaveClass(/menu__item--disabled/);
   await slot.click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   const state = await page.evaluate(() => {
     const doc = (window.__pigmaStore!.getState() as any).file.document;
@@ -45,17 +45,17 @@ test('B88c an instance of a component with a slot offers the slot in its propert
   await drawShape(page, 'Frame', 100, 80, -200, 0);
   await page.locator('.app__left .layer-row', { hasText: 'Frame' }).first().click();
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   await page.locator('.app__left .layer-row__chevron').first().click();
-  await page.waitForTimeout(200);
+  await nextPaint(page);
   await page.locator('.app__left .layer-row').nth(1).click({ button: 'right' });
   await page.locator('.menu__item', { hasText: 'Make slot' }).click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   // Insert an instance of the component, from Assets.
   await page.locator('.rail__button[aria-label="Assets"]').click();
   await page.locator('.app__left .layer-row', { hasText: 'Frame' }).first().dblclick();
-  await page.waitForTimeout(450);
+  await nextPaint(page);
   await page.locator('.rail__button[aria-label="Layers"]').click();
   await expect(page.locator('[data-testid="slot-row-Slot"]'), 'the instance does not offer its slot').toBeVisible();
 });

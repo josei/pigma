@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { boot, drawShape, tool } from './helpers';
+import { boot, drawShape, tool, nextPaint } from './helpers';
 
 /** Alt+drag duplicates the selection and moves the copy; the original stays where it was. */
 test('B95a Alt+drag leaves the original in place and moves a copy', async ({ page }) => {
@@ -19,7 +19,7 @@ test('B95a Alt+drag leaves the original in place and moves a copy', async ({ pag
   await page.mouse.move(cx + 100, cy, { steps: 8 });
   await page.mouse.up();
   await page.keyboard.up('Alt');
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   const after = await rects();
   expect(after, 'Alt+drag did not create a copy').toHaveLength(2);

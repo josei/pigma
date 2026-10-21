@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, field, tool } from './helpers';
+import { boot, drawShape, field, tool, nextPaint } from './helpers';
 
 /**
  * Node types in the document, read from the app store.
@@ -26,7 +26,7 @@ async function nodeTypes(page: Page): Promise<string[]> {
 
 async function openAssets(page: Page) {
   await page.locator('.rail__button[aria-label="Assets"]').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 const publish = (page: Page) => page.locator('button[aria-label="Publish library"]');
@@ -37,14 +37,14 @@ test('B31a publishing a library changes its status', async ({ page }) => {
   await boot(page, { blank: true });
   await drawShape(page, 'Rectangle', 200, 120);
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   await openAssets(page);
 
   expect(await panelText(page)).toMatch(/not published/i);
 
   await expect(publish(page)).toHaveCount(1);
   await publish(page).click();
-  await page.waitForTimeout(700);
+  await nextPaint(page);
 
   const after = await panelText(page);
   expect(after, 'the library still reports itself as unpublished').not.toMatch(/not published/i);
@@ -58,17 +58,17 @@ test('B31b a published component can be instantiated', async ({ page }) => {
     .first()
     .textContent())!;
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   await openAssets(page);
   await publish(page).click();
-  await page.waitForTimeout(600);
+  await nextPaint(page);
 
   const before = await nodeTypes(page);
   expect(before).toContain('COMPONENT');
   expect(before).not.toContain('INSTANCE');
 
   await page.locator('.app__left .layer-row', { hasText: master }).first().dblclick();
-  await page.waitForTimeout(800);
+  await nextPaint(page);
 
   // The instance must exist in the DOCUMENT, not merely change a row count.
   const after = await nodeTypes(page);
@@ -88,18 +88,18 @@ test('B31c editing and republishing the master offers an update for an out-of-da
     .textContent())!;
   const masterFill = await field(page, 'Fill colour').inputValue();
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   await openAssets(page);
   await publish(page).click();
-  await page.waitForTimeout(600);
+  await nextPaint(page);
 
   // Insert an instance so there is something that can go out of date.
   await page.locator('.app__left .layer-row', { hasText: master }).first().dblclick();
-  await page.waitForTimeout(700);
+  await nextPaint(page);
 
   // Edit the MASTER's fill.
   await page.locator('.rail__button[aria-label="Layers"]').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   await page
     .locator('.layer-row')
     .filter({ has: page.locator('.layer-row__icon path[d*="M8 1.5 11 4.5"]') })
@@ -107,7 +107,7 @@ test('B31c editing and republishing the master offers an update for an out-of-da
     .click();
   await field(page, 'Fill colour').fill('#ff0000');
   await field(page, 'Fill colour').press('Enter');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   expect(await field(page, 'Fill colour').inputValue()).not.toBe(masterFill);
 
   // Republish; the instance is now out of date and an update affordance appears.
@@ -117,7 +117,7 @@ test('B31c editing and republishing the master offers an update for an out-of-da
   const republish = page.locator('button[aria-label="Republish library"], button[aria-label="Publish library"]').first();
   await expect(republish, 'no publish/republish control in the Assets panel').toHaveCount(1);
   await republish.click();
-  await page.waitForTimeout(700);
+  await nextPaint(page);
 
   // The affordance may live in the Assets panel OR on the instance's properties,
   // so search the whole app rather than assuming one location.

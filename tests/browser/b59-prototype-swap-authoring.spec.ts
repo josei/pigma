@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, tool } from './helpers';
+import { boot, drawShape, tool, nextPaint } from './helpers';
 
 /**
  * Authoring a variant swap in the UI.
@@ -15,7 +15,7 @@ async function openPrototypePanel(page: Page): Promise<void> {
   const tab = page.locator('.tab', { hasText: 'Prototype' });
   await expect(tab, 'the Prototype tab is missing').toHaveCount(1);
   await tab.click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 const kind = (page: Page) => page.locator('select[aria-label="Action kind"]');
@@ -27,10 +27,10 @@ async function withComponentSet(page: Page): Promise<void> {
   await boot(page, { blank: true });
   await drawShape(page, 'Rectangle', 120, 90, -200, -120);
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   await drawShape(page, 'Rectangle', 120, 90, -60, -120);
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   // Select both components and combine them into a set.
   await page.evaluate(() => {
@@ -41,9 +41,9 @@ async function withComponentSet(page: Page): Promise<void> {
     const ids = pageNode.children.filter((n) => n.type === 'COMPONENT').map((n) => n.id);
     (store.getState() as unknown as { select: (ids: string[]) => void }).select(ids);
   });
-  await page.waitForTimeout(250);
+  await nextPaint(page);
   await page.locator('button', { hasText: 'Create component set' }).click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   // A plain frame, which will carry the swap.
   await drawShape(page, 'Frame', 200, 140, 160, 0);
@@ -64,12 +64,12 @@ test('B59b choosing "Swap variant" OFFERS the destination, grouped by set name',
 
   // Navigate offers a destination - the control can be driven at all.
   await kind(page).selectOption('NAVIGATE');
-  await page.waitForTimeout(250);
+  await nextPaint(page);
   await expect(target(page), 'the Navigate kind offers no target - the harness is wrong').toHaveCount(1);
 
   // THE FLIPPED ASSERTION: the swap offers one too. It used to vanish.
   await kind(page).selectOption('SWAP_STATE');
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   await expect(target(page), 'the swap still offers no destination').toHaveCount(1);
 
   // The variants are listed under their SET, so a swap target is findable.
@@ -83,14 +83,14 @@ test('B59c the create button is DISABLED until a swap destination is chosen', as
   await openPrototypePanel(page);
 
   await kind(page).selectOption('SWAP_STATE');
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   // Enabled-with-no-destination was the sharper defect: a swap pointing at nothing.
   await expect(apply(page), 'a swap could be created with no destination').toBeDisabled();
 
   const firstVariant = await target(page).locator('option').nth(1).getAttribute('value');
   expect(firstVariant, 'no variant to choose').toBeTruthy();
   await target(page).selectOption(firstVariant!);
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   await expect(apply(page), 'the button stayed disabled after choosing a destination').toBeEnabled();
 });
 
@@ -99,7 +99,7 @@ test('B59d a kind with no destination offers none (negative control)', async ({ 
   await openPrototypePanel(page);
 
   await kind(page).selectOption('BACK');
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   await expect(target(page), 'the Back kind offered a destination it does not take').toHaveCount(0);
   await expect(kind(page), 'the panel stopped rendering').toHaveCount(1);
 });
@@ -109,16 +109,16 @@ test('B59e applying the link creates a SWAP_STATE action at the chosen variant',
   await openPrototypePanel(page);
 
   await kind(page).selectOption('SWAP_STATE');
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   const options = await target(page).locator('option').evaluateAll((els) =>
     els.map((e) => ({ value: (e as HTMLOptionElement).value, label: e.textContent ?? '' })),
   );
   const variant = options.find((o) => o.label.includes(' / '));
   expect(variant, `no grouped variant in the destination list: ${JSON.stringify(options)}`).toBeTruthy();
   await target(page).selectOption(variant!.value);
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   await apply(page).click();
-  await page.waitForTimeout(450);
+  await nextPaint(page);
 
   const created = await page.evaluate(() => {
     const store = window.__pigmaStore!;
@@ -150,16 +150,16 @@ test('B59f the authored swap plays back IN PLACE: the stack and the frame are un
   await openPrototypePanel(page);
 
   await kind(page).selectOption('SWAP_STATE');
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   const options = await target(page).locator('option').evaluateAll((els) =>
     els.map((e) => ({ value: (e as HTMLOptionElement).value, label: e.textContent ?? '' })),
   );
   const variant = options.find((o) => o.label.includes(' / '));
   expect(variant, 'no grouped variant to swap to').toBeTruthy();
   await target(page).selectOption(variant!.value);
-  await page.waitForTimeout(250);
+  await nextPaint(page);
   await apply(page).click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   // Make the swapped frame the prototype start frame.
   const startFrame = page.locator('select[aria-label="Prototype start frame"]');
@@ -169,7 +169,7 @@ test('B59f the authored swap plays back IN PLACE: the stack and the frame are un
   const chosen = frameOptions.find((o) => o.v !== '' && o.t.includes('Frame'));
   expect(chosen, `no frame offered as a start frame: ${JSON.stringify(frameOptions)}`).toBeTruthy();
   await startFrame.selectOption(chosen!.v);
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 
   await tool(page, 'Present').click();
   await expect(page.locator('.present__stage'), 'presentation has no stage to play in').toHaveCount(1);
@@ -188,7 +188,7 @@ test('B59f the authored swap plays back IN PLACE: the stack and the frame are un
   // Click the stage where the hotspot is, then read the stack back.
   const stage = (await page.locator('.present__stage').boundingBox())!;
   await page.mouse.click(stage.x + stage.width / 2, stage.y + stage.height / 2);
-  await page.waitForTimeout(700);
+  await nextPaint(page);
 
   const after = await page.evaluate(() => {
     const s = window.__pigmaStore!.getState() as unknown as {

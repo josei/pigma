@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, tool } from './helpers';
+import { boot, tool, nextPaint } from './helpers';
 
 /**
  * The ready-for-development status (F3).
@@ -14,7 +14,7 @@ async function openInspect(page: Page): Promise<void> {
   const tab = page.locator('.tab', { hasText: 'Inspect' });
   await expect(tab).toHaveCount(1);
   await tab.click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 }
 
 async function drawFrame(page: Page): Promise<void> {
@@ -27,7 +27,7 @@ async function drawFrame(page: Page): Promise<void> {
   await page.mouse.down();
   await page.mouse.move(cx + 120, cy + 90, { steps: 8 });
   await page.mouse.up();
-  await page.waitForTimeout(450);
+  await nextPaint(page);
 }
 
 test('B48a marking a frame ready shows a badge in the layers list', async ({ page }) => {
@@ -39,7 +39,7 @@ test('B48a marking a frame ready shows a badge in the layers list', async ({ pag
   await expect(page.locator('[aria-label="Clear development status"]')).toHaveCount(0);
 
   await page.locator('[aria-label="Mark ready for development"]').click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 
   await expect(badge(page)).toHaveCount(1);
   await expect(badge(page)).toHaveAttribute('data-status', 'READY_FOR_DEVELOPMENT');
@@ -52,7 +52,7 @@ test('B48b the status badge survives a reload', async ({ page }) => {
   await drawFrame(page);
   await openInspect(page);
   await page.locator('[aria-label="Mark ready for development"]').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   await expect(badge(page)).toHaveCount(1);
 
   // Reload WITHOUT ?blank=1: that flag boots a fresh empty document each time,
@@ -60,7 +60,7 @@ test('B48b the status badge survives a reload', async ({ page }) => {
   // the same trap b7 documents).
   await page.goto('/app/');
   await page.waitForSelector('.app');
-  await page.waitForTimeout(900);
+  await nextPaint(page);
 
   await expect(badge(page), 'the ready-for-development badge did not survive the reload').toHaveCount(1);
   await expect(badge(page)).toHaveAttribute('data-status', 'READY_FOR_DEVELOPMENT');
@@ -71,23 +71,23 @@ test('B48c completed and cleared statuses are reflected and survive a reload', a
   await openInspect(page);
 
   await page.locator('[aria-label="Mark completed"]').click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   await expect(badge(page)).toHaveAttribute('data-status', 'COMPLETED');
   await expect(badge(page)).toContainText('Done');
 
   // A different status replaces the first rather than stacking badges.
   await page.locator('[aria-label="Mark ready for development"]').click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   await expect(badge(page), 'the previous status badge was not replaced').toHaveCount(1);
   await expect(badge(page)).toHaveAttribute('data-status', 'READY_FOR_DEVELOPMENT');
 
   await page.locator('[aria-label="Clear development status"]').click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   await expect(badge(page), 'clearing the status left the badge behind').toHaveCount(0);
 
   await page.goto('/app/');
   await page.waitForSelector('.app');
-  await page.waitForTimeout(900);
+  await nextPaint(page);
   // The frame is still here (so this is about the status, not a lost document)...
   await expect(page.locator('.layer-row').first()).toBeVisible();
   // ...and the cleared status stayed cleared.

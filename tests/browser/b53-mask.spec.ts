@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, tool } from './helpers';
+import { boot, drawShape, tool, nextPaint } from './helpers';
 import type { CanvasNode, SceneNode } from '../../src/model/types';
 
 /**
@@ -114,7 +114,7 @@ async function twoShapes(page: Page): Promise<[string, string]> {
     },
     ids,
   );
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   return ids;
 }
 
@@ -126,7 +126,7 @@ test('B53a Cmd/Ctrl+Alt+M masks the selection and clips the layer above it', asy
 
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), lower);
   await page.keyboard.press('Control+Alt+m');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   const after = await maskProbe(page, [lower, upper]);
   expect(after.isMask, 'the shortcut did not mark the node as a mask').toBe(true);
@@ -144,7 +144,7 @@ test('B53b the layer action toggles the mask as one undoable entry', async ({ pa
   const ids = await twoShapes(page);
   const [lower] = ids;
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), lower);
-  await page.waitForTimeout(200);
+  await nextPaint(page);
 
   // Layer row actions reveal on hover, like the rest of the panel.
   const name = await page.evaluate((id) => {
@@ -158,7 +158,7 @@ test('B53b the layer action toggles the mask as one undoable entry', async ({ pa
   const use = row.locator('[aria-label^="Use"][aria-label$="as mask"]');
   await expect(use).toBeVisible();
   await use.click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   expect((await maskProbe(page, [lower, ids[1]])).clipped).toBe(true);
   expect(await page.evaluate(() => window.__pigmaStore!.getState().past.length)).toBeGreaterThan(0);
 
@@ -168,7 +168,7 @@ test('B53b the layer action toggles the mask as one undoable entry', async ({ pa
 
   // One undo takes the whole toggle back.
   await page.keyboard.press('Control+z');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   const undone = await maskProbe(page, [lower, ids[1]]);
   expect(undone.clipped).toBe(false);
   expect(undone.topOnly, 'undo did not restore the full top shape').toEqual([255, 0, 0]);
@@ -183,7 +183,7 @@ test('B53g masking the topmost layer emits no dead clip def', async ({ page }) =
   // The upper shape is the topmost layer: nothing sits above it.
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), upper);
   await page.keyboard.press('Control+Alt+m');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   const audit = await defAudit(page);
   expect(audit.maskDefs, `a mask with nothing to clip still emitted ${JSON.stringify(audit.maskDefs)}`).toEqual([]);
@@ -199,14 +199,14 @@ test('B53h two masks in one parent leave no dead defs and each clips its own run
   const [lower, upper] = await twoShapes(page);
   // Mask both: neither has a non-mask sibling above it, so neither clips.
   await page.evaluate((ids) => window.__pigmaStore!.getState().toggleMask(ids), [lower, upper]);
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   const both = await defAudit(page);
   expect(both.maskDefs, `both-mask case emitted ${JSON.stringify(both.maskDefs)}`).toEqual([]);
   expect(both.dead).toEqual([]);
 
   // Give the lower mask a run again: it clips, the upper still clips nothing.
   await page.evaluate((ids: [string, string]) => window.__pigmaStore!.getState().toggleMask([ids[1]]), [lower, upper] as [string, string]);
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   const one = await defAudit(page);
   expect(one.maskDefs).toHaveLength(1);
   expect(one.dead).toEqual([]);
@@ -243,7 +243,7 @@ async function overBackdrop(page: Page): Promise<{ ids: [string, string, string]
       };
     });
   }, ids);
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   return { ids };
 }
 
@@ -267,7 +267,7 @@ test('B53i a semi-transparent mask fill partially masks', async ({ page }) => {
   }, lower);
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), lower);
   await page.keyboard.press('Control+Alt+m');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   const probe = await maskProbe(page, [lower, upper]);
   expect(probe.clipped, 'no mask was rendered').toBe(true);
@@ -307,7 +307,7 @@ test('B53j a gradient mask fill masks by the gradient', async ({ page }) => {
   }, lower);
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), lower);
   await page.keyboard.press('Control+Alt+m');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   const audit = await defAudit(page);
   expect(audit.dead).toEqual([]);
@@ -378,7 +378,7 @@ test('B53c a mask clips only the siblings above it', async ({ page }) => {
   );
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), lower);
   await page.keyboard.press('Control+Alt+m');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   const probe = await maskProbe(page, [lower, upper]);
   expect(probe.isMask).toBe(true);
@@ -502,7 +502,7 @@ async function paint(page: Page, id: string, rgb: [number, number, number]): Pro
     },
     [id, rgb] as [string, number[]],
   );
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 }
 
 /** Ids of the top-level page children, in order. */
@@ -524,7 +524,7 @@ test('B53d a mask INSIDE a frame clips its sibling but nothing outside the frame
     await page.mouse.down();
     await page.mouse.move(cx + x2, cy + y2, { steps: 6 });
     await page.mouse.up();
-    await page.waitForTimeout(300);
+    await nextPaint(page);
   };
 
   // Exactly three shapes: a frame holding two overlapping rectangles, plus one
@@ -561,7 +561,7 @@ test('B53d a mask INSIDE a frame clips its sibling but nothing outside the frame
 
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), lower);
   await page.keyboard.press('Control+Alt+m');
-  await page.waitForTimeout(450);
+  await nextPaint(page);
 
   const after = await nestedProbe(page, { mask: lower, top: upper, outside });
   expect(after.isMask, 'the nested layer was not marked as a mask').toBe(true);
@@ -583,7 +583,7 @@ test('B53e a mask nested into a GROUP still clips only within that group', async
     await page.mouse.down();
     await page.mouse.move(cx + x2, cy + y2, { steps: 6 });
     await page.mouse.up();
-    await page.waitForTimeout(300);
+    await nextPaint(page);
   };
 
   // Two overlapping shapes plus a page-level sibling that must stay untouched.
@@ -604,10 +604,10 @@ test('B53e a mask nested into a GROUP still clips only within that group', async
   // deeper, inside the group, and must keep clipping its sibling - and only it.
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), lower);
   await page.keyboard.press('Control+Alt+m');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   await page.evaluate((sel) => window.__pigmaStore!.getState().select(sel), [lower, upper]);
   await page.keyboard.press('Control+g');
-  await page.waitForTimeout(450);
+  await nextPaint(page);
 
   const structure = await page.evaluate(() => {
     const canvas = window.__pigmaStore!.getState().file.document.children[0] as {
@@ -631,7 +631,7 @@ test('B53f the mask flag and its clip survive a RELOAD', async ({ page }) => {
   const [lower, upper] = await twoShapes(page);
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), lower);
   await page.keyboard.press('Control+Alt+m');
-  await page.waitForTimeout(450);
+  await nextPaint(page);
 
   const before = await maskProbe(page, [lower, upper]);
   expect(before.isMask).toBe(true);
@@ -641,7 +641,7 @@ test('B53f the mask flag and its clip survive a RELOAD', async ({ page }) => {
   // `page.reload()` would discard the drawing and prove nothing.
   await page.goto('/app/');
   await page.waitForSelector('.app');
-  await page.waitForTimeout(1200);
+  await nextPaint(page);
 
   const after = await maskProbe(page, [lower, upper]);
   expect(after.isMask, 'isMask did not round-trip through persistence').toBe(true);
@@ -683,7 +683,7 @@ test('B53k an opaque mask uses clipPath, a non-opaque one emits mask-type="alpha
   // OPAQUE mask: the cheaper, exactly equivalent clipPath - no <mask> at all.
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), lower);
   await page.keyboard.press('Control+Alt+m');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   const opaque = await maskElements(page);
   expect(opaque.masks, 'an opaque mask emitted an SVG <mask> instead of a clipPath').toHaveLength(0);
   expect(opaque.clips, 'no clipPath was emitted for the opaque mask').toBeGreaterThan(0);
@@ -699,7 +699,7 @@ test('B53k an opaque mask uses clipPath, a non-opaque one emits mask-type="alpha
       return { ...file, document: { ...file.document, children: [{ ...canvas, children: canvas.children.map(paint) }, ...file.document.children.slice(1)] } };
     });
   }, lower);
-  await page.waitForTimeout(450);
+  await nextPaint(page);
 
   const alpha = await maskElements(page);
   expect(alpha.masks, 'a semi-transparent mask did not emit an SVG <mask>').toHaveLength(1);
@@ -740,7 +740,7 @@ test('B53l an alpha mask away from the origin keeps a region that covers its box
   );
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), lower);
   await page.keyboard.press('Control+Alt+m');
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   const elements = await maskElements(page);
   expect(elements.masks, 'the offset alpha mask emitted no <mask>').toHaveLength(1);
@@ -826,7 +826,7 @@ test('B53m a CONTAINER mask masks by its rendered content instead of blanking it
     await page.mouse.down();
     await page.mouse.move(cx + x2, cy + y2, { steps: 6 });
     await page.mouse.up();
-    await page.waitForTimeout(300);
+    await nextPaint(page);
   };
 
   // Bottom to top: a backdrop, the container that will be the mask, and the run.
@@ -890,11 +890,11 @@ test('B53m a CONTAINER mask masks by its rendered content instead of blanking it
   );
   expect(childId, 'the frame received no child, so it has no content to mask by').not.toBeNull();
   await paint(page, childId!, [0, 0, 0]);
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), frame);
   await page.keyboard.press('Control+Alt+m');
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   const elements = await maskElements(page);
   // A container is never provably opaque, so it must take the alpha path.
@@ -948,11 +948,11 @@ test('B53n a gradient mask with paint-level opacity masks AT that opacity', asyn
       return { ...file, document: { ...file.document, children: [{ ...canvas, children: canvas.children.map(paint) }, ...file.document.children.slice(1)] } };
     });
   }, lower);
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), lower);
   await page.keyboard.press('Control+Alt+m');
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   const elements = await maskElements(page);
   expect(

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, field, nodeGeometry, openMenu, tool } from './helpers';
+import { boot, drawShape, field, nodeGeometry, openMenu, tool, nextPaint } from './helpers';
 
 /** Draw a rectangle and leave it selected. */
 async function rect(page: Page, w = 200, h = 120) {
@@ -26,7 +26,7 @@ async function chooseSegmented(page: Page, aria: string, match: RegExp) {
     .filter({ hasText: match })
     .first()
     .click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 }
 
 async function optionLabels(page: Page, aria: string) {
@@ -54,11 +54,11 @@ test('B22a Min W clamps an attempted shrink', async ({ page }) => {
   await openSizeLimits(page);
   await field(page, 'Min W').fill(String(w0 + 100));
   await field(page, 'Min W').press('Enter');
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   await field(page, 'W').fill('40');
   await field(page, 'W').press('Enter');
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   expect(Number(await field(page, 'W').inputValue())).toBeCloseTo(w0 + 100, 0);
 });
@@ -71,11 +71,11 @@ test('B22b Max W clamps an attempted grow', async ({ page }) => {
   await openSizeLimits(page);
   await field(page, 'Max W').fill(String(w0 - 40));
   await field(page, 'Max W').press('Enter');
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   await field(page, 'W').fill(String(w0 + 300));
   await field(page, 'W').press('Enter');
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   expect(Number(await field(page, 'W').inputValue())).toBeCloseTo(w0 - 40, 0);
 });
@@ -89,7 +89,7 @@ test('B22c a handle resize stops at Max W with the opposite edge fixed', async (
   await openSizeLimits(page);
   await field(page, 'Max W').fill(String(start.w / 2));
   await field(page, 'Max W').press('Enter');
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   // Drag the NW handle far out: the width must stop at Max W.
   const handle = page.locator('.canvas__overlay rect[style*="nwse-resize"]').first();
@@ -100,7 +100,7 @@ test('B22c a handle resize stops at Max W with the opposite edge fixed', async (
   await page.mouse.down();
   await page.mouse.move(hx - 260, hy - 40, { steps: 12 });
   await page.mouse.up();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   const after = await nodeGeometry(page);
   expect(after.w).toBeCloseTo(start.w / 2, 0);
@@ -116,12 +116,12 @@ test('B22d min/max limits survive a reload', async ({ page }) => {
   await field(page, 'Min W').press('Enter');
   await field(page, 'Max H').fill('500');
   await field(page, 'Max H').press('Enter');
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   await page.goto('/app/');
   await page.waitForSelector('.app');
   await page.locator('.layer-row').last().click();
-  await page.waitForTimeout(200);
+  await nextPaint(page);
 
   await expect(field(page, 'Min W')).toHaveValue('300');
   await expect(field(page, 'Max H')).toHaveValue('500');
@@ -133,10 +133,10 @@ async function textNode(page: Page) {
   await tool(page, 'Text').click();
   const box = (await page.locator('.canvas').boundingBox())!;
   await page.mouse.click(box.x + box.width / 2 + 200, box.y + box.height / 2 - 120);
-  await page.waitForTimeout(250);
+  await nextPaint(page);
   await page.keyboard.type('Hello');
   await page.keyboard.press('Escape');
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 }
 
 test('B22e font family and size reach the rendered text', async ({ page }) => {
@@ -144,12 +144,12 @@ test('B22e font family and size reach the rendered text', async ({ page }) => {
   await textNode(page);
 
   await page.locator('select[aria-label="Font family"]').selectOption({ index: 1 });
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   const family = await page.locator('select[aria-label="Font family"]').inputValue();
 
   await field(page, 'Size').fill('42');
   await field(page, 'Size').press('Enter');
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 
   const html = await svgHtml(page);
   expect(html).toContain('42');
@@ -166,7 +166,7 @@ test('B22f letter spacing is rendered', async ({ page }) => {
   // The Letter field is a PERCENTAGE of the font size: 6% of 14px = 0.84.
   await field(page, 'Letter').fill('6');
   await field(page, 'Letter').press('Enter');
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 
   const html = await svgHtml(page);
   const match = html.match(/letter-spacing="([0-9.]+)"/);
@@ -221,7 +221,7 @@ test('B22i a hugging text box follows the rendered text', async ({ page }) => {
   const before = await nodeGeometry(page);
   await field(page, 'Size').fill('48');
   await field(page, 'Size').press('Enter');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   const after = await nodeGeometry(page);
 
   // Auto-resize is only really working if the box grew with the glyphs.
@@ -238,7 +238,7 @@ async function placeImage(page: Page) {
     page.locator('.menu__item', { hasText: 'Place image' }).first().click(),
   ]);
   await chooser.setFiles('tests/browser/fixtures/pixel.png');
-  await page.waitForTimeout(800);
+  await nextPaint(page);
 }
 
 test('B22j the image scale mode reaches the rendered image', async ({ page }) => {
@@ -256,7 +256,7 @@ test('B22j the image scale mode reaches the rendered image', async ({ page }) =>
     return s ? [...s.options].map((o) => o.value).find((v) => v !== cur) ?? null : null;
   }, current);
   await page.locator('select[aria-label="Image scale mode"]').selectOption(other!);
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   const after = await svgHtml(page);
   expect(after).not.toBe(before);
@@ -275,7 +275,7 @@ test('B22k Replace image swaps the image source', async ({ page }) => {
     replace.click(),
   ]);
   await chooser.setFiles('tests/browser/fixtures/pixel.png');
-  await page.waitForTimeout(700);
+  await nextPaint(page);
 
   const after = await svgHtml(page);
   expect(after).toMatch(/<image|href=|xlink:href/);
@@ -291,7 +291,7 @@ test('B22l corner radius controls affect the rendered geometry', async ({ page }
   if (await radius.count()) {
     await radius.fill('12');
     await radius.press('Enter');
-    await page.waitForTimeout(400);
+    await nextPaint(page);
     expect(await svgHtml(page)).not.toBe(before);
   } else {
     // Without a radius field the corner controls must still be offered.

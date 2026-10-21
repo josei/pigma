@@ -1,21 +1,21 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, field, tool } from './helpers';
+import { boot, drawShape, field, tool, nextPaint } from './helpers';
 
 /** Rename the currently selected layer through the layers panel. */
 async function renameSelected(page: Page, name: string) {
   await page.locator('.rail__button[aria-label="Layers"]').click();
-  await page.waitForTimeout(200);
+  await nextPaint(page);
   await page.locator('.layer-row--selected .layer-row__name').first().dblclick();
   const input = page.locator('.layer-row__rename-input');
   await expect(input).toHaveCount(1);
   await input.fill(name);
   await input.press('Enter');
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 }
 
 async function openPrototype(page: Page) {
   await page.locator('.tab', { hasText: 'Prototype' }).click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 test('B33a a scrolling frame scrolls in presentation', async ({ page }) => {
@@ -31,7 +31,7 @@ test('B33a a scrolling frame scrolls in presentation', async ({ page }) => {
   await drawShape(page, 'Rectangle', 200, 60, 0, 0);
   await field(page, 'H').fill('600');
   await field(page, 'H').press('Enter');
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   const types = await page.evaluate(() => {
     const store = window.__pigmaStore;
     if (!store) throw new Error('window.__pigmaStore is not exposed');
@@ -55,12 +55,12 @@ test('B33a a scrolling frame scrolls in presentation', async ({ page }) => {
   await expect(scrolling).toHaveCount(1);
   await expect(scrolling.locator('option', { hasText: 'Vertical' })).toHaveCount(1);
   await scrolling.selectOption({ label: 'Vertical' });
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   await page.locator('select[aria-label="Prototype start frame"]').selectOption({ label: frame });
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   await tool(page, 'Present').click();
-  await page.waitForTimeout(700);
+  await nextPaint(page);
 
   const stage = await page.evaluate(() => {
     const nodes = [...document.querySelectorAll('.present__stage, .present__frame, .present__scroller')];
@@ -88,7 +88,7 @@ test('B33b smart animate interpolates rather than jumping', async ({ page }) => 
   // The layers panel drives selection and renaming here, so make sure it is the
   // active rail tab before reading any row.
   await page.locator('.rail__button[aria-label="Layers"]').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   // Two frames with a child at different Y positions.
   await drawShape(page, 'Frame', 300, 240, -240, 0);
@@ -106,7 +106,7 @@ test('B33b smart animate interpolates rather than jumping', async ({ page }) => 
 
   // Link the mover in the source frame to the target frame, with smart animate.
   await page.locator('.rail__button[aria-label="Layers"]').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   // Select the mover INSIDE THE SOURCE FRAME. The tree is top-most first, so
   // with rows ["Frame 2","Mover","Frame 1","Mover"] a plain .first() picks the
   // DESTINATION's rectangle. Take the Mover row that follows the source frame.
@@ -118,10 +118,10 @@ test('B33b smart animate interpolates rather than jumping', async ({ page }) => 
   const moverRow = page.locator('.layer-row').nth(sourceIndex + 1);
   await expect(moverRow.locator('.layer-row__name')).toHaveText(mover);
   await moverRow.click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   await openPrototype(page);
   await page.locator('select[aria-label="Prototype start frame"]').selectOption({ label: source });
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   const destination = page.locator('select[aria-label="Navigate to"]');
   await expect(destination.locator('option', { hasText: target })).toHaveCount(1, { timeout: 15000 });
@@ -130,12 +130,12 @@ test('B33b smart animate interpolates rather than jumping', async ({ page }) => 
   const smart = page.locator('[aria-label^="Smart animate "]').first();
   await expect(smart, 'no Smart animate control on the interaction').toHaveCount(1);
   await smart.check();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   const duration = page.locator('[aria-label^="Smart animate duration "]').first();
   if (await duration.count()) {
     await duration.fill('900');
     await duration.press('Enter');
-    await page.waitForTimeout(200);
+    await nextPaint(page);
   }
 
   const apply = page.locator('.button', { hasText: 'Apply link' });
@@ -146,10 +146,10 @@ test('B33b smart animate interpolates rather than jumping', async ({ page }) => 
     // select is the same control in both forms.
     await expect(page.locator('select[aria-label="Navigate to"]')).toHaveCount(1);
   }
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   await tool(page, 'Present').click();
-  await page.waitForTimeout(600);
+  await nextPaint(page);
   const hotspot = page.locator('.present__hotspot').first();
   await expect(hotspot).toHaveCount(1);
 
@@ -178,9 +178,9 @@ test('B33b smart animate interpolates rather than jumping', async ({ page }) => 
   const samples: number[][] = [];
   for (let i = 0; i < 40; i++) {
     samples.push(await readY());
-    await page.waitForTimeout(16);
+    await nextPaint(page);
   }
-  await page.waitForTimeout(1200);
+  await nextPaint(page);
   const endYs = await readY();
 
   // Any intermediate sample that is neither the start nor the end proves

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, tool, toDoc } from './helpers';
+import { boot, tool, toDoc, nextPaint } from './helpers';
 
 interface NodeInfo {
   type: string;
@@ -33,7 +33,7 @@ async function dragOnCanvas(page: Page, dx: number, dy: number): Promise<void> {
   await page.mouse.down();
   await page.mouse.move(cx + dx / 2, cy + dy / 2, { steps: 8 });
   await page.mouse.up();
-  await page.waitForTimeout(450);
+  await nextPaint(page);
 }
 
 test('B40a the polygon tool creates a POLYGON with the drawn geometry', async ({ page }) => {
@@ -104,7 +104,7 @@ test('B40d Escape cancels the polygon tool without creating a node', async ({ pa
 
   await tool(page, 'Polygon').click();
   await page.keyboard.press('Escape');
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   // Back to the default tool...
   await expect(page.locator('.toolbar__button[aria-label="Move"]')).toHaveAttribute('aria-pressed', 'true');

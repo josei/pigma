@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { boot, drawShape, tool } from './helpers';
+import { boot, drawShape, tool, nextPaint } from './helpers';
 
 /**
  * Slot content in the layers tree. A component's SLOT property is bound to a frame; an
@@ -13,7 +13,7 @@ test('B87a an instance expands in the layers tree to show the content it supplie
   await drawShape(page, 'Frame', 100, 80, -200, 0);
   await page.locator('.app__left .layer-row', { hasText: 'Frame' }).first().click();
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   const componentId = await page.evaluate(() => (window.__pigmaStore!.getState().file.document.children[0]!.children as any[]).find((n) => n.type === 'COMPONENT').id);
 
   // Bind a SLOT property to the inner frame, the node instances supply content for.
@@ -39,11 +39,11 @@ test('B87a an instance expands in the layers tree to show the content it supplie
 
   await page.locator('.rail__button[aria-label="Assets"]').click();
   await page.locator('.app__left .layer-row').first().dblclick();
-  await page.waitForTimeout(450);
+  await nextPaint(page);
   await page.locator('.rail__button[aria-label="Layers"]').click();
   const instanceId = await page.evaluate(() => (window.__pigmaStore!.getState().file.document.children[0]!.children as any[]).find((n) => n.type === 'INSTANCE').id);
   await page.evaluate(([inst, slot, content]) => window.__pigmaStore!.getState().setSlotContent(inst, slot, [content]), [instanceId, slotId, contentId]);
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   // Collapsed: the content is not a top-level row.
   const collapsed = await page.locator('.app__left .layer-row', { hasText: 'Slot content' }).count();
@@ -52,9 +52,9 @@ test('B87a an instance expands in the layers tree to show the content it supplie
   // Expand the instance (the top row). It shows the frame the slot is bound to; the
   // supplied content sits inside that frame, so expand the frame as well.
   await page.locator('.app__left .layer-row__chevron').first().click();
-  await page.waitForTimeout(250);
+  await nextPaint(page);
   await page.locator('.app__left .layer-row__chevron').nth(1).click();
-  await page.waitForTimeout(250);
+  await nextPaint(page);
   const content = page.locator('.app__left .layer-row', { hasText: 'Slot content' });
   // One row for the layer on the page, one for the copy the instance supplies.
   await expect(content, 'the slot content is not nested under the instance').toHaveCount(2);

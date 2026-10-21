@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, openMenu } from './helpers';
+import { boot, openMenu, nextPaint } from './helpers';
 
 const FIXTURES = 'tests/figma/fixtures';
 
@@ -12,7 +12,7 @@ async function importFixture(page: Page, menuLabel: string, file: string) {
     page.locator('.menu__item', { hasText: menuLabel }).first().click(),
   ]);
   await chooser.setFiles(`${FIXTURES}/${file}`);
-  await page.waitForTimeout(1000);
+  await nextPaint(page);
 }
 
 function toast(page: Page) {

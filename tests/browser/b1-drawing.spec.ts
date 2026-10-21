@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { boot, drawShape, field, tool, toDoc, clickCanvas } from './helpers';
+import { boot, drawShape, field, tool, toDoc, clickCanvas, nextPaint } from './helpers';
 
 test('B1a rectangle tool draws a rectangle at the dragged size', async ({ page }) => {
   await boot(page, { blank: true });
@@ -44,7 +44,7 @@ test('B1d text tool creates a text node', async ({ page }) => {
   const before = await rows.count();
   await tool(page, 'Text').click();
   await clickCanvas(page, 0, 0);
-  await page.waitForTimeout(200);
+  await nextPaint(page);
   const editor = page.locator('.text-editor');
   if (await editor.count()) {
     await page.keyboard.type('Hello');

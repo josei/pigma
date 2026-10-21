@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, openMenu, tool } from './helpers';
+import { boot, drawShape, openMenu, tool, nextPaint } from './helpers';
 
 async function exportFile(page: Page, label: string, target: string) {
   await openMenu(page);
@@ -32,7 +32,7 @@ test('B8b an exported document re-imports with its content intact', async ({ pag
   await page.locator('.menu__item', { hasText: 'New file' }).first().click();
   const confirm = page.locator('.modal .button--primary');
   if (await confirm.count()) await confirm.click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   await openMenu(page);
   const [chooser] = await Promise.all([

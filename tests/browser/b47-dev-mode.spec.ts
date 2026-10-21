@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape } from './helpers';
+import { boot, drawShape, nextPaint } from './helpers';
 
 /**
  * Dev Mode as a workspace (F3).
@@ -24,7 +24,7 @@ test('B47a dev mode switches the right panel to Inspect and hides the design sur
   await expect(page.locator('.tab', { hasText: 'Prototype' })).toHaveCount(1);
 
   await toggle(page).click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   // Dev mode: Inspect is the panel, the design-only tabs are gone.
   await expect(await rightTabs(page)).toHaveAttribute('data-dev-mode', 'true');
@@ -43,11 +43,11 @@ test('B47b the toggle reflects its state and is reversible', async ({ page }) =>
 
   await expect(toggle(page)).toHaveAttribute('aria-pressed', 'false');
   await toggle(page).click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   await expect(toggle(page), 'the toggle does not report itself as active').toHaveAttribute('aria-pressed', 'true');
 
   await toggle(page).click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 
   await expect(toggle(page)).toHaveAttribute('aria-pressed', 'false');
   await expect(await rightTabs(page)).toHaveAttribute('data-dev-mode', 'false');

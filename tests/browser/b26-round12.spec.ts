@@ -1,11 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot } from './helpers';
+import { boot, nextPaint } from './helpers';
 
 const APP_ORIGIN = 'http://127.0.0.1:5173';
 
 async function openTools(page: Page) {
   await page.locator('.rail__button[aria-label="AI agent"]').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 test('B26a the MCP panel never renders a raw token', async ({ page }) => {
@@ -98,7 +98,7 @@ test('B26d Rooms offers a join control with a nickname', async ({ page }) => {
   const rooms = page.locator('.rail__button[aria-label="Rooms"]');
   await expect(rooms).toHaveCount(1);
   await rooms.click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   const controls = await page.evaluate(() =>
     [...document.querySelectorAll('.app__left input, .app__left select, .app__left button')].map(

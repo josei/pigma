@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { boot, drawShape } from './helpers';
+import { boot, drawShape, nextPaint } from './helpers';
 
 /** Figma's alignment keys: Alt+A aligns the selection's left edges, Alt+W its tops. */
 test('B96a Alt+A aligns left edges and Alt+W aligns tops, for the selection', async ({ page }) => {
@@ -15,12 +15,12 @@ test('B96a Alt+A aligns left edges and Alt+W aligns tops, for the selection', as
     window.__pigmaStore!.getState().select(kids);
   });
   await page.keyboard.press('Alt+a');
-  await page.waitForTimeout(200);
+  await nextPaint(page);
   const left = await xs();
   expect(left[0]!.x, 'Alt+A did not align the left edges').toBe(left[1]!.x);
 
   await page.keyboard.press('Alt+w');
-  await page.waitForTimeout(200);
+  await nextPaint(page);
   const top = await xs();
   expect(top[0]!.y, 'Alt+W did not align the tops').toBe(top[1]!.y);
 });

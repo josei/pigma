@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, field, nodeGeometry, tool, clickCanvas } from './helpers';
+import { boot, drawShape, field, nodeGeometry, tool, clickCanvas, nextPaint } from './helpers';
 
 /**
  * Two GENUINELY overlapping rectangles, both selected.
@@ -34,7 +34,7 @@ async function twoOverlappingRects(page: Page) {
 
 async function openAssets(page: Page) {
   await page.locator('.rail__button[aria-label="Assets"]').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 }
 
 test('B20a the pen tool creates a vector layer', async ({ page }) => {
@@ -48,7 +48,7 @@ test('B20a the pen tool creates a vector layer', async ({ page }) => {
   await clickCanvas(page, 80, 60);
   // The pen commits the open path on Enter; Escape abandons it.
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   expect(await rows.count()).toBeGreaterThan(before);
 });
@@ -60,7 +60,7 @@ test('B20b boolean Union merges two overlapping shapes into one', async ({ page 
   const before = await rows.count();
 
   await page.locator('[aria-label="Union"]').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   expect(await rows.count()).toBeLessThan(before);
   await expect(page.locator('.layer-row--selected')).toHaveCount(1);
@@ -70,14 +70,14 @@ test('B20c Subtract produces a different result from Union', async ({ page }) =>
   await boot(page, { blank: true });
   await twoOverlappingRects(page);
   await page.locator('[aria-label="Union"]').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   const unionMarkup = await page.locator('.canvas__svg').innerHTML();
 
   await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await twoOverlappingRects(page);
   await page.locator('[aria-label="Subtract"]').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   const subtractMarkup = await page.locator('.canvas__svg').innerHTML();
 
   expect(subtractMarkup).not.toBe(unionMarkup);
@@ -106,7 +106,7 @@ test('B20e creating a fill style from the selection registers it', async ({ page
 
   await expect(page.locator('.section__header', { hasText: 'Styles' })).toHaveCount(1);
   await page.locator('[aria-label="Create Fill style"]').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   // The Styles section header carries the count next to its name.
   const stylesHeader = await page
@@ -124,7 +124,7 @@ test('B20f the assets tab exposes variables and a collection can be added', asyn
   const addCollection = page.locator('[aria-label="Add variable collection"]');
   await expect(addCollection).toHaveCount(1);
   await addCollection.click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   // A collection now exists, so at least one variable-type button is offered.
   await expect(page.locator('[aria-label$="variable"]').first()).toBeVisible();
 });
@@ -136,15 +136,15 @@ test('B20g a fill variable can be bound to a node', async ({ page }) => {
 
   await openAssets(page);
   await page.locator('[aria-label="Add variable collection"]').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   const addVariable = page.locator('button[aria-label$=" variable"]').first();
   if (await addVariable.count()) {
     await addVariable.click();
-    await page.waitForTimeout(400);
+    await nextPaint(page);
   }
 
   await page.locator('.rail__button[aria-label="Layers"]').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   const bind = page.locator('select[aria-label="Fill variable"]');
   await expect(bind).toHaveCount(1);
   // Binding is only meaningful once the collection offers a variable.

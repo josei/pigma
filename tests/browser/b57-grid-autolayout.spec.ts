@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, tool, field, openFold } from './helpers';
+import { boot, tool, field, openFold, nextPaint } from './helpers';
 
 /**
  * Grid auto layout on the LIVE canvas.
@@ -27,7 +27,7 @@ async function frameWithChildren(page: Page, count: number): Promise<void> {
     await page.mouse.down();
     await page.mouse.move(cx + x2, cy + y2, { steps: 6 });
     await page.mouse.up();
-    await page.waitForTimeout(250);
+    await nextPaint(page);
   };
 
   await tool(page, 'Frame').click();
@@ -71,7 +71,7 @@ async function gridState(page: Page) {
 
 async function setDirection(page: Page, label: string): Promise<void> {
   await page.locator('[role="group"][aria-label="Direction"] button', { hasText: label }).click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 }
 
 /** Toggle a column track between fraction and pixels, and set its value. */
@@ -82,7 +82,7 @@ async function setColumnTrack(page: Page, index: number, value: number): Promise
   const input = field(page, `Columns track ${index}`);
   await input.fill(String(value));
   await input.press('Enter');
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 }
 
 test('B57a switching a frame to Grid places children in cells, wrapping the overflow', async ({ page }) => {
@@ -134,7 +134,7 @@ test('B57c resizing the frame resizes the fractional track', async ({ page }) =>
   const w = field(page, 'W');
   await w.fill(String(FRAME_W + 100));
   await w.press('Enter');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   const after = await gridState(page);
   expect(after.width, 'the frame did not resize').toBe(FRAME_W + 100);
@@ -162,7 +162,7 @@ test('B57d the track editor is a DIFFERENT control from the layout guides', asyn
 
   const beforeGuides = await gridState(page);
   await addCols.click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   const afterGuides = await gridState(page);
 
   // A guide is not an auto-layout track: the layout mode and the children's
@@ -188,7 +188,7 @@ test('B57e the Placement control switches a grid between sparse and dense, and t
   await expect(placement.locator('button', { hasText: 'Sparse' })).toBeVisible();
 
   await placement.locator('button', { hasText: 'Dense' }).click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   const dense = await page.evaluate(() => {
     const frame = (window.__pigmaStore!.getState() as any).file.document.children[0].children.find((n: any) => n.type === 'FRAME');
     return frame.autoLayout.gridDense as boolean | undefined;
@@ -196,7 +196,7 @@ test('B57e the Placement control switches a grid between sparse and dense, and t
   expect(dense, 'the Dense choice was not stored on the frame').toBe(true);
 
   await placement.locator('button', { hasText: 'Sparse' }).click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   const sparse = await page.evaluate(() => {
     const frame = (window.__pigmaStore!.getState() as any).file.document.children[0].children.find((n: any) => n.type === 'FRAME');
     return frame.autoLayout.gridDense as boolean | undefined;

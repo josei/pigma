@@ -1,5 +1,5 @@
 import { test, expect, connectEditor, mcpCall, type RelayInfo } from './relay';
-import { drawShape, field, docToScreen } from './helpers';
+import { drawShape, field, docToScreen, nextPaint } from './helpers';
 
 /**
  * The outline MCP reports for the CURRENT SELECTION, including node NAMES.
@@ -90,7 +90,7 @@ test('B18b a remote edit after a local move keeps both changes', async ({ page, 
   await page.mouse.down();
   await page.mouse.move(cx + 60, cy, { steps: 8 });
   await page.mouse.up();
-  await page.waitForTimeout(250);
+  await nextPaint(page);
   expect(Number(await field(page, 'X').inputValue())).not.toBe(before);
 
   await connectEditor(page, relay);

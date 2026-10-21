@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape } from './helpers';
+import { boot, drawShape, nextPaint } from './helpers';
 
 /**
  * Text styling in the generated code.
@@ -13,7 +13,7 @@ async function inspect(page: Page): Promise<void> {
   const tab = page.locator('.tab', { hasText: 'Inspect' });
   await expect(tab).toHaveCount(1);
   await tab.click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 }
 
 async function code(page: Page): Promise<string> {
@@ -30,7 +30,7 @@ async function styleText(page: Page, patch: Record<string, unknown>): Promise<vo
     };
     state.updateSelectedTextStyle(stylePatch);
   }, patch);
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 }
 
 test('B45a CSS carries the text spacing and alignment that were set', async ({ page }) => {

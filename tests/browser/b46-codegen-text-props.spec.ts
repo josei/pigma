@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape } from './helpers';
+import { boot, drawShape, nextPaint } from './helpers';
 
 /**
  * The text properties the code generators emit.
@@ -15,13 +15,13 @@ async function inspect(page: Page): Promise<void> {
   const tab = page.locator('.tab', { hasText: 'Inspect' });
   await expect(tab).toHaveCount(1);
   await tab.click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 }
 
 /** Select a code target. The tab row fits its container (see b44 B44e), so a plain click works. */
 async function clickTab(page: Page, label: string): Promise<void> {
   await page.locator(`[aria-label="${label}"]`).click();
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 }
 
 async function code(page: Page): Promise<string> {
@@ -46,7 +46,7 @@ async function styledText(page: Page): Promise<void> {
       textAlignHorizontal: 'CENTER',
     });
   }, FAMILY);
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 }
 
 test('B46a SwiftUI names the family and emits spacing, line height and alignment', async ({ page }) => {
@@ -120,7 +120,7 @@ test('B46e every "Not represented" note names a property or a value', async ({ p
       'test notes',
     );
   });
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   for (const label of ['Show SwiftUI', 'Show Compose']) {
     await clickTab(page, label);

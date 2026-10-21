@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape } from './helpers';
+import { boot, drawShape, nextPaint } from './helpers';
 
 /**
  * Version compare in the UI: highlighting the differences on the canvas,
@@ -11,14 +11,14 @@ import { boot, drawShape } from './helpers';
 
 async function openFilePanel(page: Page): Promise<void> {
   await page.locator('.rail__button[aria-label="File"]').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 async function saveVersion(page: Page, name: string): Promise<void> {
   await openFilePanel(page);
   await page.locator('input[aria-label="Version name"]').fill(name);
   await page.locator('button[aria-label="Save version"]').click();
-  await page.waitForTimeout(700);
+  await nextPaint(page);
 }
 
 /** The top-level shape types on the page, in order. */
@@ -52,16 +52,16 @@ test('B52a comparing after a move highlights the node as changed', async ({ page
 
   // Close the File panel, move the layer with a real UI edit, then compare.
   await page.locator('.rail__button[aria-label="File"]').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   // The drawn layer is still the selection, so nudge it directly. (Selecting it
   // from the layers panel is not an option here: opening the File panel replaces
   // the left panel's content, so there are no layer rows to click.)
   await page.keyboard.press('Shift+ArrowRight');
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   await openFilePanel(page);
   await page.locator('[aria-label="Compare with Before move"]').click();
-  await page.waitForTimeout(600);
+  await nextPaint(page);
 
   // The panel reports the change and the canvas highlights it.
   await expect(page.locator('.app__left')).toContainText('1 changed');
@@ -78,7 +78,7 @@ test('B52b added and removed layers are highlighted with their own kind', async 
   await saveVersion(page, 'Base');
 
   await page.locator('.rail__button[aria-label="File"]').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   // The rectangle is still selected: delete it (a REMOVAL), then draw an ellipse
   // (an ADDITION), so both kinds exist at once.
   // Wait on the CONDITION, not a sleep: the delete and the draw are both async,
@@ -93,7 +93,7 @@ test('B52b added and removed layers are highlighted with their own kind', async 
 
   await openFilePanel(page);
   await page.locator('[aria-label="Compare with Base"]').click();
-  await page.waitForTimeout(600);
+  await nextPaint(page);
 
   await expect(highlights(page, 'added'), 'the new ellipse was not highlighted as added').not.toHaveCount(0);
   await expect(highlights(page, 'removed'), 'the deleted rectangle was not highlighted as removed').not.toHaveCount(0);
@@ -105,15 +105,15 @@ test('B52c comparing adds NO history entry, and neither does leaving compare', a
   await saveVersion(page, 'Base');
 
   await page.locator('.rail__button[aria-label="File"]').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   await page.keyboard.press('Shift+ArrowRight');
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   const before = await historyDepth(page);
 
   await openFilePanel(page);
   await page.locator('[aria-label="Compare with Base"]').click();
-  await page.waitForTimeout(600);
+  await nextPaint(page);
   await expect(overlay(page)).toHaveCount(1);
 
   const during = await historyDepth(page);
@@ -121,13 +121,13 @@ test('B52c comparing adds NO history entry, and neither does leaving compare', a
 
   // Leaving compare is also a view change only.
   await page.locator('[aria-label="Exit version compare"]').first().click();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
   expect(await historyDepth(page), 'leaving compare pushed a history entry').toBe(before);
 
   // The highlight is gone and the live document is back... but the move survived,
   // so a single undo must revert the move, not the compare.
   await expect(overlay(page)).toHaveCount(0);
   await page.keyboard.press('Control+z');
-  await page.waitForTimeout(500);
+  await nextPaint(page);
   expect(await historyDepth(page), 'a single undo after compare did not undo the move').toBe(before - 1);
 });

@@ -180,3 +180,14 @@ export async function openFold(page: Page, testId: string): Promise<void> {
   const details = page.locator(`[data-testid="${testId}"]`);
   if ((await details.getAttribute('open')) === null) await details.locator('summary').click();
 }
+
+/**
+ * Wait until the page has painted the last change. Two animation frames: the first runs before the next paint, the
+ * second after it. Use this, not a fixed time, before reading rendered pixels.
+ */
+export async function nextPaint(page: Page): Promise<void> {
+  await page.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+  );
+}
+

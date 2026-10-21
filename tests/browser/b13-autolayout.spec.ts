@@ -1,10 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, field, nodeGeometry } from './helpers';
+import { boot, drawShape, field, nodeGeometry, nextPaint } from './helpers';
 
 /** Select a layer row by its name. */
 async function selectLayer(page: Page, name: string) {
   await page.locator('.layer-row', { hasText: name }).first().click();
-  await page.waitForTimeout(150);
+  await nextPaint(page);
 }
 
 /** Draw a frame with two rectangles inside it (auto layout needs children). */
@@ -31,7 +31,7 @@ test('B13a choosing Row applies auto layout to a frame', async ({ page }) => {
   await expect(autoLayout).toHaveCount(1);
 
   await autoLayout.locator('.segmented__option', { hasText: 'Row' }).click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   // Layout fields only exist once a direction is chosen.
   await expect(field(page, 'Gap')).toHaveCount(1);
@@ -50,7 +50,7 @@ test('B13b Row aligns children on one line and orders them left to right', async
   await selectLayer(page, frame);
   const autoLayout = page.locator('.section', { has: page.locator('.section__header', { hasText: 'Auto layout' }) });
   await autoLayout.locator('.segmented__option', { hasText: 'Row' }).click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   await selectLayer(page, a);
   const afterA = await nodeGeometry(page);
@@ -68,9 +68,9 @@ test('B13c switching to Column stacks children vertically', async ({ page }) => 
 
   const autoLayout = page.locator('.section', { has: page.locator('.section__header', { hasText: 'Auto layout' }) });
   await autoLayout.locator('.segmented__option', { hasText: 'Row' }).click();
-  await page.waitForTimeout(250);
+  await nextPaint(page);
   await autoLayout.locator('.segmented__option', { hasText: 'Column' }).click();
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   await selectLayer(page, a);
   const afterA = await nodeGeometry(page);
@@ -87,10 +87,10 @@ test('B13d clearing auto layout removes the layout fields', async ({ page }) => 
 
   const autoLayout = page.locator('.section', { has: page.locator('.section__header', { hasText: 'Auto layout' }) });
   await autoLayout.locator('.segmented__option', { hasText: 'Row' }).click();
-  await page.waitForTimeout(250);
+  await nextPaint(page);
   await expect(field(page, 'Gap')).toHaveCount(1);
 
   await autoLayout.locator('.segmented__option', { hasText: 'None' }).click();
-  await page.waitForTimeout(250);
+  await nextPaint(page);
   await expect(field(page, 'Gap')).toHaveCount(0);
 });

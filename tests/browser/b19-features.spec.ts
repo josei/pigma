@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, field, openFold, openMenu, tool } from './helpers';
+import { boot, drawShape, field, openFold, openMenu, tool, nextPaint } from './helpers';
 
 const FIXTURE = 'tests/browser/fixtures/pixel.png';
 
@@ -59,7 +59,7 @@ test('B19b Place image adds a layer from a real file', async ({ page }) => {
     page.locator('.menu__item', { hasText: 'Place image' }).first().click(),
   ]);
   await chooser.setFiles(FIXTURE);
-  await page.waitForTimeout(800);
+  await nextPaint(page);
 
   await expect(rows).toHaveCount(before + 1);
 });
@@ -71,7 +71,7 @@ test('B19c flip horizontal mirrors the node about its own centre', async ({ page
   const x0 = Number(await field(page, 'X').inputValue());
 
   await page.locator('[aria-label="Flip horizontal"]').click();
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   // Size is preserved; a flip is a mirror, not a move.
   expect(Number(await field(page, 'W').inputValue())).toBeCloseTo(w0, 0);
@@ -85,7 +85,7 @@ test('B19d flip vertical leaves width and X untouched', async ({ page }) => {
   const h0 = Number(await field(page, 'H').inputValue());
 
   await page.locator('[aria-label="Flip vertical"]').click();
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   expect(Number(await field(page, 'W').inputValue())).toBeCloseTo(w0, 0);
   expect(Number(await field(page, 'H').inputValue())).toBeCloseTo(h0, 0);
@@ -96,7 +96,7 @@ test('B19e a drop shadow adds a rendered shadow', async ({ page }) => {
   await selectSomething(page);
   await openFold(page, 'effects-add');
   await page.locator('[aria-label="Add Drop shadow"]').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   const rendered = await page.evaluate(() => {
     const svg = document.querySelector('.canvas__svg');
@@ -110,7 +110,7 @@ test('B19f a layer blur adds a rendered filter', async ({ page }) => {
   await selectSomething(page);
   await openFold(page, 'effects-add');
   await page.locator('[aria-label="Add Layer blur"]').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   const rendered = await page.evaluate(() => {
     const svg = document.querySelector('.canvas__svg');

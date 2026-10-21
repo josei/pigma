@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, tool } from './helpers';
+import { boot, drawShape, tool, nextPaint } from './helpers';
 import { diffDocuments, diffSummary, isUnchanged } from '../../src/model/versionDiff';
 import type { PigmaFile } from '../../src/model/types';
 
@@ -13,7 +13,7 @@ import type { PigmaFile } from '../../src/model/types';
 
 async function openFilePanel(page: Page): Promise<void> {
   await page.locator('.rail__button[aria-label="File"]').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 /** Save the current document as a named version. */
@@ -21,10 +21,10 @@ async function saveVersion(page: Page, name: string): Promise<void> {
   await openFilePanel(page);
   await page.locator('input[aria-label="Version name"]').fill(name);
   await page.locator('button[aria-label="Save version"]').click();
-  await page.waitForTimeout(700);
+  await nextPaint(page);
   // Close the panel again so canvas interactions are unobstructed.
   await page.locator('.rail__button[aria-label="File"]').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 }
 
 /** The saved version's snapshot and the live document, as plain JSON. */
@@ -88,7 +88,7 @@ test('B51b moving a layer is reported as CHANGED with the position property', as
 
   // Move the layer through the real UI: a single 10px nudge is one edit.
   await page.keyboard.press('Shift+ArrowRight');
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   const { version, current } = await versionAndCurrent(page);
   const diff = diffDocuments(version, current);
@@ -134,7 +134,7 @@ test('B51d deleting a layer is reported as REMOVED', async ({ page }) => {
   // Delete the selected (newest) layer through the keyboard.
   await tool(page, 'Move').click();
   await page.keyboard.press('Delete');
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   const { version, current } = await versionAndCurrent(page);
   const diff = diffDocuments(version, current);
@@ -158,7 +158,7 @@ test('B51e a move inside the tree is a change, not an add/remove pair', async ({
       updateSelected: (patch: Record<string, unknown>, label: string) => void;
     }).updateSelected({ name: 'Renamed layer' }, 'test rename');
   });
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   const { version, current } = await versionAndCurrent(page);
   const diff = diffDocuments(version, current);

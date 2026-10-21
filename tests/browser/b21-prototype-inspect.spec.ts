@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, openMenu, tool } from './helpers';
+import { boot, drawShape, openMenu, tool, nextPaint } from './helpers';
 
 const APP_ORIGIN = 'http://127.0.0.1:5173';
 
@@ -21,7 +21,7 @@ async function expectClipboard(page: Page, pattern: RegExp) {
 async function copyVia(page: Page, label: string) {
   await openMenu(page);
   await page.locator('.menu__item', { hasText: label }).first().click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 test('B21a Copy as SVG writes SVG markup to the clipboard', async ({ page, context }) => {
@@ -56,7 +56,7 @@ test('B21c the Inspect tab renders measurements and both code views', async ({ p
   const inspectTab = page.locator('.tab', { hasText: 'Inspect' });
   await expect(inspectTab).toHaveCount(1);
   await inspectTab.click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   const panel = page.locator('.app__right');
 
@@ -95,10 +95,10 @@ test('B21d the prototype trigger list offers ON_CLICK and ON_HOVER', async ({ pa
   await boot(page, { blank: true });
   await drawShape(page, 'Rectangle', 200, 120);
   await page.locator('.tab', { hasText: 'Prototype' }).click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   await page.locator('[aria-label="Add interaction"]').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   const options = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLSelectElement>('.app__right select')].flatMap((s) =>
@@ -114,13 +114,13 @@ test('B21e a flow can be added', async ({ page }) => {
   await boot(page, { blank: true });
   await drawShape(page, 'Rectangle', 200, 120);
   await page.locator('.tab', { hasText: 'Prototype' }).click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   const addFlow = page.locator('[aria-label="Add flow"]');
   await expect(addFlow).toHaveCount(1);
   const before = await page.locator('.app__right .layer-row, .app__right .flow-row').count();
   await addFlow.click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   const after = await page.locator('.app__right .layer-row, .app__right .flow-row').count();
   expect(after).toBeGreaterThanOrEqual(before);
   // The panel must acknowledge the flow exists.
@@ -140,13 +140,13 @@ test('B21f an interaction produces a navigable hotspot in presentation', async (
   await page.locator('select[aria-label="Prototype start frame"]').selectOption({ label: source });
   // With no interactions yet the panel offers the destination select directly;
   // "Add interaction" switches to the per-interaction row editor instead.
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   const destination = page.locator('select[aria-label="Navigate to"]');
   await expect(destination.locator('option', { hasText: target })).toHaveCount(1, { timeout: 15000 });
   await destination.selectOption({ label: target });
   await page.locator('.button', { hasText: 'Apply link' }).click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   await tool(page, 'Present').click();
   await expect(page.locator('.present__hotspot')).toHaveCount(1);
@@ -158,10 +158,10 @@ test('B21g two components can be combined into a variant set', async ({ page }) 
   // Two components, drawn apart so each drag creates its own node.
   await drawShape(page, 'Rectangle', 140, 140, -160, 0);
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   await drawShape(page, 'Rectangle', 140, 140, 160, 0);
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   expect(await page.locator('.layer-row').count()).toBe(2);
 
   // Select both, which is what enables the set action.
@@ -182,7 +182,7 @@ test('B21g two components can be combined into a variant set', async ({ page }) 
   const createSet = page.locator('.button', { hasText: 'Create component set' });
   await expect(createSet).toBeEnabled();
   await createSet.click();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   // The two components collapse into one set node.
   await expect.poll(async () => page.locator('.layer-row').count(), { timeout: 10000 }).toBe(1);
@@ -207,10 +207,10 @@ test('B21h an Open-overlay action stacks the destination over the source', async
   await expect(actionSelect).toHaveCount(1);
   await actionSelect.selectOption({ label: 'Open overlay' });
   await page.locator('.button', { hasText: 'Apply link' }).click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   await tool(page, 'Present').click();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
   const spot = page.locator('.present__hotspot');
   await expect(spot).toHaveCount(1);
 
@@ -222,7 +222,7 @@ test('B21h an Open-overlay action stacks the destination over the source', async
   // navigation would replace it. Both names being present therefore
   // distinguishes a genuine overlay from an accidental navigation pass.
   await spot.click();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
   await expect(present).toContainText(target);
   await expect(present).toContainText(source);
 });

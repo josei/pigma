@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, nodeGeometry, tool } from './helpers';
+import { boot, drawShape, nodeGeometry, tool, nextPaint } from './helpers';
 import { evaluateBooleanNode } from '../../src/model/boolean';
 import type { ContainerNode } from '../../src/model/types';
 
@@ -33,7 +33,7 @@ async function twoOverlappingRects(page: Page): Promise<void> {
   await page.mouse.down();
   await page.mouse.move(cx + 260, cy + 160, { steps: 10 });
   await page.mouse.up();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 }
 
 /** The selected BOOLEAN_OPERATION node, straight from the store. */
@@ -81,7 +81,7 @@ test('B50a moving an operand re-evaluates the boolean, and the result matches a 
   await boot(page, { blank: true });
   await twoOverlappingRects(page);
   await page.locator('[aria-label="Union"]').click();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   const before = await booleanNode(page);
   const beforePath = await renderedPath(page);
@@ -98,7 +98,7 @@ test('B50a moving an operand re-evaluates the boolean, and the result matches a 
     if (!store) throw new Error('window.__pigmaStore is not exposed');
     (store.getState() as unknown as { select: (ids: string[]) => void }).select([id]);
   }, operandId);
-  await page.waitForTimeout(250);
+  await nextPaint(page);
   expect(
     await page.evaluate(() => (window.__pigmaStore!.getState() as unknown as { selection: string[] }).selection[0]),
     'the operand was not selected',
@@ -108,7 +108,7 @@ test('B50a moving an operand re-evaluates the boolean, and the result matches a 
   // 11px of 12), which would make "one undo restores" ambiguous. Shift+Arrow
   // nudges 10px and is one entry.
   await page.keyboard.press('Shift+ArrowRight');
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   // Re-select the boolean itself to read its geometry.
   await page.evaluate((id) => {
@@ -116,7 +116,7 @@ test('B50a moving an operand re-evaluates the boolean, and the result matches a 
     if (!store) throw new Error('window.__pigmaStore is not exposed');
     (store.getState() as unknown as { select: (ids: string[]) => void }).select([id]);
   }, before.id);
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   const after = await booleanNode(page);
   const afterPath = await renderedPath(page);
@@ -140,13 +140,13 @@ test('B50a moving an operand re-evaluates the boolean, and the result matches a 
   // that was current when the nudge was made - the operand, not the boolean - so
   // re-select the boolean before reading it.
   await page.keyboard.press('Control+z');
-  await page.waitForTimeout(500);
+  await nextPaint(page);
   await page.evaluate((id) => {
     const store = window.__pigmaStore;
     if (!store) throw new Error('window.__pigmaStore is not exposed');
     (store.getState() as unknown as { select: (ids: string[]) => void }).select([id]);
   }, before.id);
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   const undone = await booleanNode(page);
   expect(undone.pathData, 'undo did not restore the boolean geometry').toBe(before.pathData);
   expect(await renderedPath(page), 'undo did not restore the rendered outline').toBe(beforePath);
@@ -156,7 +156,7 @@ test('B50b the boolean stays live rather than freezing its operands', async ({ p
   await boot(page, { blank: true });
   await twoOverlappingRects(page);
   await page.locator('[aria-label="Union"]').click();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   const node = await booleanNode(page);
   // A live op keeps its operands to re-evaluate from; a flattened one would not.

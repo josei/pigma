@@ -589,14 +589,18 @@ pass script, so this entry states what was measured and not more.
 
 ## Fixed waits: policy and what remains
 
-A test waits on the condition it checks, never on a fixed time: `expect(locator)` and `expect.poll(...)` retry
-until the state holds. A fixed `waitForTimeout` passes on a fast machine and fails on a slow one (WebKit finished a
-layer drop later than Chromium, and B85c failed once because of one; see docs/DECISIONS.md).
+A test waits on the condition it checks, never on a fixed time, where it can. `expect(locator)` and `expect.poll(...)`
+retry until the state holds. A fixed `waitForTimeout` passes on a fast machine and fails on a slow one (WebKit finished
+a layer drop later than Chromium, and B85c failed once because of one; see docs/DECISIONS.md).
 
-Done: the 16 fixed waits that sat directly before a retrying locator assertion were removed, and the layer drag spec
-(`b85-layer-drag`) has none left.
+Done in two steps:
+- The 16 fixed waits that sat directly before a retrying locator assertion were removed.
+- The other 253 became `nextPaint(page)` (helpers.ts): two animation frames, which wait for the browser to paint the
+  last change before a pixel or DOM read. This is a deterministic paint barrier, not a condition. A read of store state
+  does not need it, and a read that depends on a network or timer does not get it.
 
-Open: about 309 fixed waits remain across the other specs. Each one sits before a plain read or an action, not a
-retrying assertion, so removing it needs that read turned into a poll. They are listed by file with
-`grep -c waitForTimeout tests/browser/*.spec.ts`.
-
+Open: 28 fixed waits remain, in eight files that do not import the helpers: `b27-storage`, `b28-rooms`, `b29-mobile`,
+`b32-conflict`, `b34-mcp-gating`, `b35-share-link`, `b37-pwa-offline`, `b39-pixel-diff`. Their waits cover real
+asynchronous work (relay messages, autosave, offline reload, debounced sync), so each needs a condition to poll for
+(a message arriving, a save reported, a reload completing), not a paint barrier. Find them with
+`grep -n waitForTimeout tests/browser/*.spec.ts`.

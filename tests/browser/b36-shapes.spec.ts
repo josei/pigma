@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, tool, toDoc } from './helpers';
+import { boot, tool, toDoc, nextPaint } from './helpers';
 
 /** Node types in the document, from the store. */
 async function nodeTypes(page: Page): Promise<string[]> {
@@ -27,7 +27,7 @@ test('B36a the line tool creates a LINE node with the drawn geometry', async ({ 
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2 + 60, { steps: 8 });
   await page.mouse.up();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   const after = await nodeTypes(page);
   expect(after, `no LINE node created; types: ${JSON.stringify(after)}`).toContain('LINE');
@@ -56,7 +56,7 @@ test('B36b a line renders as a stroked line, not a filled shape', async ({ page 
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 100, box.y + box.height / 2, { steps: 6 });
   await page.mouse.up();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   const drawn = await page.evaluate(() => {
     const svg = document.querySelector('.canvas__svg');

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, tool } from './helpers';
+import { boot, tool, nextPaint } from './helpers';
 
 /**
  * TILE image scale mode on the live canvas.
@@ -37,7 +37,7 @@ async function applyImageFill(page: Page, dataUrl: string): Promise<void> {
     const ok = state.applyImageFill(url, { width: 16, height: 16 });
     if (!ok) throw new Error('applyImageFill refused');
   }, dataUrl);
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 async function draw(page: Page): Promise<void> {
@@ -50,7 +50,7 @@ async function draw(page: Page): Promise<void> {
   await page.mouse.down();
   await page.mouse.move(cx + 110, cy + 70, { steps: 8 });
   await page.mouse.up();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 /** The TILE pattern's attributes, plus the canvas scale. */
@@ -103,7 +103,7 @@ test('B49a TILE emits a userSpaceOnUse pattern sized to the bitmap', async ({ pa
   await expect(select, 'the image scale-mode control is missing').toBeVisible();
 
   await select.selectOption('TILE');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   const info = await patternInfo(page);
   const tile = info.patterns.find((p) => p.units === 'userSpaceOnUse');
@@ -124,7 +124,7 @@ test('B49b TILE actually repeats on the canvas: one period matches, half differs
   await draw(page);
   await applyImageFill(page, await tileDataUrl(page));
   await page.locator('[aria-label="Image scale mode"]').selectOption('TILE');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 
   const info = await patternInfo(page);
   const tile = info.patterns.find((p) => p.units === 'userSpaceOnUse')!;
@@ -182,12 +182,12 @@ test('B49c TILE renders differently from FILL for the same image', async ({ page
 
   const select = page.locator('[aria-label="Image scale mode"]');
   await select.selectOption('FILL');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   const fillShot = await page.screenshot({ scale: 'css' });
   const fillPatterns = (await patternInfo(page)).patterns;
 
   await select.selectOption('TILE');
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   const tileShot = await page.screenshot({ scale: 'css' });
   const tilePatterns = (await patternInfo(page)).patterns;
 

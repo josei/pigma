@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape } from './helpers';
+import { boot, drawShape, nextPaint } from './helpers';
 
 const APP_ORIGIN = 'http://127.0.0.1:5173';
 
@@ -8,7 +8,7 @@ async function inspect(page: Page): Promise<void> {
   const tab = page.locator('.tab', { hasText: 'Inspect' });
   await expect(tab).toHaveCount(1);
   await tab.click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 }
 
 /**
@@ -20,7 +20,7 @@ async function inspect(page: Page): Promise<void> {
  */
 async function clickTab(page: Page, label: string): Promise<void> {
   await page.locator(`[aria-label="${label}"]`).click();
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 }
 
 async function code(page: Page): Promise<string> {
@@ -229,7 +229,7 @@ test('B44f a polygon WITH a shadow invents no primitive in either target', async
       'test shadow',
     );
   });
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   // FIXED. This test previously pinned a defect: the shadow modifier fell back to
   // `shape ?? corner`, and `corner` defaults to `RectangleShape()`, so a polygon

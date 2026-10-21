@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { boot, drawShape, openFold } from './helpers';
+import { boot, drawShape, openFold, nextPaint } from './helpers';
 
 /**
  * The four-up segmented rows must not clip their labels.
@@ -22,7 +22,7 @@ test('B56a no label in a four-up row is clipped at any supported panel width', a
 
   for (const width of [PANEL_MIN, 220, 260, 320, 420]) {
     await page.evaluate((value) => window.__pigmaStore!.getState().setPanelWidth('right', value), width);
-    await page.waitForTimeout(250);
+    await nextPaint(page);
     const measured = await page.evaluate(() => {
       const buttons = [...document.querySelectorAll('.prop-grid--4 .segmented__option')] as HTMLElement[];
       return {
@@ -42,7 +42,7 @@ test('B56b the widest label still fits at the narrowest panel', async ({ page })
   await drawShape(page, 'Rectangle', 160, 160);
   await openFold(page, 'effects-add');
   await page.evaluate((value) => window.__pigmaStore!.getState().setPanelWidth('right', value), PANEL_MIN);
-  await page.waitForTimeout(250);
+  await nextPaint(page);
   const background = page.locator('.prop-grid--4 .segmented__option', { hasText: 'Background' });
   await expect(background).toBeVisible();
   const box = (await background.boundingBox())!;

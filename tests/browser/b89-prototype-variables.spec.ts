@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { boot, drawShape, tool } from './helpers';
+import { boot, drawShape, tool, nextPaint } from './helpers';
 
 /**
  * Prototype variables, slice 1: a SET_VARIABLE action runs on a click and holds its
@@ -31,7 +31,7 @@ test('B89a a click that sets a variable holds its value for the presentation', a
   });
 
   await tool(page, 'Present').click();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
   const hotspot = page.locator('.present__hotspot').first();
   await expect(hotspot).toBeVisible();
   await expect(page.locator('.present')).toHaveAttribute('data-variables', '{}');
@@ -64,7 +64,7 @@ test('B90a a Set variable link is authored in the Prototype tab and sets the var
   await page.locator('select[aria-label="Variable to set"]').selectOption(variableId);
   await page.locator('select[aria-label="Variable value"]').selectOption('false');
   await page.locator('.button', { hasText: 'Apply link' }).click();
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   const stored = await page.evaluate(() => {
     const doc = (window.__pigmaStore!.getState() as any).file.document;
@@ -108,7 +108,7 @@ test('B91a a conditional hotspot appears only after a click sets its variable', 
   }, [ids.rect, ids.ellipse, ids.frame]);
 
   await tool(page, 'Present').click();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
   // Before the click: the rectangle's link shows; the conditional ellipse's does not.
   await expect(page.locator('.present__hotspot[aria-label*="Rectangle"]')).toHaveCount(1);
   await expect(page.locator('.present__hotspot[aria-label*="Ellipse"]'), 'a conditional hotspot showed before its condition held').toHaveCount(0);

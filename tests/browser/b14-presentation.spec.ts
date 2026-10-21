@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { boot, drawShape, tool } from './helpers';
+import { boot, drawShape, tool, nextPaint } from './helpers';
 
 test('B14a presentation without a start frame shows the fallback view', async ({ page }) => {
   await boot(page, { blank: true });
@@ -24,7 +24,7 @@ test('B14b a start frame gives presentation a real stage', async ({ page }) => {
   const startFrame = page.locator('select[aria-label="Prototype start frame"]');
   await expect(startFrame).toBeVisible();
   await startFrame.selectOption({ label: frame });
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   await tool(page, 'Present').click();
 
@@ -58,10 +58,10 @@ test('B14c an On-click link becomes a hotspot and navigates', async ({ page }) =
   await expect(destination.locator('option', { hasText: target })).toHaveCount(1, { timeout: 15000 });
   await destination.selectOption({ label: target });
   await page.locator('.button', { hasText: 'Apply link' }).click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   await tool(page, 'Present').click();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   const spot = page.locator('.present__hotspot');
   await expect(spot).toHaveCount(1);

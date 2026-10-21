@@ -1,16 +1,5 @@
 import { test, expect } from '@playwright/test';
-import {
-  boot,
-  drawShape,
-  field,
-  toDoc,
-  drag,
-  tool,
-  nwHandle,
-  nodeGeometry,
-  docToScreen,
-  zoom,
-} from './helpers';
+import { boot, drawShape, field, toDoc, drag, tool, nwHandle, nodeGeometry, docToScreen, zoom, nextPaint } from './helpers';
 
 /**
  * Free drag, snapping bypassed with Ctrl: the node must move by exactly the
@@ -23,7 +12,7 @@ test('B3a a free drag moves the node by the exact delta on both axes', async ({ 
 
   const before = await nodeGeometry(page);
   await drag(page, [0, 0], [60, 40], { ctrl: true });
-  await page.waitForTimeout(150);
+  await nextPaint(page);
   const after = await nodeGeometry(page);
 
   const dx = after.x - before.x;
@@ -59,7 +48,7 @@ test('B3b smart snapping pulls a dragged edge onto a neighbour', async ({ page }
   await page.mouse.move(target.x, target.y, { steps: 10 });
   const guideCount = await page.locator('.canvas__guide').count();
   await page.mouse.up();
-  await page.waitForTimeout(150);
+  await nextPaint(page);
 
   const snapped = await nodeGeometry(page);
   expect(z).toBeGreaterThan(0);
@@ -87,7 +76,7 @@ test('B3c snapping can be bypassed with Ctrl', async ({ page }) => {
   const guideCount = await page.locator('.canvas__guide').count();
   await page.mouse.up();
   await page.keyboard.up('Control');
-  await page.waitForTimeout(150);
+  await nextPaint(page);
 
   const free = await nodeGeometry(page);
   expect(guideCount).toBe(0);

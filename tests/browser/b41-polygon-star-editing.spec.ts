@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, tool } from './helpers';
+import { boot, tool, nextPaint } from './helpers';
 
 interface ShapeNode {
   type: string;
@@ -45,14 +45,14 @@ async function draw(page: Page, name: string, dx = 140, dy = 110): Promise<void>
   await page.mouse.down();
   await page.mouse.move(cx + dx / 2, cy + dy / 2, { steps: 6 });
   await page.mouse.up();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 async function setField(page: Page, label: string, value: string): Promise<void> {
   const field = page.locator(`.app__right input[aria-label="${label}"]`);
   await field.fill(value);
   await field.press('Enter');
-  await page.waitForTimeout(350);
+  await nextPaint(page);
 }
 
 test('B41a the polygon Sides control changes the point count and the geometry', async ({ page }) => {

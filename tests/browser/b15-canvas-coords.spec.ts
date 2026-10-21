@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, drag, field, nodeGeometry, tool, zoom, docToScreen } from './helpers';
+import { boot, drawShape, drag, field, nodeGeometry, tool, zoom, docToScreen, nextPaint } from './helpers';
 
 /** Zoom controls now live in the canvas HUD, not the bottom toolbar. */
 function zoomIn(page: Page) {
@@ -32,7 +32,7 @@ test('B15a a drag moves by the exact document delta after zooming in', async ({ 
 
   const before = await nodeGeometry(page);
   await drag(page, [0, 0], [60, 40], { ctrl: true });
-  await page.waitForTimeout(150);
+  await nextPaint(page);
   const after = await nodeGeometry(page);
 
   const z = await zoom(page);
@@ -64,7 +64,7 @@ test('B15c a node keeps its geometry when moved offscreen', async ({ page }) => 
   // Push the node well outside the viewport.
   await tool(page, 'Move').click();
   await drag(page, [0, 0], [1200, 800], { ctrl: true });
-  await page.waitForTimeout(150);
+  await nextPaint(page);
   const moved = await nodeGeometry(page);
   expect(moved.x).toBeGreaterThan(before.x);
   expect(moved.w).toBe(before.w);

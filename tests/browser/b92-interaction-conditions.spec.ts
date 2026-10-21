@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { boot, drawShape } from './helpers';
+import { boot, drawShape, nextPaint } from './helpers';
 
 /**
  * Conditions on an interaction, authored in the Prototype tab (slice 3b of prototype
@@ -34,7 +34,7 @@ test('B92a an interaction is made conditional on a variable, from the Prototype 
   // Make it conditional on the variable, and choose the value it must hold.
   await page.locator('select[aria-label="Condition 0"]').selectOption(variableId);
   await page.locator('select[aria-label="Condition value 0"]').selectOption('false');
-  await page.waitForTimeout(200);
+  await nextPaint(page);
 
   const condition = await page.evaluate(() => {
     const find = (node: any): any => (node.interactions?.length ? node : (node.children ?? []).map(find).find(Boolean));
@@ -44,7 +44,7 @@ test('B92a an interaction is made conditional on a variable, from the Prototype 
 
   // Back to Always: the condition is removed.
   await page.locator('select[aria-label="Condition 0"]').selectOption('');
-  await page.waitForTimeout(200);
+  await nextPaint(page);
   const cleared = await page.evaluate(() => {
     const find = (node: any): any => (node.interactions?.length ? node : (node.children ?? []).map(find).find(Boolean));
     return find((window.__pigmaStore!.getState() as any).file.document.children[0]).interactions[0].condition ?? null;

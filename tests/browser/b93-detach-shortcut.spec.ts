@@ -1,21 +1,21 @@
 import { test, expect } from '@playwright/test';
-import { boot, drawShape, tool } from './helpers';
+import { boot, drawShape, tool, nextPaint } from './helpers';
 
 /** Cmd/Ctrl+Alt+B detaches the selected instance (Figma's shortcut), keeping its layers. */
 test('B93a Ctrl+Alt+B detaches the selected instance and keeps its layers', async ({ page }) => {
   await boot(page, { blank: true });
   await drawShape(page, 'Rectangle', 80, 80, 0, 0);
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   await page.locator('.rail__button[aria-label="Assets"]').click();
   await page.locator('.app__left .layer-row').first().dblclick();
-  await page.waitForTimeout(450);
+  await nextPaint(page);
   await page.locator('.rail__button[aria-label="Layers"]').click();
 
   const instanceId = await page.evaluate(() => (window.__pigmaStore!.getState().file.document.children[0]!.children as any[]).find((n) => n.type === 'INSTANCE').id as string);
   await page.evaluate((id) => window.__pigmaStore!.getState().select([id]), instanceId);
   await page.keyboard.press('Control+Alt+b');
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   const after = await page.evaluate((id) => {
     const node = (window.__pigmaStore!.getState().file.document.children[0]!.children as any[]).find((n) => n.id === id);
@@ -32,12 +32,12 @@ test('B93b Ctrl+D duplicates, and Ctrl+Shift+D does not', async ({ page }) => {
   const count = () => page.evaluate(() => (window.__pigmaStore!.getState().file.document.children[0]!.children as any[]).length);
   expect(await count()).toBe(1);
   await page.keyboard.press('Control+d');
-  await page.waitForTimeout(200);
+  await nextPaint(page);
   expect(await count(), 'Ctrl+D did not duplicate').toBe(2);
   await page.keyboard.press('Control+Shift+d');
-  await page.waitForTimeout(200);
+  await nextPaint(page);
   expect(await count(), 'Ctrl+Shift+D duplicated').toBe(2);
   await page.keyboard.press('Control+Alt+Shift+d');
-  await page.waitForTimeout(200);
+  await nextPaint(page);
   expect(await count(), 'Ctrl+Alt+Shift+D duplicated').toBe(2);
 });

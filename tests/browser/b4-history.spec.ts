@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { boot, drawShape, field, tool, drag, toDoc } from './helpers';
+import { boot, drawShape, field, tool, drag, toDoc, nextPaint } from './helpers';
 
 test('B4a undo removes a drawn shape and redo restores it', async ({ page }) => {
   await boot(page, { blank: true });
@@ -24,7 +24,7 @@ test('B4b undo reverts a move', async ({ page }) => {
   const x0 = Number(await field(page, 'X').inputValue());
   await drag(page, [0, 0], [80, 0]);
   // A drag commits its history transaction shortly after pointerup.
-  await page.waitForTimeout(250);
+  await nextPaint(page);
   expect(Number(await field(page, 'X').inputValue())).not.toBeCloseTo(x0, 0);
 
   await page.keyboard.press('Control+z');
@@ -41,7 +41,7 @@ test('B4c undo/redo is ordered across mixed actions', async ({ page }) => {
   const moveBy = await toDoc(page, 100);
   await tool(page, 'Move').click();
   await drag(page, [0, 0], [100, 0]);
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 
   // Undo the move, then the draw.
   await page.keyboard.press('Control+z');

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, field, openMenu } from './helpers';
+import { boot, drawShape, field, openMenu, nextPaint } from './helpers';
 
 // These specs run a local relay or several browser contexts: under six-worker load they
 // take 7-10s each, so they get more headroom than the 30s default.
@@ -10,7 +10,7 @@ async function openPlugins(page: Page) {
   const tab = page.locator('.rail__button[aria-label="Plugins"]');
   await expect(tab).toHaveCount(1);
   await tab.click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 test('B24a running a built-in plugin edits the document in exactly one history entry', async ({
@@ -28,7 +28,7 @@ test('B24a running a built-in plugin edits the document in exactly one history e
    */
   const layerNames = async () => {
     await page.locator('.rail__button[aria-label="Layers"]').click();
-    await page.waitForTimeout(250);
+    await nextPaint(page);
     return page.locator('.app__left .layer-row__name').allTextContents();
   };
 
@@ -42,7 +42,7 @@ test('B24a running a built-in plugin edits the document in exactly one history e
   const runs = page.locator('.app__left [aria-label^="Run "]');
   await expect(runs.first()).toBeVisible();
   await runs.first().click();
-  await page.waitForTimeout(900);
+  await nextPaint(page);
 
   // 3. It renamed the layer.
   const afterRun = await layerNames();
@@ -87,7 +87,7 @@ test('B24b Toggle dark theme changes the shell appearance', async ({ page }) => 
 
   await openMenu(page);
   await page.locator('.menu__item', { hasText: 'Toggle dark theme' }).first().click();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   const after = await readTheme();
   expect(after, `theme did not change: ${JSON.stringify({ before, after })}`).not.toEqual(before);
@@ -95,7 +95,7 @@ test('B24b Toggle dark theme changes the shell appearance', async ({ page }) => 
   // Toggling back restores the original appearance.
   await openMenu(page);
   await page.locator('.menu__item', { hasText: 'Toggle dark theme' }).first().click();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
   expect(await readTheme()).toEqual(before);
 
   // The selection edits still work in either theme.

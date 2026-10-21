@@ -1,9 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, openMenu } from './helpers';
+import { boot, drawShape, openMenu, nextPaint } from './helpers';
 
 async function openRail(page: Page, label: string) {
   await page.locator(`.rail__button[aria-label="${label}"]`).click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 test('B25a constraint options are icon-only and never overflow', async ({ page }) => {
@@ -77,7 +77,7 @@ test('B25b the document library exists and persists a document in IndexedDB', as
   // Saving stores the document in IndexedDB (created on demand).
   await openMenu(page);
   await page.locator('.menu__item', { hasText: 'New file' }).first().click();
-  await page.waitForTimeout(900);
+  await nextPaint(page);
 
   const databasesAfter = await page.evaluate(async () =>
     (await indexedDB.databases()).map((d) => d.name),

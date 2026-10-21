@@ -4,7 +4,7 @@
  * The model operation is unit-tested (gridTracks.test.ts); this drives the live UI.
  */
 import { test, expect, type Page } from '@playwright/test';
-import { boot, tool, field } from './helpers';
+import { boot, tool, field, nextPaint } from './helpers';
 
 /** A frame with `count` small rectangles inside it, the frame selected (as in B57). */
 async function frameWithChildren(page: Page, count: number): Promise<void> {
@@ -17,7 +17,7 @@ async function frameWithChildren(page: Page, count: number): Promise<void> {
     await page.mouse.down();
     await page.mouse.move(cx + x2, cy + y2, { steps: 6 });
     await page.mouse.up();
-    await page.waitForTimeout(250);
+    await nextPaint(page);
   };
   await tool(page, 'Frame').click();
   await drag(-150, -100, 150, 100);
@@ -47,7 +47,7 @@ async function columns(page: Page): Promise<Array<{ type: string; value: number 
 test('B109a Move down swaps a column track with its neighbour, and the size travels with it', async ({ page }) => {
   await frameWithChildren(page, 2);
   await page.locator('[role="group"][aria-label="Direction"] button', { hasText: 'Grid' }).click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   expect((await columns(page)).map((c) => c.type)).toEqual(['FLEX', 'FLEX']);
 
   // Make column 1 a fixed 50px track, so the swap is visible in the sizes.
@@ -56,7 +56,7 @@ test('B109a Move down swaps a column track with its neighbour, and the size trav
   const input = field(page, 'Columns track 1');
   await input.fill('50');
   await input.press('Enter');
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   expect(await columns(page)).toEqual([
     { type: 'FIXED', value: 50 },
     { type: 'FLEX', value: 1 },
@@ -64,7 +64,7 @@ test('B109a Move down swaps a column track with its neighbour, and the size trav
 
   await expect(page.getByRole('button', { name: 'Move column track 1 up' }), 'the first track can move up').toBeDisabled();
   await page.getByRole('button', { name: 'Move column track 1 down' }).click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   expect(await columns(page), 'the track did not move with its size').toEqual([
     { type: 'FLEX', value: 1 },
     { type: 'FIXED', value: 50 },

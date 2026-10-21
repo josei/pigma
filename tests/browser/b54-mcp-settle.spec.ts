@@ -1,5 +1,5 @@
 import { test, expect, connectEditor, mcpCall } from './relay';
-import { field } from './helpers';
+import { field, nextPaint } from './helpers';
 
 /**
  * A document built through the MCP is SETTLED exactly like an editor edit.
@@ -109,7 +109,7 @@ figma.currentPage.selection = [t];`,
     if (!id) throw new Error('the settled text node is missing');
     state.select([id]);
   });
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   const panelW = Number(await field(page, 'W').inputValue());
   const panelH = Number(await field(page, 'H').inputValue());
   expect(panelH, `the properties panel shows the stale height ${panelH}`).toBeCloseTo(node.h, 1);

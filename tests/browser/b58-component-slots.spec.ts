@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, tool } from './helpers';
+import { boot, drawShape, tool, nextPaint } from './helpers';
 
 /**
  * Component slots / instance swap, from the panel a user actually uses.
@@ -25,7 +25,7 @@ async function paintSelected(page: Page, rgb: { r: number; g: number; b: number 
       return { ...file, document: paintNode(file.document as unknown as { children?: unknown[] }) as typeof file.document };
     });
   }, rgb);
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 }
 
 /** Draw a rectangle, colour it, promote it to a component; returns its name. */
@@ -33,23 +33,23 @@ async function makeComponent(page: Page, colour: { r: number; g: number; b: numb
   await drawShape(page, 'Rectangle', 160, 120, dx, 0);
   await paintSelected(page, colour);
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(350);
+  await nextPaint(page);
   return (await page.locator('.layer-row--selected .layer-row__name').first().textContent())!;
 }
 
 async function addSwapProperty(page: Page, name: string): Promise<void> {
   await page.locator('input[aria-label="New property name"]').fill(name);
-  await page.waitForTimeout(150);
+  await nextPaint(page);
   await page.locator('[aria-label="Add instance_swap property"]').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 async function insertInstance(page: Page, name: string): Promise<void> {
   await page.locator('.rail__button[aria-label="Assets"]').click();
   await page.locator('.app__left .layer-row', { hasText: name }).first().dblclick();
-  await page.waitForTimeout(450);
+  await nextPaint(page);
   await page.locator('.rail__button[aria-label="Layers"]').click();
-  await page.waitForTimeout(250);
+  await nextPaint(page);
 }
 
 /** The selected node's type and stored property values, plus every rendered fill. */
@@ -105,7 +105,7 @@ test('B58a an instance of a standalone component OFFERS its properties, and a sw
   const replacementId = await idOf(page, replacement);
   expect(replacementId, 'the replacement component has no id').toBeTruthy();
   await picker.selectOption(replacementId);
-  await page.waitForTimeout(500);
+  await nextPaint(page);
 
   const after = await state(page);
   // Stored...

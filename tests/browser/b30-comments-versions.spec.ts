@@ -1,9 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, tool } from './helpers';
+import { boot, tool, nextPaint } from './helpers';
 
 async function openComments(page: Page) {
   await page.locator('.rail__button[aria-label="Comments"]').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 /** Place a comment with the Comment canvas tool, and post it with text (a thread needs text). */
@@ -13,7 +13,7 @@ async function placePin(page: Page, dx = 0, dy = 0) {
   await page.mouse.click(box.x + box.width / 2 + dx, box.y + box.height / 2 + dy);
   await page.locator('textarea[aria-label="New comment text"]').fill('Looks right');
   await page.locator('button[aria-label="Post comment"]').click();
-  await page.waitForTimeout(600);
+  await nextPaint(page);
 }
 
 const openCount = (page: Page) =>
@@ -57,7 +57,7 @@ test('B30c a comment can be resolved', async ({ page }) => {
   const resolve = page.locator('.app__left button', { hasText: /resolve/i }).first();
   await expect(resolve, 'no resolve control in the comment thread').toHaveCount(1);
   await resolve.click();
-  await page.waitForTimeout(600);
+  await nextPaint(page);
 
   expect(await openCount(page), 'resolving did not reduce the open count').toBe(0);
 });
@@ -84,7 +84,7 @@ async function drawRect(page: Page) {
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2 + 50, { steps: 6 });
   await page.mouse.up();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 const shapeCount = (page: Page) =>
@@ -92,7 +92,7 @@ const shapeCount = (page: Page) =>
 
 async function openFilePanel(page: Page) {
   await page.locator('.rail__button[aria-label="File"]').click();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
 }
 
 test('B30e saving a version adds it to the snapshot timeline', async ({ page }) => {

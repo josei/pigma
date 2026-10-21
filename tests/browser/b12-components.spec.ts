@@ -1,11 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
-import { boot, drawShape, field, tool } from './helpers';
+import { boot, drawShape, field, tool, nextPaint } from './helpers';
 
 /** Create a component from a fresh rectangle and return its layer name. */
 async function createComponent(page: Page) {
   await drawShape(page, 'Rectangle', 180, 120);
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
   return (await page.locator('.layer-row--selected .layer-row__name').first().textContent())!;
 }
 
@@ -13,7 +13,7 @@ async function createComponent(page: Page) {
 async function insertInstance(page: Page, name: string) {
   await page.locator('.rail__button[aria-label="Assets"]').click();
   await page.locator('.app__left .layer-row', { hasText: name }).first().dblclick();
-  await page.waitForTimeout(400);
+  await nextPaint(page);
   await page.locator('.rail__button[aria-label="Layers"]').click();
 }
 
@@ -23,7 +23,7 @@ test('B12a creating a component marks the layer as a component', async ({ page }
   const iconBefore = await page.locator('.layer-row--selected .layer-row__icon svg').first().innerHTML();
 
   await tool(page, 'Create component').click();
-  await page.waitForTimeout(300);
+  await nextPaint(page);
 
   const iconAfter = await page.locator('.layer-row--selected .layer-row__icon svg').first().innerHTML();
   expect(iconAfter).not.toBe(iconBefore);
@@ -73,7 +73,7 @@ test('B12d editing an instance does not change its main component', async ({ pag
   // The freshly inserted instance is selected: give it a different fill.
   await field(page, 'Fill colour').fill('#ff0000');
   await field(page, 'Fill colour').press('Enter');
-  await page.waitForTimeout(200);
+  await nextPaint(page);
   expect(await field(page, 'Fill colour').inputValue()).toBe('#ff0000');
 
   // The override stays on the instance...
