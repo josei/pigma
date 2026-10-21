@@ -361,6 +361,8 @@ export function useKeyboardShortcuts(): void {
 
       if (event.key === 'Backspace' || event.key === 'Delete') {
         event.preventDefault();
+        // A selected ruler guide is removed first (Figma: select the guide and press Delete).
+        if (state.deleteSelectedGuide()) return;
         // While editing a vector, Delete removes the selected anchor instead of
         // the whole layer.
         if (state.selectedAnchor !== null && state.deleteSelectedAnchor()) return;

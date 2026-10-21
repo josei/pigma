@@ -97,6 +97,7 @@ It needs system libraries once: `sudo npx playwright install-deps`.
 | `b114-layer-export.spec.ts` | Per-layer export (Figma's Export section): a 2x PNG and an SVG of one layer download, named from the layer and its suffix; a setting can be removed |
 | `b115-layer-range-select.spec.ts` | Layers panel selection: Shift-click selects the rows from the anchor to the clicked row, as drawn; Cmd/Ctrl-click adds or removes one row |
 | `b116-guides.spec.ts` | Ruler guides: a drag from the top ruler makes a horizontal guide, from the left ruler a vertical one; a guide is moved by dragging and removed by dragging it onto a ruler; one undo restores a move |
+| `b117-guide-select-delete.spec.ts` | A ruler guide is selected by pressing it; Delete removes the selected guide; selecting a layer clears the guide selection |
 
 ## Known defects (tracked)
 
@@ -125,7 +126,7 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **423 browser tests passing / 0 failing** on Chromium (Firefox 411
+Current state: **425 browser tests passing / 0 failing** on Chromium (Firefox 411
 passed, 9 skipped; WebKit 410 passed, 10 skipped) with **0 orphan processes**. `npx vitest run` =
 1201 passing across 132 files.
 

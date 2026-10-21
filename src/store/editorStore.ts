@@ -321,6 +321,8 @@ export interface EditorState {
   shareLinkOpen: boolean;
   /** The keyboard shortcut reference (⇧⌘/). */
   shortcutsOpen: boolean;
+  /** The ruler guide selected on the canvas (its index in the page's guides), for Delete. */
+  selectedGuide: number | null;
   /** The Layers panel row a Shift-click ranges from (the last row clicked without Shift). */
   layerAnchor: string | null;
   /** Quick actions, the command search (⌘/). */
@@ -621,6 +623,9 @@ export interface EditorState {
   setShareLinkOpen: (open: boolean) => void;
   setShortcutsOpen: (open: boolean) => void;
   setLayerAnchor: (id: string | null) => void;
+  selectGuide: (index: number | null) => void;
+  /** Remove the selected guide, if one is selected. Returns false when none is. */
+  deleteSelectedGuide: () => boolean;
   /** Ruler guides on the active page (page coordinates). */
   addGuide: (axis: 'x' | 'y', offset: number) => void;
   moveGuide: (index: number, offset: number) => void;
@@ -920,6 +925,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   shareLinkOpen: false,
   shortcutsOpen: false,
   layerAnchor: null,
+  selectedGuide: null,
   quickActionsOpen: false,
   linkedDirty: false,
   mcpEnvironment: { desktop: null, advertised: null, desktopToken: null },
@@ -1037,6 +1043,8 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   select: (ids, mode = 'replace') => {
     closeBurst();
+    // Selecting layers moves the selection away from any guide.
+    if (get().selectedGuide !== null) set({ selectedGuide: null });
     const current = get().selection;
     if (mode === 'replace') {
       set({ selection: ids });
@@ -2763,6 +2771,14 @@ export const useEditor = create<EditorState>((set, get) => ({
   setShareLinkOpen: (open) => set({ shareLinkOpen: open }),
   setShortcutsOpen: (open) => set({ shortcutsOpen: open }),
   setLayerAnchor: (id) => set({ layerAnchor: id }),
+  selectGuide: (index) => set({ selectedGuide: index }),
+  deleteSelectedGuide: () => {
+    const index = get().selectedGuide;
+    if (index === null) return false;
+    get().removeGuide(index);
+    set({ selectedGuide: null });
+    return true;
+  },
   addGuide: (axis, offset) => {
     const pageId = get().pageId;
     get().apply('Add guide', (file) => addPageGuide(file, pageId, { axis, offset }));
@@ -2774,6 +2790,8 @@ export const useEditor = create<EditorState>((set, get) => ({
   removeGuide: (index) => {
     const pageId = get().pageId;
     get().apply('Remove guide', (file) => removePageGuide(file, pageId, index));
+    // The guides after this one move down an index, so a selection on one would name the wrong guide.
+    set({ selectedGuide: null });
   },
   setQuickActionsOpen: (open) => set({ quickActionsOpen: open }),
 

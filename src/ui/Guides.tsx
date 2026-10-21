@@ -37,6 +37,8 @@ export function Guides({ viewport, width, height, guides, rulers }: GuidesProps)
   const addGuide = useEditor((state) => state.addGuide);
   const moveGuide = useEditor((state) => state.moveGuide);
   const removeGuide = useEditor((state) => state.removeGuide);
+  const selectedGuide = useEditor((state) => state.selectedGuide);
+  const selectGuide = useEditor((state) => state.selectGuide);
 
   const toScreen = (axis: 'x' | 'y', world: number) => (axis === 'x' ? world * viewport.zoom + viewport.x : world * viewport.zoom + viewport.y);
   const toWorld = (axis: 'x' | 'y', screen: number) => (axis === 'x' ? (screen - viewport.x) / viewport.zoom : (screen - viewport.y) / viewport.zoom);
@@ -49,6 +51,8 @@ export function Guides({ viewport, width, height, guides, rulers }: GuidesProps)
     const origin = axis === 'x' ? rect.left : rect.top;
     const start: Drag = { axis, index, screen: startClient - origin, moved: false, startClient };
     setDrag(start);
+    // Pressing a guide selects it, so Delete can remove it (Figma: select the guide, then Delete).
+    if (index !== null) selectGuide(index);
 
     const onMove = (move: PointerEvent) => {
       const client = axis === 'x' ? move.clientX : move.clientY;
@@ -113,12 +117,13 @@ export function Guides({ viewport, width, height, guides, rulers }: GuidesProps)
       ) : null}
       {guides.map((guide, index) => {
         const moving = drag?.index === index;
+        const selected = selectedGuide === index;
         const position = moving && drag.moved ? drag.screen : toScreen(guide.axis, guide.offset);
         // A guide being dragged is drawn where the pointer is, and the original is hidden until the drop.
-        if (moving && drag.moved) return <GuideLine key={index} axis={guide.axis} at={position} width={width} height={height} />;
+        if (moving && drag.moved) return <GuideLine key={index} axis={guide.axis} at={position} width={width} height={height} selected />;
         return (
           <g key={index}>
-            <GuideLine axis={guide.axis} at={toScreen(guide.axis, guide.offset)} width={width} height={height} />
+            <GuideLine axis={guide.axis} at={toScreen(guide.axis, guide.offset)} width={width} height={height} selected={selected} />
             <line
               data-testid="guide-hit"
               x1={guide.axis === 'x' ? toScreen('x', guide.offset) : 0}
@@ -138,7 +143,7 @@ export function Guides({ viewport, width, height, guides, rulers }: GuidesProps)
   );
 }
 
-function GuideLine({ axis, at, width, height }: { axis: 'x' | 'y'; at: number; width: number; height: number }) {
+function GuideLine({ axis, at, width, height, selected = false }: { axis: 'x' | 'y'; at: number; width: number; height: number; selected?: boolean }) {
   return (
     <line
       data-testid="guide-line"
@@ -146,8 +151,9 @@ function GuideLine({ axis, at, width, height }: { axis: 'x' | 'y'; at: number; w
       x2={axis === 'x' ? at : width}
       y1={axis === 'y' ? at : 0}
       y2={axis === 'y' ? at : height}
+      data-selected={selected ? 'true' : undefined}
       stroke="var(--figma-brand, #0d99ff)"
-      strokeWidth={1}
+      strokeWidth={selected ? 2 : 1}
     />
   );
 }
