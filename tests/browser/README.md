@@ -603,7 +603,9 @@ Also done: the fixed waits in `b29-mobile`, `b34-mcp-gating`, `b35-share-link`, 
 became conditions: a drawer width polled to 0 or to its open width, a panel attribute, a share link's file name, the
 local document's shapes, a service worker ready, fonts ready, or a paint.
 
-Open: 18 fixed waits remain, in three files: `b27-storage` (autosave and reload), `b28-rooms` (relay sync after a
-join) and `b32-conflict` (a relay round trip after a join, and after each drag). Each waits for real asynchronous work,
-so each needs the element or attribute that shows the sync finished. Find them with
-`grep -n waitForTimeout tests/browser/*.spec.ts`.
+Done: the last fixed waits are gone. The rooms and conflict specs wait for the room's "Leave room" button after a join
+and for the peer to appear; the storage spec polls the library's IndexedDB record for the save and the canvas for the
+reloaded shapes. No spec waits on a fixed time now. A new fixed `waitForTimeout` should be a deliberate exception, with
+the reason beside it.
+
+Check: `grep -n waitForTimeout tests/browser/*.spec.ts` should print nothing.

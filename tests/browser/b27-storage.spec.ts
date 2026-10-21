@@ -3,10 +3,34 @@ import { test, expect, type Page } from '@playwright/test';
 const LEGACY_KEY = 'pigma:document:v1';
 
 /** Wait for the app shell without asserting a particular document. */
+/** True once the document library (IndexedDB `pigma`, store `documents`) holds a record saved at or after `since`. */
+async function librarySavedSince(page: Page, since: number): Promise<boolean> {
+  return page.evaluate(
+    (start) =>
+      new Promise<boolean>((resolve) => {
+        const open = indexedDB.open('pigma', 1);
+        open.onerror = () => resolve(false);
+        open.onsuccess = () => {
+          const db = open.result;
+          const request = db.transaction('documents').objectStore('documents').getAll();
+          request.onerror = () => {
+            db.close();
+            resolve(false);
+          };
+          request.onsuccess = () => {
+            db.close();
+            resolve((request.result as Array<{ savedAt?: number }>).some((record) => (record.savedAt ?? 0) >= start));
+          };
+        };
+      }),
+    since,
+  );
+}
+
 async function openApp(page: Page, url = '/app/?blank=1') {
   await page.goto(url);
   await page.waitForSelector('.app');
-  await page.waitForTimeout(700);
+  await page.evaluate(() => document.fonts.ready);
 }
 
 /** The persisted envelope the app writes to `pigma:document:v1`. */
@@ -162,16 +186,18 @@ test('B27c a stale crash marker cannot overwrite newer library work', async ({ p
   );
   await page.goto('/app/');
   await page.waitForSelector('.app');
-  await page.waitForTimeout(700);
+  await page.evaluate(() => document.fonts.ready);
 
   // Make a real edit so the library copy is unambiguously newer.
+  const editStarted = Date.now();
   await page.locator('.toolbar__button[aria-label="Rectangle"]').click();
   const box = (await page.locator('.canvas').boundingBox())!;
   await page.mouse.move(box.x + box.width / 2 - 80, box.y + box.height / 2 - 50);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2 + 50, { steps: 6 });
   await page.mouse.up();
-  await page.waitForTimeout(900);
+  // Wait for the library to record a save made after the edit, read from IndexedDB, not for a fixed time.
+  await expect.poll(() => librarySavedSince(page, editStarted), { timeout: 10000, message: 'the edit was not saved to the library' }).toBe(true);
 
   const editedTitle = await page.locator('input[aria-label="File name"]').inputValue();
   const layersAfterEdit = await page.locator('.layer-row').count();
@@ -183,12 +209,15 @@ test('B27c a stale crash marker cannot overwrite newer library work', async ({ p
   );
   await page.reload();
   await page.waitForSelector('.app');
-  await page.waitForTimeout(900);
 
   // The discriminator is CONTENT, not the name: the app adopts the seeded payload
   // as a document, so both the stale marker and the newer library copy are named
   // "Stale Marker Doc". The stale marker's file has NO shapes, so if it won the
   // canvas would be empty.
+  // The local document loads after the app shows: wait for its shapes to reach the canvas.
+  await expect
+    .poll(() => page.locator('.canvas__svg rect, .canvas__svg ellipse, .canvas__svg path').count(), { timeout: 10000 })
+    .toBeGreaterThan(0);
   const shapesAfter = await page
     .locator('.canvas__svg rect, .canvas__svg ellipse, .canvas__svg path')
     .count();

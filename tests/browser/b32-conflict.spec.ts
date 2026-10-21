@@ -17,7 +17,6 @@ async function joinRoom(page: Page, nickname: string, roomId: string, relayUrl: 
   await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await page.locator('.rail__button[aria-label="Rooms"]').click();
-  await page.waitForTimeout(300);
   await page.locator('input[aria-label="Room nickname"]').fill(nickname);
   await page.locator('input[aria-label="Room id"]').fill(roomId);
   await page.locator('[data-testid="rooms-advanced"] summary').click();
@@ -30,7 +29,8 @@ async function joinRoom(page: Page, nickname: string, roomId: string, relayUrl: 
     await page.locator('input[aria-label="Room key"]').fill(roomKey);
   }
   await page.locator('[aria-label="Join room"]').click();
-  await page.waitForTimeout(1200);
+  // Joined when the room offers "Leave room" (the panel shows it only once online).
+  await expect(page.locator('[aria-label="Leave room"]')).toBeVisible({ timeout: 15000 });
   return roomKey;
 }
 
@@ -44,7 +44,6 @@ async function drawRect(page: Page, dx: number) {
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + dx + 50, box.y + box.height / 2 + 40, { steps: 6 });
   await page.mouse.up();
-  await page.waitForTimeout(700);
 }
 
 test('B32a concurrent edits to different nodes both survive', async ({ browser, roomsRelay }) => {
@@ -90,18 +89,17 @@ test('B32b concurrent edits to the same node converge', async ({ browser, roomsR
   const moveBy = async (page: Page, dx: number) => {
     await page.locator('.rail__button[aria-label="Layers"]').click();
     await page.locator('.layer-row', { hasText: 'Rectangle 1' }).first().click();
-    await page.waitForTimeout(200);
+    await expect(page.locator('.layer-row--selected', { hasText: 'Rectangle 1' })).toHaveCount(1);
     const box = (await page.locator('.canvas').boundingBox())!;
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2, { steps: 8 });
     await page.mouse.up();
-    await page.waitForTimeout(1200);
   };
   const readX = async (page: Page) => {
     await page.locator('.rail__button[aria-label="Layers"]').click();
     await page.locator('.layer-row', { hasText: 'Rectangle 1' }).first().click();
-    await page.waitForTimeout(200);
+    await expect(page.locator('input[aria-label="X"]')).toBeVisible();
     return Number(await page.locator('input[aria-label="X"]').inputValue());
   };
 

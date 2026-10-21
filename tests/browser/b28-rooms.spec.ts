@@ -34,7 +34,6 @@ async function joinRoom(page: Page, { nickname, roomId, relayUrl, key }: JoinOpt
   await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await page.locator('.rail__button[aria-label="Rooms"]').click();
-  await page.waitForTimeout(300);
 
   await page.locator('input[aria-label="Room nickname"]').fill(nickname);
   await page.locator('input[aria-label="Room id"]').fill(roomId);
@@ -48,7 +47,8 @@ async function joinRoom(page: Page, { nickname, roomId, relayUrl, key }: JoinOpt
     await page.locator('input[aria-label="Room key"]').fill(roomKey);
   }
   await page.locator('[aria-label="Join room"]').click();
-  await page.waitForTimeout(1200);
+  // Joined when the room offers "Leave room" (the panel shows it only once online).
+  await expect(page.locator('[aria-label="Leave room"]')).toBeVisible({ timeout: 15000 });
   return roomKey;
 }
 
@@ -66,7 +66,6 @@ test('B28a two contexts join the same room with different nicknames', async ({
 
   const key = await joinRoom(alicePage, { nickname: 'alice', roomId, relayUrl: roomsRelay.url });
   await joinRoom(bobPage, { nickname: 'bob', roomId, relayUrl: roomsRelay.url, key });
-  await alicePage.waitForTimeout(1500);
 
   // Each side sees the other as a peer, by nickname.
   await expect(alicePage.locator('[aria-label="Peer bob"]')).toHaveCount(1, { timeout: 15000 });
@@ -90,7 +89,7 @@ test('B28b the remote cursor is labelled with the peer nickname', async ({ brows
 
   const key = await joinRoom(alicePage, { nickname: 'alice', roomId, relayUrl: roomsRelay.url });
   await joinRoom(bobPage, { nickname: 'bob', roomId, relayUrl: roomsRelay.url, key });
-  await alicePage.waitForTimeout(1200);
+  await expect(alicePage.locator('[aria-label="Peer bob"]')).toHaveCount(1, { timeout: 15000 });
 
   // Bob moves his pointer over the canvas. The remote cursor is a <g> inside the
   // canvas overlay holding an arrow <path> plus a <text> label with the nickname:
@@ -125,7 +124,7 @@ test('B28c a remote edit and selection reach the peer view', async ({ browser, r
 
   const key = await joinRoom(alicePage, { nickname: 'alice', roomId, relayUrl: roomsRelay.url });
   await joinRoom(bobPage, { nickname: 'bob', roomId, relayUrl: roomsRelay.url, key });
-  await alicePage.waitForTimeout(1200);
+  await expect(alicePage.locator('[aria-label="Peer bob"]')).toHaveCount(1, { timeout: 15000 });
 
   const overlayBefore = await alicePage.locator('.canvas__overlay').innerHTML();
   const shapesBefore = await alicePage
@@ -139,7 +138,6 @@ test('B28c a remote edit and selection reach the peer view', async ({ browser, r
   await bobPage.mouse.down();
   await bobPage.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2 + 50, { steps: 6 });
   await bobPage.mouse.up();
-  await bobPage.waitForTimeout(1500);
 
   // The remote edit appears in Alice's rendered document...
   await expect
@@ -188,14 +186,12 @@ test('B28d follow mode centres on the peer and Esc stops following', async ({ br
 
   const key = await joinRoom(alicePage, { nickname: 'alice', roomId, relayUrl: roomsRelay.url });
   await joinRoom(bobPage, { nickname: 'bob', roomId, relayUrl: roomsRelay.url, key });
-  await alicePage.waitForTimeout(1500);
 
   const follow = alicePage.locator('[aria-label="Follow bob"]');
   await expect(follow).toHaveCount(1, { timeout: 15000 });
 
   // Move Bob's viewport so following has something to centre on.
   await bobPage.locator('button[aria-label="Zoom in"]').click();
-  await bobPage.waitForTimeout(600);
 
   const before = await alicePage.locator('.canvas__svg').getAttribute('viewBox');
   await follow.click();
