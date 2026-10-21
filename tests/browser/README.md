@@ -599,8 +599,11 @@ Done in two steps:
   last change before a pixel or DOM read. This is a deterministic paint barrier, not a condition. A read of store state
   does not need it, and a read that depends on a network or timer does not get it.
 
-Open: 28 fixed waits remain, in eight files that do not import the helpers: `b27-storage`, `b28-rooms`, `b29-mobile`,
-`b32-conflict`, `b34-mcp-gating`, `b35-share-link`, `b37-pwa-offline`, `b39-pixel-diff`. Their waits cover real
-asynchronous work (relay messages, autosave, offline reload, debounced sync), so each needs a condition to poll for
-(a message arriving, a save reported, a reload completing), not a paint barrier. Find them with
+Also done: the fixed waits in `b29-mobile`, `b34-mcp-gating`, `b35-share-link`, `b37-pwa-offline` and `b39-pixel-diff`
+became conditions: a drawer width polled to 0 or to its open width, a panel attribute, a share link's file name, the
+local document's shapes, a service worker ready, fonts ready, or a paint.
+
+Open: 18 fixed waits remain, in three files: `b27-storage` (autosave and reload), `b28-rooms` (relay sync after a
+join) and `b32-conflict` (a relay round trip after a join, and after each drag). Each waits for real asynchronous work,
+so each needs the element or attribute that shows the sync finished. Find them with
 `grep -n waitForTimeout tests/browser/*.spec.ts`.

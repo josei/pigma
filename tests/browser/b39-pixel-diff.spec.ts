@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { nextPaint } from './helpers';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -26,7 +27,9 @@ async function capture(page: import('@playwright/test').Page): Promise<Buffer> {
   await page.setViewportSize(VIEWPORT);
   await page.goto('/app/?blank=1', { waitUntil: 'networkidle' });
   await page.waitForSelector('.app');
-  await page.waitForTimeout(700);
+  // Wait for the fonts and a paint, not a fixed time, so the capture is of the settled app.
+  await page.evaluate(() => document.fonts.ready);
+  await nextPaint(page);
   return page.screenshot();
 }
 
@@ -107,7 +110,7 @@ test('B39b the diff harness actually detects a change', async ({ page }) => {
   await page.mouse.down();
   await page.mouse.move(box.x + 420, box.y + 320, { steps: 8 });
   await page.mouse.up();
-  await page.waitForTimeout(500);
+  await nextPaint(page);
   const changed = await page.screenshot();
 
   const result = await page.evaluate(

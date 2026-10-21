@@ -24,7 +24,8 @@ async function openTools(page: Page) {
   await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
   await page.locator('.rail__button[aria-label="AI agent"]').click();
-  await page.waitForTimeout(500);
+  // The panel's own state attribute is what the tests read next: wait for the panel to exist.
+  await expect(page.locator('[data-testid="mcp-panel"], [data-mcp-state]').first()).toBeVisible();
 }
 
 /** Pretend nothing advertises MCP: the static online copy, which has no server. */

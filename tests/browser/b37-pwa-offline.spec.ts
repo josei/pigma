@@ -115,7 +115,8 @@ test('B37b an offline reload still renders the shell', async ({ page, context, p
     .toBeGreaterThan(0);
   await page.reload();
   await page.waitForSelector('.app');
-  await page.waitForTimeout(1500);
+  // The offline check needs the service worker to control this page, so wait for it, not for a time.
+  await page.evaluate(() => navigator.serviceWorker.ready);
 
   await context.setOffline(true);
   try {

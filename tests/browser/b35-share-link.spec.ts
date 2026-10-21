@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { nextPaint } from './helpers';
 import { createServer, type Server } from 'node:http';
 import { once } from 'node:events';
 
@@ -91,12 +92,12 @@ const fileName = (page: Page) => page.locator('input[aria-label="File name"]').i
 async function openLink(page: Page, link: string) {
   await page.goto(`/app/?blank=1#open=${encodeURIComponent(link)}`);
   await page.waitForSelector('.app');
-  await page.waitForTimeout(1500);
+  // No fixed wait: each caller polls for the state it checks (the file name, or the error toast).
 }
 
 test('B35a a share link loads the served document in a fresh context', async ({ page }) => {
   await openLink(page, `${base}/shared.pigma`);
-  expect(await fileName(page), 'the shared document was not opened').toContain('Shared Doc');
+  await expect.poll(() => fileName(page), { message: 'the shared document was not opened' }).toContain('Shared Doc');
 });
 
 test('B35b a network/CORS failure shows an explicit error, not a blank screen', async ({ page }) => {
@@ -143,7 +144,7 @@ test('B35d opening a share link does not clobber an existing local document', as
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2 + 50, { steps: 6 });
   await page.mouse.up();
-  await page.waitForTimeout(900);
+  await nextPaint(page);
 
   const localName = await fileName(page);
   const localShapes = await page
@@ -161,7 +162,8 @@ test('B35d opening a share link does not clobber an existing local document', as
   // ...and going back to the local document still finds it intact.
   await page.goto('/app/');
   await page.waitForSelector('.app');
-  await page.waitForTimeout(1200);
+  // The local document loads from storage after the app shows: wait until its shapes are on the canvas.
+  await expect.poll(() => page.locator('.canvas__svg rect, .canvas__svg ellipse, .canvas__svg path').count(), { timeout: 10000 }).toBeGreaterThan(0);
   const afterShapes = await page
     .locator('.canvas__svg rect, .canvas__svg ellipse, .canvas__svg path')
     .count();

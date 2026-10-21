@@ -7,7 +7,8 @@ async function openMobile(page: Page) {
   await page.setViewportSize(PHONE);
   await page.goto('/app/?blank=1');
   await page.waitForSelector('.app');
-  await page.waitForTimeout(700);
+  // The app is laid out once the fonts are in: wait for them, not a fixed time.
+  await page.evaluate(() => document.fonts.ready);
 }
 
 const panelWidth = (page: Page) =>
@@ -43,13 +44,11 @@ test('B29c the panel drawer closes and reopens', async ({ page }) => {
   const close = page.locator('[aria-label="Close panel"]').first();
   await expect(close).toHaveCount(1);
   await close.click();
-  await page.waitForTimeout(400);
-  expect(await panelWidth(page), 'the drawer did not close').toBe(0);
+  await expect.poll(() => panelWidth(page), { message: 'the drawer did not close' }).toBe(0);
 
   // Reopen from the rail.
   await page.locator('.rail__button[aria-label="Layers"]').click();
-  await page.waitForTimeout(400);
-  expect(await panelWidth(page), 'the drawer did not reopen').toBeGreaterThan(0);
+  await expect.poll(() => panelWidth(page), { message: 'the drawer did not reopen' }).toBeGreaterThan(0);
 });
 
 test('B29d interactive controls meet the 44px touch target', async ({ page }) => {
