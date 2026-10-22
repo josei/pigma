@@ -132,7 +132,7 @@ defect**, and has not reproduced since.
 
 Current state: **432 browser tests passing / 0 failing** on Chromium (Firefox 416
 passed, 9 skipped; WebKit 416 passed, 10 skipped) with **0 orphan processes**. `npx vitest run` =
-1219 passing across 135 files.
+1221 passing across 135 files.
 
 ### Round 12 - what is and is not covered
 

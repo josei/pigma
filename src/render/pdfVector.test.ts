@@ -270,3 +270,15 @@ describe('text depth in the vector PDF', () => {
     expect(truncated).toContain('\\205');
   });
 });
+
+describe('linked text in a PDF', () => {
+  it('draws the linked word in the link colour, underlined, as its own piece of text', () => {
+    const text = createTextNode(null, 0, 0, 'Read the docs');
+    text.textRanges = [{ start: 9, end: 13, link: 'https://docs.example' }];
+    const { file, nodes } = page([text]);
+    const body = decode(renderVectorPdf(file, nodes, { width: 200, height: 60 }).bytes);
+    expect(body, 'the link colour is not set').toMatch(/0 0\.43\d* 0\.76\d* rg/);
+    expect(body, 'the linked word is not drawn on its own').toContain('(docs) Tj');
+    expect(body, 'the link is not underlined').toMatch(/0\.5 w \S+ \S+ m \S+ \S+ l S/);
+  });
+});

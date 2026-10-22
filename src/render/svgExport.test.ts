@@ -244,3 +244,19 @@ describe('exporting a nested selection', () => {
     expect(svg).toContain('viewBox="20 10 60 30"');
   });
 });
+
+describe('linked text in an SVG', () => {
+  it('writes the linked word in the link colour with an underline, and leaves the rest of the text plain', () => {
+    const file = emptyFile('Links');
+    const page = file.document.children[0]!;
+    const text = createTextNode(null, 0, 0, 'Read the docs');
+    text.textRanges = [{ start: 9, end: 13, link: 'https://docs.example' }];
+    page.children = [text];
+    const sized = syncTextSizes(file);
+    const svg = renderSvgDocument(sized, sized.document.children[0]!.children as SceneNode[]);
+    expect(svg).toContain('fill="#0070c4"');
+    expect(svg).toContain('text-decoration:underline');
+    expect(svg).toMatch(/fill="#0070c4"[^>]*>docs</);
+    expect(svg).toContain('Read the ');
+  });
+});

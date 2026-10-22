@@ -6,6 +6,7 @@ import { cornerRadii, shapePath } from './SceneRenderer';
 import { pathToPdf } from './pdfPath';
 import { layoutText, measureLine } from './textMetrics';
 import { letterSpacingOf, textLinesOf } from './textMetrics';
+import { lineSegments } from '../model/textRanges';
 import { resolveNodeVariables } from '../model/variables';
 import { rasterGradient } from './paintRender';
 
@@ -270,6 +271,9 @@ function shadingName(
   return name;
 }
 
+/** The link colour as PDF components: the same blue the canvas and SVG use (#0070c4). */
+const LINK_RGB: [number, number, number] = [0, 0x70 / 255, 0xc4 / 255];
+
 function paintText(builder: PdfBuilder, node: Extract<SceneNode, { type: 'TEXT' }>): void {
   const autoResize = node.style.textAutoResize ?? 'WIDTH_AND_HEIGHT';
   // HEIGHT/NONE wrap to the node width, TRUNCATE clips to one line, like the canvas.
@@ -314,6 +318,44 @@ function paintText(builder: PdfBuilder, node: Extract<SceneNode, { type: 'TEXT' 
     // PDF's text matrix origin is the baseline: shift down by the ascent.
     const baseline = offsetY + index * lineHeight + size * 0.8;
     const textY = baseline - node.height;
+    // A line with linked characters is drawn in pieces, each at its own offset, the linked ones in the link colour.
+    const source = autoResize === 'TRUNCATE' ? undefined : layout.sources[index];
+    const segments = lineSegments(line, source, node.textRanges ?? []);
+    if (segments.some((segment) => segment.link !== undefined)) {
+      const width = measureLine(line, style);
+      const lineStart = align === 'CENTER' ? x - width / 2 : align === 'RIGHT' ? x - width : x;
+      let consumed = '';
+      for (const segment of segments) {
+        const segmentX = lineStart + measureLine(consumed, style);
+        consumed += segment.text;
+        const [cr, cg, cb] = segment.link === undefined ? [r, g, b] : LINK_RGB;
+        builder.content.push(`${num(cr)} ${num(cg)} ${num(cb)} rg`);
+        builder.content.push(`${num(spacing)} Tc`);
+        builder.content.push(`1 0 0 1 ${num(segmentX)} ${num(textY)} Tm`);
+        builder.content.push(`(${pdfString(segment.text)}) Tj`);
+        if (segment.link !== undefined) {
+          // A link is underlined, like the canvas draws it.
+          const segmentWidth = measureLine(segment.text, style);
+          const ruleY = textY - size * 0.12;
+          builder.content.push('ET');
+          builder.content.push(`0.5 w ${num(segmentX)} ${num(ruleY)} m ${num(segmentX + segmentWidth)} ${num(ruleY)} l S`);
+          builder.content.push('BT');
+          builder.content.push(`/${font} ${num(size)} Tf`);
+        }
+      }
+      builder.content.push(`${num(r)} ${num(g)} ${num(b)} rg`);
+      if (decoration !== 'NONE') {
+        const ruleY = decoration === 'UNDERLINE' ? textY - size * 0.12 : textY + size * 0.28;
+        const startX = lineStart;
+        builder.content.push('ET');
+        builder.content.push(`0.5 w ${num(startX)} ${num(ruleY)} m ${num(startX + width)} ${num(ruleY)} l S`);
+        if (index < lines.length - 1) {
+          builder.content.push('BT');
+          builder.content.push(`/${font} ${num(size)} Tf`);
+        }
+      }
+      return;
+    }
     builder.content.push(`${num(spacing)} Tc`);
     builder.content.push(`1 0 0 1 ${num(x)} ${num(textY)} Tm`);
     builder.content.push(`(${pdfString(line)}) Tj`);
