@@ -15,7 +15,7 @@ import type {
 import { hasChildren, isComponentNode } from '../model/types';
 import { layersInRect } from '../model/keyboardSelect';
 import { moveGridTrack } from '../model/gridTracks';
-import { addPageGuide, movePageGuide, removePageGuide } from '../model/guides';
+import { activeGuideContainer, addGuide as addGuideTo, moveGuide as moveGuideTo, removeGuide as removeGuideFrom } from '../model/guides';
 import { matchingLayerIds } from '../model/matching';
 import { setTextLink } from '../model/textRanges';
 import { firstVisibleFill, gradientEnds, withGradientEnds, withRadialHandle } from '../model/paint';
@@ -2817,16 +2817,19 @@ export const useEditor = create<EditorState>((set, get) => ({
     return true;
   },
   addGuide: (axis, offset) => {
-    const pageId = get().pageId;
-    get().apply('Add guide', (file) => addPageGuide(file, pageId, { axis, offset }));
+    const state = get();
+    const container = activeGuideContainer(state.file, state.pageId, state.selection);
+    get().apply('Add guide', (file) => addGuideTo(file, container, { axis, offset }));
   },
   moveGuide: (index, offset) => {
-    const pageId = get().pageId;
-    get().apply('Move guide', (file) => movePageGuide(file, pageId, index, offset));
+    const state = get();
+    const container = activeGuideContainer(state.file, state.pageId, state.selection);
+    get().apply('Move guide', (file) => moveGuideTo(file, container, index, offset));
   },
   removeGuide: (index) => {
-    const pageId = get().pageId;
-    get().apply('Remove guide', (file) => removePageGuide(file, pageId, index));
+    const state = get();
+    const container = activeGuideContainer(state.file, state.pageId, state.selection);
+    get().apply('Remove guide', (file) => removeGuideFrom(file, container, index));
     // The guides after this one move down an index, so a selection on one would name the wrong guide.
     set({ selectedGuide: null });
   },

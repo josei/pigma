@@ -15,6 +15,8 @@ interface GuidesProps {
   guides: UserGuide[];
   /** The strips to drag guides out of are only there while the rulers show. */
   rulers: boolean;
+  /** Where the guides' container starts on the page (a frame's top-left, or zero for the page). */
+  frameOrigin: { x: number; y: number };
 }
 
 interface Drag {
@@ -31,7 +33,7 @@ interface Drag {
  * Ruler guides (Figma's guides). Drag from the top ruler for a horizontal guide, or from the left ruler for a
  * vertical one; drag a guide to move it, and drag it back onto a ruler to remove it.
  */
-export function Guides({ viewport, width, height, guides, rulers }: GuidesProps) {
+export function Guides({ viewport, width, height, guides, rulers, frameOrigin }: GuidesProps) {
   const layerRef = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const addGuide = useEditor((state) => state.addGuide);
@@ -42,6 +44,9 @@ export function Guides({ viewport, width, height, guides, rulers }: GuidesProps)
 
   const toScreen = (axis: 'x' | 'y', world: number) => (axis === 'x' ? world * viewport.zoom + viewport.x : world * viewport.zoom + viewport.y);
   const toWorld = (axis: 'x' | 'y', screen: number) => (axis === 'x' ? (screen - viewport.x) / viewport.zoom : (screen - viewport.y) / viewport.zoom);
+  // Guides are stored in their container's coordinates; the canvas shows them in page coordinates.
+  const toPage = (axis: 'x' | 'y', offset: number) => offset + (axis === 'x' ? frameOrigin.x : frameOrigin.y);
+  const toLocal = (axis: 'x' | 'y', screen: number) => toWorld(axis, screen) - (axis === 'x' ? frameOrigin.x : frameOrigin.y);
 
   const begin = (axis: 'x' | 'y', index: number | null, event: React.PointerEvent) => {
     event.preventDefault();
@@ -71,10 +76,10 @@ export function Guides({ viewport, width, height, guides, rulers }: GuidesProps)
       const moved = Math.abs(client - start.startClient) > DRAG_THRESHOLD;
       if (index !== null) {
         if (overStrip) removeGuide(index);
-        else if (moved) moveGuide(index, toWorld(axis, client - origin));
+        else if (moved) moveGuide(index, toLocal(axis, client - origin));
         return;
       }
-      if (!overStrip && moved) addGuide(axis, toWorld(axis, client - origin));
+      if (!overStrip && moved) addGuide(axis, toLocal(axis, client - origin));
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -118,18 +123,18 @@ export function Guides({ viewport, width, height, guides, rulers }: GuidesProps)
       {guides.map((guide, index) => {
         const moving = drag?.index === index;
         const selected = selectedGuide === index;
-        const position = moving && drag.moved ? drag.screen : toScreen(guide.axis, guide.offset);
+        const position = moving && drag.moved ? drag.screen : toScreen(guide.axis, toPage(guide.axis, guide.offset));
         // A guide being dragged is drawn where the pointer is, and the original is hidden until the drop.
         if (moving && drag.moved) return <GuideLine key={index} axis={guide.axis} at={position} width={width} height={height} selected />;
         return (
           <g key={index}>
-            <GuideLine axis={guide.axis} at={toScreen(guide.axis, guide.offset)} width={width} height={height} selected={selected} />
+            <GuideLine axis={guide.axis} at={toScreen(guide.axis, toPage(guide.axis, guide.offset))} width={width} height={height} selected={selected} />
             <line
               data-testid="guide-hit"
-              x1={guide.axis === 'x' ? toScreen('x', guide.offset) : 0}
-              x2={guide.axis === 'x' ? toScreen('x', guide.offset) : width}
-              y1={guide.axis === 'y' ? toScreen('y', guide.offset) : 0}
-              y2={guide.axis === 'y' ? toScreen('y', guide.offset) : height}
+              x1={guide.axis === 'x' ? toScreen('x', toPage('x', guide.offset)) : 0}
+              x2={guide.axis === 'x' ? toScreen('x', toPage('x', guide.offset)) : width}
+              y1={guide.axis === 'y' ? toScreen('y', toPage('y', guide.offset)) : 0}
+              y2={guide.axis === 'y' ? toScreen('y', toPage('y', guide.offset)) : height}
               stroke="transparent"
               strokeWidth={8}
               style={{ pointerEvents: 'stroke', cursor: guide.axis === 'x' ? 'col-resize' : 'row-resize' }}

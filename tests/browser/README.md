@@ -102,6 +102,7 @@ It needs system libraries once: `sudo npx playwright install-deps`.
 | `b119-component-messages.spec.ts` | Create component says why it did nothing: a layer that is already a component is told so, and several layers are told to select one |
 | `b120-text-links.spec.ts` | A link on part of a text layer is drawn in the link colour, underlined, and only on that part; clearing it removes the colour |
 | `b121-text-link-prompt.spec.ts` | Linking selected text: Ctrl/Cmd+Shift+U over a selection in the editor opens the URL prompt; the Text section lists a link and its Remove button clears it |
+| `b122-frame-guides.spec.ts` | Frame guides: with a frame selected, a guide dragged from a ruler belongs to the frame and is drawn in page position; it is hidden once the frame is deselected |
 
 ## Known defects (tracked)
 
@@ -130,9 +131,9 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **433 browser tests passing / 0 failing** on Chromium (Firefox 424
+Current state: **435 browser tests passing / 0 failing** on Chromium (Firefox 424
 passed, 9 skipped; WebKit 423 passed, 10 skipped) with **0 orphan processes**. `npx vitest run` =
-1228 passing across 137 files.
+1230 passing across 137 files.
 
 ### Round 12 - what is and is not covered
 

@@ -16,7 +16,7 @@ import { createsOnDrag, toolDraw } from '../model/toolDraw';
 import { positionNodes, reorderByDrag, resizeFromHandle, scaleSelection, setWorldRotation } from '../model/ops';
 import type { ResizeHandle } from '../model/ops';
 import { computeSnap, type Guide } from '../model/snapping';
-import { guideOffsets } from '../model/guides';
+import { activeGuideContainer, guideOffsets, guideOriginOf, guidesOf } from '../model/guides';
 import { Guides } from './Guides';
 import { commentsForPage } from '../model/comments';
 import { RedlineOverlay } from './RedlineOverlay';
@@ -140,6 +140,14 @@ function rectFromPoints(a: Point, b: Point): Rect {
 }
 
 /** Every mask's absolute box on the page, for the `View > Mask outlines` overlay. */
+/** The active container's guides on one axis, in page coordinates, as snap targets. */
+function snapGuideOffsets(file: PigmaFile, pageId: string, selection: readonly string[], axis: 'x' | 'y'): number[] {
+  const container = activeGuideContainer(file, pageId, selection);
+  const origin = guideOriginOf(file, container);
+  const shift = axis === 'x' ? origin.x : origin.y;
+  return guideOffsets(file, container, axis).map((offset) => offset + shift);
+}
+
 function maskOutlineBoxes(file: PigmaFile, pageId: string): Array<{ x: number; y: number; width: number; height: number }> {
   const page = findNode(file.document, pageId);
   if (!page || page.type !== 'CANVAS') return [];
@@ -691,7 +699,10 @@ export function Canvas() {
               snapToObjects,
               snapToGrid,
               gridSize,
-              guides: { x: guideOffsets(live.base, pageId, 'x'), y: guideOffsets(live.base, pageId, 'y') },
+              guides: {
+                x: snapGuideOffsets(live.base, pageId, useEditor.getState().selection, 'x'),
+                y: snapGuideOffsets(live.base, pageId, useEditor.getState().selection, 'y'),
+              },
             });
         const dx = roundedDx + snap.dx;
         const dy = roundedDy + snap.dy;
@@ -1656,8 +1667,9 @@ export function Canvas() {
         viewport={viewport}
         width={containerRef.current?.clientWidth ?? 1200}
         height={containerRef.current?.clientHeight ?? 800}
-        guides={activePage({ file, pageId }).guides ?? []}
+        guides={guidesOf(file, activeGuideContainer(file, pageId, selection))}
         rulers={showRulers}
+        frameOrigin={guideOriginOf(file, activeGuideContainer(file, pageId, selection))}
       />
 
       {previewVersionId ? (
