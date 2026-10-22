@@ -82,7 +82,52 @@ export interface TextLayout {
  * Lay text out inside `maxWidth`. `wrap` is on for fixed-width text
  * (textAutoResize HEIGHT/NONE/TRUNCATE) and off for auto-width text.
  */
-export function layoutText(characters: string, style: TextStyle, maxWidth?: number, wrap = false): TextLayout {
+/** A part of a line with its own weight, in the text's offsets (for per-range bold). */
+export interface WeightRun {
+  start: number;
+  end: number;
+  fontWeight: number;
+}
+
+/**
+ * The width of text made of parts, each measured at its own weight. A part is plain text with an optional weight; the
+ * parts are measured one by one and added, so a bold part is measured in the bold face.
+ */
+export function measureRuns(parts: Array<{ text: string; fontWeight?: number }>, style: TextStyle): number {
+  return parts.reduce(
+    (width, part) =>
+      width + measureLine(part.text, part.fontWeight === undefined ? style : { ...style, fontWeight: part.fontWeight }),
+    0,
+  );
+}
+
+/**
+ * The width of `text` placed at text offset `from`, with the weight runs that cover it. Characters outside every run are
+ * measured at the layer's own style.
+ */
+function measureAt(text: string, from: number, style: TextStyle, runs: WeightRun[]): number {
+  if (runs.length === 0) return measureLine(text, style);
+  const parts: Array<{ text: string; fontWeight?: number }> = [];
+  let cursor = 0;
+  for (const run of runs) {
+    const start = Math.max(run.start - from, 0);
+    const end = Math.min(run.end - from, text.length);
+    if (end <= start || end <= cursor) continue;
+    if (start > cursor) parts.push({ text: text.slice(cursor, start) });
+    parts.push({ text: text.slice(Math.max(start, cursor), end), fontWeight: run.fontWeight });
+    cursor = end;
+  }
+  if (cursor < text.length) parts.push({ text: text.slice(cursor) });
+  return measureRuns(parts, style);
+}
+
+export function layoutText(
+  characters: string,
+  style: TextStyle,
+  maxWidth?: number,
+  wrap = false,
+  runs: WeightRun[] = [],
+): TextLayout {
   const transformed = textCaseTransform(characters, style);
   const lineHeight = resolveLineHeight(style);
   const lines: string[] = [];
@@ -115,7 +160,13 @@ export function layoutText(characters: string, style: TextStyle, maxWidth?: numb
       cursor += word.length + 1;
       const candidate = current === '' ? word : `${current} ${word}`;
       const prefix = onFirstLine ? marker : indent;
-      if (measureLine(prefix + candidate, style) <= maxWidth || current === '') {
+      // Without weight runs the line is measured whole, as before. With runs, the marker or indent is measured plain
+      // and the candidate at its own offset, so a bold word is measured in the bold face.
+      const candidateWidth =
+        runs.length === 0
+          ? measureLine(prefix + candidate, style)
+          : measureLine(prefix, style) + measureAt(candidate, current === '' ? wordStart : currentStart, style, runs);
+      if (candidateWidth <= maxWidth || current === '') {
         if (current === '') currentStart = wordStart;
         current = candidate;
       } else {
