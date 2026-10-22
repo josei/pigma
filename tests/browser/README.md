@@ -628,10 +628,10 @@ followed by a read of panel content, the reads are of state the same action has 
 render; the one that did race (the plugin spec's Layers read) now waits for the panel header. Re-run with retries off
 after any change to the paint barriers.
 
-## Known WebKit flake: the layer drag specs
+## WebKit layer drag: a product fix, measured
 
-Measured 2026-10-22: `b85-layer-drag` failed in two of about nine WebKit runs (once B85c, once B85b), and passed on rerun
-each time; Chromium and Firefox did not fail. The layers panel drag is a native drag-and-drop, which Playwright's WebKit
-driver reproduces less reliably than the mouse. Not proven as the cause: the next step is to see whether the drop event
-fires in WebKit on the failing runs. Until then, a WebKit run may need one retry on these three tests.
-
+Before 2026-10-22, `b85-layer-drag` failed in about one run in five on WebKit. The cause was in the product: the drop read
+the edge (above, below, inside) from state set by the last drag-over, so a drop that arrived before that state was applied
+landed on the wrong edge. The drop now reads the edge from its own pointer position (LayersPanel.tsx, `edgeAt`). Measured
+after the fix: eight of eight WebKit runs of `b85-layer-drag` passed, and the full WebKit run passed. That is evidence, not
+proof: the race is intermittent, so a rate needs more runs to be sure.

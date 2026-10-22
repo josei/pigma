@@ -55,7 +55,7 @@ other than Chromium. Nothing below should be read as a claim about those.
 ## Resolved
 
 - Create component on a layer that was already a component said "Select a single layer, a frame or a shape", which was wrong for a component. It now says the layer is already a component (B119a); several layers still get the select-one message (B119b).
-- Other engines: Firefox and WebKit were not run after the Pages work. Both are re-run and green: Firefox 426 passed, 9 skipped (clipboard); WebKit 424 passed, 10 skipped (clipboard, and the offline reload) (5 clipboard, and the offline reload that Playwright's WebKit build cannot run). Measured on the Pages-era code, with `PIGMA_FIREFOX=1` and `PIGMA_WEBKIT=1`.
+- Other engines: Firefox and WebKit were not run after the Pages work. Both are re-run and green: Firefox 426 passed, 9 skipped (clipboard); WebKit 425 passed, 10 skipped (clipboard, and the offline reload) (5 clipboard, and the offline reload that Playwright's WebKit build cannot run). Measured on the Pages-era code, with `PIGMA_FIREFOX=1` and `PIGMA_WEBKIT=1`.
 - Alignment had no keyboard shortcuts; Alt+A, Alt+H, Alt+D, Alt+W, Alt+V and Alt+S align the selection (B96a).
 - The pixel grid and snap-to-grid keys were Shift+G and Shift+X; they are Cmd/Ctrl+' and Cmd/Ctrl+Shift+' (B94a, DECISIONS.md).
 - Detach instance had no keyboard shortcut; Ctrl/Cmd+Alt+B now detaches the selected instance (B93a).

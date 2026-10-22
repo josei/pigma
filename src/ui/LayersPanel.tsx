@@ -45,6 +45,15 @@ function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRe
   const [draft, setDraft] = useState(node.name);
   // Which edge of this row a dragged layer would land on, as the panel shows it.
   const [dropEdge, setDropEdge] = useState<'above' | 'below' | 'inside' | null>(null);
+  // Which edge of this row a drag at this pointer position lands on. A frame or section takes the middle of its row as
+  // "inside"; its edges place beside it.
+  const edgeAt = (event: { clientY: number; currentTarget: EventTarget }): 'above' | 'below' | 'inside' => {
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const fraction = (event.clientY - rect.top) / rect.height;
+    const container = node.type === 'FRAME' || node.type === 'SECTION';
+    if (container && fraction > 0.25 && fraction < 0.75) return 'inside';
+    return fraction < 0.5 ? 'above' : 'below';
+  };
   const moveLayer = useEditor((state) => state.moveLayer);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -78,19 +87,17 @@ function LayerRow({ node, depth, expanded, onToggleExpand, renamingId, onStartRe
         onDragOver={(event) => {
           if (!event.dataTransfer.types.includes('text/plain')) return;
           event.preventDefault();
-          const rect = event.currentTarget.getBoundingClientRect();
-          const fraction = (event.clientY - rect.top) / rect.height;
-          // A frame or section takes the middle of its row as "inside"; its edges place beside it.
-          const container = node.type === 'FRAME' || node.type === 'SECTION';
-          if (container && fraction > 0.25 && fraction < 0.75) setDropEdge('inside');
-          else setDropEdge(fraction < 0.5 ? 'above' : 'below');
+          setDropEdge(edgeAt(event));
         }}
         onDragLeave={() => setDropEdge(null)}
         onDrop={(event) => {
           event.preventDefault();
           const from = event.dataTransfer.getData('text/plain');
+          // The edge is read from this drop's own pointer position, not from the last drag-over: a drop that
+          // arrives before that state is applied (WebKit does this) would otherwise land on the wrong edge.
+          const edge = edgeAt(event);
           // The panel lists children reversed: a row above this one is LATER in the data.
-          if (from) moveLayer(from, node.id, dropEdge === 'inside' ? 'inside' : dropEdge === 'above' ? 'after' : 'before');
+          if (from) moveLayer(from, node.id, edge === 'inside' ? 'inside' : edge === 'above' ? 'after' : 'before');
           setDropEdge(null);
         }}
         onClick={(event) => {
