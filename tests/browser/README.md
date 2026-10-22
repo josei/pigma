@@ -633,5 +633,5 @@ after any change to the paint barriers.
 Before 2026-10-22, `b85-layer-drag` failed in about one run in five on WebKit. The cause was in the product: the drop read
 the edge (above, below, inside) from state set by the last drag-over, so a drop that arrived before that state was applied
 landed on the wrong edge. The drop now reads the edge from its own pointer position (LayersPanel.tsx, `edgeAt`). Measured
-after the fix: eight of eight WebKit runs of `b85-layer-drag` passed, and the full WebKit run passed. That is evidence, not
-proof: the race is intermittent, so a rate needs more runs to be sure.
+after the fix: 18 of 18 WebKit runs of `b85-layer-drag` passed (8, then 10 more), and the full WebKit run passed. Before the
+fix there were 2 failures in about 9 runs. Eighteen clean runs is good evidence for the fix; it is not a proof for all timings.
