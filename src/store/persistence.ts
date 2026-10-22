@@ -577,11 +577,15 @@ export function attachPersistence(): () => void {
     if (userEdited() && hasUnsavedEdits() && (pending === null || markerBelongsTo(state.file))) writeSafetyCopy();
     void persistNow();
   };
+  // `pagehide` too: it fires on every navigation, while `beforeunload` is not always delivered on a reload (Firefox).
+  // The flush is idempotent, so both may run.
   window.addEventListener('beforeunload', flush);
+  window.addEventListener('pagehide', flush);
 
   return () => {
     unsubscribe();
     window.removeEventListener('beforeunload', flush);
+    window.removeEventListener('pagehide', flush);
     flush();
   };
 }

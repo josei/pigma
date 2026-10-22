@@ -131,8 +131,8 @@ defect**, and has not reproduced since.
 - `b21` **B21a/B21b** clipboard flakiness is fixed by polling the clipboard until
   the content matches, with the permission granted for the app origin.
 
-Current state: **435 browser tests passing / 0 failing** on Chromium (Firefox 424
-passed, 9 skipped; WebKit 423 passed, 10 skipped) with **0 orphan processes**. `npx vitest run` =
+Current state: **435 browser tests passing / 0 failing** on Chromium (Firefox 426
+passed, 9 skipped; WebKit 424 passed, 10 skipped) with **0 orphan processes**. `npx vitest run` =
 1230 passing across 137 files.
 
 ### Round 12 - what is and is not covered
@@ -627,4 +627,11 @@ Measured on 2026-10-22: three full Chromium runs with retries off, each 433 of 4
 followed by a read of panel content, the reads are of state the same action has just written, so they do not race the
 render; the one that did race (the plugin spec's Layers read) now waits for the panel header. Re-run with retries off
 after any change to the paint barriers.
+
+## Known WebKit flake: the layer drag specs
+
+Measured 2026-10-22: `b85-layer-drag` failed in two of about nine WebKit runs (once B85c, once B85b), and passed on rerun
+each time; Chromium and Firefox did not fail. The layers panel drag is a native drag-and-drop, which Playwright's WebKit
+driver reproduces less reliably than the mouse. Not proven as the cause: the next step is to see whether the drop event
+fires in WebKit on the failing runs. Until then, a WebKit run may need one retry on these three tests.
 
