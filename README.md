@@ -33,6 +33,8 @@ past drawing:
   move/resize/flip, smart snapping, min/max sizing, pages, undo/redo
 - Ruler guides (drag from the rulers, snap to them, Delete to remove), select all
   matching (Cmd/Ctrl+Alt+A), Shift-range selection in the layers panel, corner smoothing
+- Links on part of a text layer (Cmd/Ctrl+Shift+U in the editor), drawn and exported
+  to SVG, PNG and PDF; a `.fig` encoding is not written yet
 - Properties incl. text depth and effects; auto layout with wrap, line gap and
   counter alignment; booleans; styles and variables; components and variants
 - Figma import (`.fig` + REST), JSON/SVG interchange, PNG 1x/2x/3x and PDF
