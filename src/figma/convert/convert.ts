@@ -9,6 +9,7 @@
  *  - anything that cannot be represented is recorded in the import report.
  */
 import { fromMatrix, fromTRS, identity, translate } from '../../model/matrix';
+import { textRangesFromLinkBoxes } from '../../model/textLinkBoxes';
 import type {
   BaseNode,
   CanvasNode,
@@ -178,6 +179,22 @@ function convertScene(node: NormalizedNode, parentAbs: Box | null, state: Conver
       style: node.textStyle ?? defaultTextStyle(),
     };
     if (node.styleRuns) text.style.styleRuns = node.styleRuns;
+    if (node.textLinkBoxes?.length) {
+      const boxes = node.textLinkBoxes.map((box) => ({
+        bounds: { x: box.bounds.x, y: box.bounds.y, width: box.bounds.w, height: box.bounds.h },
+        url: box.url,
+      }));
+      const ranges = textRangesFromLinkBoxes(text, boxes);
+      if (ranges.length > 0) text.textRanges = ranges;
+      if (ranges.length < boxes.length) {
+        state.report.addUnsupported({
+          nodeId: node.id,
+          path,
+          feature: 'text:hyperlinkBox',
+          detail: `${boxes.length - ranges.length} of ${boxes.length} hyperlink box(es) do not match a word range; their links are not kept`,
+        });
+      }
+    }
     return text;
   }
 

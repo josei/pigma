@@ -103,6 +103,8 @@ export interface NormalizedNode {
   pointCount?: number;
   innerRadius?: number;
   characters?: string;
+  /** Hyperlink boxes of a text layer, read from TextData (see textLinkBoxes.ts). */
+  textLinkBoxes?: Array<{ bounds: { x: number; y: number; w: number; h: number }; url: string }>;
   textStyle?: TextStyle;
   styleRuns?: unknown[];
   autoLayout?: AutoLayout;
@@ -807,6 +809,8 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
   const characters = node.textData?.characters;
   if (typeof characters === 'string') normalized.characters = characters;
   if (node.type === 'TEXT') {
+    const boxes = (node.textData as { hyperlinkBoxes?: unknown } | undefined)?.hyperlinkBoxes;
+    if (Array.isArray(boxes)) normalized.textLinkBoxes = readHyperlinkBoxes(boxes);
     normalized.textStyle = mapNativeTextStyle(node, ctx);
     normalized.styleRuns = textRuns({
       characterStyleOverrides: node.characterStyleOverrides,
@@ -1133,3 +1137,16 @@ export function adaptNativeTree(
 }
 
 export type { BaseNode };
+
+/** Hyperlink boxes as the pigma model reads them: a box without a URL or a full rectangle is not a link, and is skipped. */
+function readHyperlinkBoxes(boxes: unknown[]): Array<{ bounds: { x: number; y: number; w: number; h: number }; url: string }> {
+  const out: Array<{ bounds: { x: number; y: number; w: number; h: number }; url: string }> = [];
+  for (const raw of boxes) {
+    const box = raw as { bounds?: Record<string, unknown>; url?: unknown };
+    const bounds = box.bounds;
+    if (typeof box.url !== 'string' || box.url === '' || !bounds) continue;
+    if (typeof bounds.x !== 'number' || typeof bounds.y !== 'number' || typeof bounds.w !== 'number' || typeof bounds.h !== 'number') continue;
+    out.push({ bounds: { x: bounds.x, y: bounds.y, w: bounds.w, h: bounds.h }, url: box.url });
+  }
+  return out;
+}

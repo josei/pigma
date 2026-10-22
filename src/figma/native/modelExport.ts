@@ -10,6 +10,7 @@
  * `warnings` and have their geometry omitted. Figma recomputes `fillGeometry`
  * on import, so a dropped blob does not invalidate the file.
  */
+import { linkBoxesOf } from '../../model/textLinkBoxes';
 import { invert } from '../../model/matrix';
 import type {
   ComponentPropertyDefinition,
@@ -430,9 +431,20 @@ export function wireFontStyle(style: { fontFamily?: string; fontStyle?: string; 
   return raw;
 }
 
-function textFields(node: TextNode): Record<string, unknown> {
+function textFields(node: TextNode, ctx: ExportContext): Record<string, unknown> {
   const style = node.style;
   const out: Record<string, unknown> = { textData: { characters: node.characters } };
+  // Each linked run is a hyperlink box: its rectangle, its URL, and an id (Figma's TextData.hyperlinkBoxes).
+  const boxes = linkBoxesOf(node);
+  if (boxes.length > 0) {
+    (out.textData as Record<string, unknown>).hyperlinkBoxes = boxes.map((box, index) => ({
+      bounds: { x: box.bounds.x, y: box.bounds.y, w: box.bounds.width, h: box.bounds.height },
+      url: box.link,
+      guid: guidFor(`${node.id}:link:${index}`, ctx.sessionID),
+      openInNewTab: false,
+      hyperlinkID: index + 1,
+    }));
+  }
   if (style.fontSize !== undefined) out.fontSize = style.fontSize;
   // FontName is a struct: all three fields are required.
   out.fontName = { family: style.fontFamily ?? '', style: wireFontStyle(style), postscript: '' };
@@ -513,7 +525,7 @@ function nodeChange(
     }
   }
   if (node.type === 'TEXT') {
-    Object.assign(change, textFields(node as TextNode));
+    Object.assign(change, textFields(node as TextNode, ctx));
     // The schema's TextAutoResize enum has no TRUNCATE member, so only a member
     // is written; TRUNCATE stays unwritten and is reported by the field check.
     const autoResize = (node as TextNode).style.textAutoResize;

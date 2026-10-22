@@ -34,7 +34,7 @@ past drawing:
 - Ruler guides (drag from the rulers, snap to them, Delete to remove), select all
   matching (Cmd/Ctrl+Alt+A), Shift-range selection in the layers panel, corner smoothing
 - Links on part of a text layer (Cmd/Ctrl+Shift+U in the editor), drawn and exported
-  to SVG, PNG and PDF; a `.fig` encoding is not written yet
+  to SVG, PNG and PDF, and written to `.fig` as hyperlink boxes (read back to the same words)
 - Properties incl. text depth and effects; auto layout with wrap, line gap and
   counter alignment; booleans; styles and variables; components and variants
 - Figma import (`.fig` + REST), JSON/SVG interchange, PNG 1x/2x/3x and PDF
@@ -44,7 +44,7 @@ past drawing:
 - MCP bridge (connect, resilience, remote edit + undo round trip) and
   collaboration presence (cursors, follow)
 
-Evidence: **1221 unit tests across 135 files**, **433 browser tests passing / 0 failing**
+Evidence: **1228 unit tests across 137 files**, **433 browser tests passing / 0 failing**
 on Chromium (`CI=true npm run test:browser`; Firefox is an opt-in second engine),
 **15 Rust tests passing**, and a parity script that separates its INTERNAL
 contract rows (**11/11** - Pigma's own values, not evidence about Figma) from its
@@ -133,7 +133,7 @@ the selection in the right-hand panel.
 | `npm run mcp` | the MCP server over stdio |
 | `npm run relay` | the collaboration / MCP relay server |
 
-Current evidence: **1221 unit tests across 135 files**, **433 browser tests
+Current evidence: **1228 unit tests across 137 files**, **433 browser tests
 passing** on Chromium, and **15 Rust tests passing** - see [`docs/ROADMAP.md`](docs/ROADMAP.md) for
 what each milestone
 proves and for the known limitations.

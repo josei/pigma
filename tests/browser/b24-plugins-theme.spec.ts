@@ -28,7 +28,8 @@ test('B24a running a built-in plugin edits the document in exactly one history e
    */
   const layerNames = async () => {
     await page.locator('.rail__button[aria-label="Layers"]').click();
-    await nextPaint(page);
+    // Wait for the Layers panel itself, not a frame: the rows render after the tab changes.
+    await expect(page.locator('.app__left .section__header', { hasText: 'Layers' })).toBeVisible();
     return page.locator('.app__left .layer-row__name').allTextContents();
   };
 
