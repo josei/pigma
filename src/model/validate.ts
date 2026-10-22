@@ -1,3 +1,4 @@
+import { normalizeTextRanges } from './textRanges';
 import type {
   AutoLayout,
   LayoutGrid,
@@ -85,6 +86,7 @@ const BASE_KEYS = [
   'innerRadius',
   'characters',
   'style',
+  'textRanges',
   'componentId',
   'libraryId',
   'libraryKey',
@@ -429,6 +431,9 @@ function normalizeNode(value: unknown, warnings: string[], path: string): SceneN
         type: 'TEXT',
         characters: str(value.characters, ''),
         style: normalizeTextStyle(value.style),
+        ...(Array.isArray(value.textRanges)
+          ? { textRanges: normalizeTextRanges(value.textRanges, str(value.characters, '').length) }
+          : {}),
       };
       return text;
     }

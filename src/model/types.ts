@@ -430,10 +430,22 @@ export interface ShapeNode extends BaseNode {
   innerRadius?: number;
 }
 
+/**
+ * A part of a text layer with its own properties: characters `start` (inclusive) to `end` (exclusive). Figma's
+ * text links are ranges like this. Only the link is modelled for now; ranges of other styles are a later step.
+ */
+export interface TextRange {
+  start: number;
+  end: number;
+  link?: string;
+}
+
 export interface TextNode extends BaseNode {
   type: 'TEXT';
   characters: string;
   style: TextStyle;
+  /** Per-range properties, non-overlapping and sorted by start (see textRanges.ts). */
+  textRanges?: TextRange[];
 }
 
 export type LayoutGridPattern = 'COLUMNS' | 'ROWS' | 'GRID';
