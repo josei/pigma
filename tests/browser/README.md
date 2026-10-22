@@ -622,3 +622,8 @@ saved comment, a relay message. Those reads poll (`expect.poll`). Two specs fail
 fixed waits were converted (`b25-round11`, creating the database; `b30-comments-versions`, comments after a reload); both
 poll now. Before converting a fixed wait to `nextPaint`, check what the next line reads.
 
+Measured on 2026-10-22: three full Chromium runs with retries off, each 433 of 433. Of the 56 paint barriers that are
+followed by a read of panel content, the reads are of state the same action has just written, so they do not race the
+render; the one that did race (the plugin spec's Layers read) now waits for the panel header. Re-run with retries off
+after any change to the paint barriers.
+
