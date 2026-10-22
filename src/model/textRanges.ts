@@ -62,3 +62,28 @@ export function textSegments(characters: string, ranges: TextRange[]): Array<{ t
   if (cursor < characters.length) segments.push({ text: characters.slice(cursor) });
   return segments;
 }
+
+/**
+ * One rendered line split into plain and linked parts. `source` is where the line's own characters sit in the text
+ * (from layoutText); the part of the line before them, a list marker or wrap indent, is plain. Without a source the
+ * whole line is plain.
+ */
+export function lineSegments(
+  line: string,
+  source: { start: number; end: number } | undefined,
+  ranges: TextRange[],
+): Array<{ text: string; link?: string }> {
+  if (!source || ranges.length === 0) return [{ text: line }];
+  const bodyLength = source.end - source.start;
+  const prefix = line.slice(0, line.length - bodyLength);
+  const body = line.slice(line.length - bodyLength);
+  // Ranges, cut to this line and moved to the line's own offsets.
+  const local: TextRange[] = [];
+  for (const range of ranges) {
+    const start = Math.max(range.start, source.start) - source.start;
+    const end = Math.min(range.end, source.end) - source.start;
+    if (end > start && range.link !== undefined) local.push({ start, end, link: range.link });
+  }
+  const segments = textSegments(body, local);
+  return prefix === '' ? segments : [{ text: prefix }, ...segments];
+}

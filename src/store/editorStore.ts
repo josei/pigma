@@ -17,6 +17,7 @@ import { layersInRect } from '../model/keyboardSelect';
 import { moveGridTrack } from '../model/gridTracks';
 import { addPageGuide, movePageGuide, removePageGuide } from '../model/guides';
 import { matchingLayerIds } from '../model/matching';
+import { setTextLink } from '../model/textRanges';
 import { firstVisibleFill, gradientEnds, withGradientEnds, withRadialHandle } from '../model/paint';
 import { flattenFrameOp, toVectorOp } from '../model/flatten';
 import type { Paint } from '../model/types';
@@ -391,6 +392,8 @@ export interface EditorState {
   selectAll: () => void;
   /** Select every layer that matches the first selected one (Figma's Select all matching). */
   selectMatching: () => void;
+  /** Link characters `start` to `end` of a text layer (`link` null clears it). One undo step. */
+  setTextLink: (nodeId: string, start: number, end: number, link: string | null) => void;
   clearSelection: () => void;
   setEnteredContainer: (id: string | null) => void;
 
@@ -1065,6 +1068,16 @@ export const useEditor = create<EditorState>((set, get) => ({
   selectAll: () => {
     closeBurst();
     set({ selection: activeContainer(get()).children.map((child) => child.id) });
+  },
+
+  setTextLink: (nodeId, start, end, link) => {
+    get().apply('Set text link', (file) => {
+      const node = findNode(file.document, nodeId);
+      if (!node || node.type !== 'TEXT') return file;
+      return applyNodePatch(file, nodeId, {
+        textRanges: setTextLink(node.textRanges ?? [], start, end, link, node.characters.length),
+      });
+    });
   },
 
   selectMatching: () => {

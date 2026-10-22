@@ -68,6 +68,11 @@ export function firstBaselineOffset(style: TextStyle): number {
 
 export interface TextLayout {
   lines: string[];
+  /**
+   * Where each line's own characters sit in the text: `characters.slice(start, end)` is the line without any list
+   * marker or wrap indent. Empty when the text was changed by case transform, so no offset can be trusted.
+   */
+  sources: Array<{ start: number; end: number }>;
   lineHeight: number;
   width: number;
   height: number;
@@ -81,10 +86,13 @@ export function layoutText(characters: string, style: TextStyle, maxWidth?: numb
   const transformed = textCaseTransform(characters, style);
   const lineHeight = resolveLineHeight(style);
   const lines: string[] = [];
+  const sources: Array<{ start: number; end: number }> = [];
   const listed = style.listType === 'ORDERED' || style.listType === 'UNORDERED';
 
   // A list marks each non-empty paragraph; ordered lists count only those.
   let listIndex = 0;
+  // Offset in `characters` where the current paragraph starts (paragraphs are joined by one '\n').
+  let paragraphStart = 0;
   for (const paragraph of transformed.split('\n')) {
     const marker = !listed || paragraph === '' ? '' : style.listType === 'ORDERED' ? `${++listIndex}. ` : '• ';
     // Wrapped lines of a list item start under its text, not under the marker:
@@ -92,29 +100,44 @@ export function layoutText(characters: string, style: TextStyle, maxWidth?: numb
     const indent = marker === '' ? '' : '\u00a0'.repeat(indentWidthOf(marker, style));
     if (!wrap || maxWidth === undefined || maxWidth <= 0) {
       lines.push(marker + paragraph);
+      sources.push({ start: paragraphStart, end: paragraphStart + paragraph.length });
+      paragraphStart += paragraph.length + 1;
       continue;
     }
     const words = paragraph.split(' ');
     let current = '';
+    let currentStart = paragraphStart;
+    // Offset of the next word: each word is followed by one space (or the paragraph break).
+    let cursor = paragraphStart;
     let onFirstLine = true;
     for (const word of words) {
+      const wordStart = cursor;
+      cursor += word.length + 1;
       const candidate = current === '' ? word : `${current} ${word}`;
       const prefix = onFirstLine ? marker : indent;
       if (measureLine(prefix + candidate, style) <= maxWidth || current === '') {
+        if (current === '') currentStart = wordStart;
         current = candidate;
       } else {
         lines.push(prefix + current);
+        sources.push({ start: currentStart, end: currentStart + current.length });
         current = word;
+        currentStart = wordStart;
         onFirstLine = false;
       }
     }
     lines.push((onFirstLine ? marker : indent) + current);
+    sources.push({ start: currentStart, end: currentStart + current.length });
+    paragraphStart = cursor;
   }
+  // A case transform can change the length, which would move every offset: then no offsets are offered.
+  if (transformed.length !== characters.length) sources.length = 0;
 
   const width = wrap && maxWidth !== undefined ? maxWidth : Math.max(0, ...lines.map((line) => measureLine(line, style)));
   const spacing = style.paragraphSpacing ?? 0;
   return {
     lines,
+    sources,
     lineHeight,
     width,
     height: lines.length * lineHeight + Math.max(0, lines.length - 1) * spacing,

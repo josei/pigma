@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { linkAt, normalizeTextRanges, setTextLink, textSegments } from './textRanges';
+import { lineSegments, linkAt, normalizeTextRanges, setTextLink, textSegments } from './textRanges';
 
 describe('text ranges', () => {
   it('clamps, drops empty and bad ranges, sorts, and keeps an earlier range over an overlap', () => {
@@ -52,5 +52,44 @@ describe('text ranges', () => {
     const segments = textSegments(text, [{ start: 6, end: 11, link: 'https://w.example' }]);
     expect(segments.map((segment) => segment.text).join('')).toBe(text);
     expect(segments).toEqual([{ text: 'Hello ' }, { text: 'world', link: 'https://w.example' }]);
+  });
+});
+
+describe('a line split into plain and linked parts', () => {
+  it('keeps a line with no link, or no source, as one plain part', () => {
+    expect(lineSegments('plain line', undefined, [{ start: 0, end: 5, link: 'https://x.example' }])).toEqual([{ text: 'plain line' }]);
+    expect(lineSegments('plain line', { start: 0, end: 10 }, [])).toEqual([{ text: 'plain line' }]);
+  });
+
+  it('links the part of a line that falls inside a range, using the line\'s own offsets', () => {
+    // The text "one two three", with "two" linked; the second line is "two three" starting at offset 4.
+    const ranges = [{ start: 4, end: 7, link: 'https://two.example' }];
+    expect(lineSegments('two three', { start: 4, end: 13 }, ranges)).toEqual([
+      { text: 'two', link: 'https://two.example' },
+      { text: ' three' },
+    ]);
+  });
+
+  it('keeps a list marker, which is not part of the text, as plain', () => {
+    const ranges = [{ start: 0, end: 4, link: 'https://item.example' }];
+    expect(lineSegments('• item', { start: 0, end: 4 }, ranges)).toEqual([
+      { text: '• ' },
+      { text: 'item', link: 'https://item.example' },
+    ]);
+  });
+});
+
+describe('text links survive a save and a load', () => {
+  it('keeps a link on a text layer through a JSON round trip, and an overlapping link loses to the earlier one', async () => {
+    const { createTextNode } = await import('./factory');
+    const { emptyFile, validatePigmaFile } = await import('./validate');
+    const file = emptyFile('Links');
+    const page = file.document.children[0]!;
+    const text = createTextNode(null, 0, 0, 'Read the docs');
+    text.textRanges = [{ start: 9, end: 13, link: 'https://docs.example' }, { start: 12, end: 99, link: 'https://past.example' }];
+    page.children = [text];
+    const loaded = validatePigmaFile(JSON.parse(JSON.stringify(file)));
+    const node = loaded.file!.document.children[0]!.children[0]! as { textRanges?: unknown[] };
+    expect(node.textRanges).toEqual([{ start: 9, end: 13, link: 'https://docs.example' }]);
   });
 });

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import type {
   BaseNode,
   Effect,
@@ -22,6 +22,7 @@ import {
   resolvePaint,
 } from './paintRender';
 import { resolveNodeVariables } from '../model/variables';
+import { lineSegments } from '../model/textRanges';
 import { resolvedProperties, resolvePropertyReferences } from '../model/variants';
 import { firstBaselineOffset, layoutText, letterSpacingOf, textLinesOf } from './textMetrics';
 
@@ -885,7 +886,8 @@ function TextContent({ node }: { node: TextNode }) {
         : 0;
   const paragraphSpacing = node.style.paragraphSpacing ?? 0;
   const decoration = node.style.textDecoration ?? 'NONE';
-  const lines = textLinesOf(node);
+  // A truncated line is not a slice of the text, so its links cannot be placed: it stays plain.
+  const lines = autoResize === 'TRUNCATE' ? textLinesOf(node) : layout.lines;
 
   return (
     <text
@@ -907,14 +909,33 @@ function TextContent({ node }: { node: TextNode }) {
           decoration === 'UNDERLINE' ? 'underline' : decoration === 'STRIKETHROUGH' ? 'line-through' : undefined,
       }}
     >
-      {lines.map((line, index) => (
-        <tspan key={index} x={x} dy={index === 0 ? 0 : lineHeight + paragraphSpacing}>
-          {line === '' ? ' ' : line}
-        </tspan>
-      ))}
+      {lines.map((line, index) => {
+        const segments = autoResize === 'TRUNCATE' ? [] : lineSegments(line, layout.sources[index], node.textRanges ?? []);
+        const linked = segments.some((segment) => segment.link !== undefined);
+        return (
+          <tspan key={index} x={x} dy={index === 0 ? 0 : lineHeight + paragraphSpacing}>
+            {linked
+              ? segments.map((segment, part) =>
+                  segment.link === undefined ? (
+                    <Fragment key={part}>{segment.text}</Fragment>
+                  ) : (
+                    <tspan key={part} fill={LINK_COLOUR} style={{ textDecoration: 'underline' }}>
+                      {segment.text}
+                    </tspan>
+                  ),
+                )
+              : line === ''
+                ? ' '
+                : line}
+          </tspan>
+        );
+      })}
     </text>
   );
 }
+
+/** Linked text is drawn in this colour and underlined. Links keep the glyph advances, so wrapping is unchanged. */
+const LINK_COLOUR = '#0070c4';
 
 /** Smart-animate context: which nodes animate and where they start. */
 export interface SceneAnimation {
