@@ -47,6 +47,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: '⌘⌥M', label: 'Use as mask' },
       { keys: '⌘⌥G', label: 'Frame selection' },
       { keys: '⌘⌥A', label: 'Select all matching layers' },
+      { keys: '⇧⌘U', label: 'Link the selected text (in the text editor)' },
     ],
   },
   {
