@@ -134,6 +134,11 @@ export function Guides({ viewport, width, height, guides, rulers }: GuidesProps)
               strokeWidth={8}
               style={{ pointerEvents: 'stroke', cursor: guide.axis === 'x' ? 'col-resize' : 'row-resize' }}
               onPointerDown={(event) => begin(guide.axis, index, event)}
+              // Figma's guide menu has one item, Remove guide: a right-click removes the guide directly.
+              onContextMenu={(event) => {
+                event.preventDefault();
+                removeGuide(index);
+              }}
             />
           </g>
         );

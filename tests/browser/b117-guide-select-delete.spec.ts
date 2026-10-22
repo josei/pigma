@@ -44,3 +44,12 @@ test('B117b selecting a layer clears the guide selection, so Delete then removes
   await expect(page.locator('[data-testid="guide-line"]')).toHaveCount(1);
   await expect(page.locator('.layer-row', { hasText: 'Rectangle 1' })).toHaveCount(0);
 });
+
+test('B117c right-clicking a guide removes it, as Figma\'s guide menu does', async ({ page }) => {
+  await horizontalGuide(page);
+  const box = await canvasBox(page);
+  const line = page.locator('[data-testid="guide-line"]').first();
+  const y = Number(await line.getAttribute('y1')) + box.y;
+  await page.mouse.click(box.x + 400, y, { button: 'right' });
+  await expect(page.locator('[data-testid="guide-line"]')).toHaveCount(0);
+});
