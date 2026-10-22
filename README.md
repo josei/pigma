@@ -31,7 +31,7 @@ past drawing:
 
 - Canvas, tools (rect/ellipse/frame/text/line/section/pen), selection,
   move/resize/flip, smart snapping, min/max sizing, pages, undo/redo
-- Ruler guides (drag from the rulers, snap to them, Delete to remove), select all
+- Ruler guides (drag from the rulers, snap to them, Delete or right-click to remove), select all
   matching (Cmd/Ctrl+Alt+A), Shift-range selection in the layers panel, corner smoothing
 - Links on part of a text layer (Cmd/Ctrl+Shift+U in the editor), drawn and exported
   to SVG, PNG and PDF, and written to `.fig` as hyperlink boxes (read back to the same words)
