@@ -971,6 +971,22 @@ function TextSection({ node }: { node: TextNode }) {
           ]}
           onChange={(value) => updateStyle({ textAutoResize: value })}
         />
+        {(node.textRanges ?? []).map((range) => (
+          <div className="prop-row" key={`${range.start}-${range.end}`}>
+            <span className="prop-row__label" title={range.link}>
+              {node.characters.slice(range.start, range.end)}
+            </span>
+            <span className="layer-row__name">{range.link}</span>
+            <button
+              type="button"
+              className="button"
+              aria-label={`Remove link on ${node.characters.slice(range.start, range.end)}`}
+              onClick={() => useEditor.getState().setTextLink(node.id, range.start, range.end, null)}
+            >
+              −
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );

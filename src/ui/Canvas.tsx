@@ -1847,6 +1847,15 @@ function TextEditor() {
         if (event.key === 'Escape') {
           event.stopPropagation();
           setEditingText(null);
+          return;
+        }
+        // Figma's link shortcut: Cmd/Ctrl+Shift+U over selected text opens the URL prompt.
+        if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'u') {
+          const element = event.currentTarget;
+          if (element.selectionStart !== element.selectionEnd) {
+            event.preventDefault();
+            useEditor.getState().openLinkPrompt(node.id, element.selectionStart, element.selectionEnd);
+          }
         }
       }}
       style={{

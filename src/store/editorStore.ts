@@ -392,6 +392,10 @@ export interface EditorState {
   selectAll: () => void;
   /** Select every layer that matches the first selected one (Figma's Select all matching). */
   selectMatching: () => void;
+  /** The link prompt over a text selection being edited (Shift+Cmd+U). */
+  linkPrompt: { nodeId: string; start: number; end: number } | null;
+  openLinkPrompt: (nodeId: string, start: number, end: number) => void;
+  closeLinkPrompt: () => void;
   /** Link characters `start` to `end` of a text layer (`link` null clears it). One undo step. */
   setTextLink: (nodeId: string, start: number, end: number, link: string | null) => void;
   clearSelection: () => void;
@@ -1070,6 +1074,9 @@ export const useEditor = create<EditorState>((set, get) => ({
     set({ selection: activeContainer(get()).children.map((child) => child.id) });
   },
 
+  linkPrompt: null,
+  openLinkPrompt: (nodeId, start, end) => set({ linkPrompt: { nodeId, start, end } }),
+  closeLinkPrompt: () => set({ linkPrompt: null }),
   setTextLink: (nodeId, start, end, link) => {
     get().apply('Set text link', (file) => {
       const node = findNode(file.document, nodeId);

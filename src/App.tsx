@@ -11,6 +11,7 @@ import { ExportDialog } from './ui/ExportDialog';
 import { ShareLinkDialog } from './ui/ShareLinkDialog';
 import { ShortcutsDialog } from './ui/ShortcutsDialog';
 import { QuickActions } from './ui/QuickActions';
+import { LinkPrompt } from './ui/LinkPrompt';
 import { PanelResizer } from './ui/PanelResizer';
 import { useIsMobile } from './ui/useIsMobile';
 import { Presentation } from './ui/Presentation';
@@ -65,6 +66,7 @@ export function App() {
       <ShareLinkDialog />
       <ShortcutsDialog />
       <QuickActions />
+      <LinkPrompt />
       {presentation ? <Presentation /> : null}
     </div>
   );
