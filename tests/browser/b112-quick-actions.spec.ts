@@ -1,7 +1,7 @@
 /**
  * Quick actions (Cmd/Ctrl+/, Figma's Quick actions): a search over the menu's commands. Typing filters them,
  * the arrow keys move the highlight, Enter runs the highlighted command, and Escape closes it. The matcher is
- * unit-tested (quickActions.test.ts); this drives the live dialog.
+ * unit-tested (matchQuickActions.test.ts); this drives the live dialog.
  */
 import { test, expect } from '@playwright/test';
 import { boot } from './helpers';

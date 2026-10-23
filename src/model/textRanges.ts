@@ -5,7 +5,7 @@ import type { TextRange } from './types';
  * the properties panel use these helpers later; they are pure, so the model stays the single source of truth.
  */
 
-/** Clean a range list from a file or an edit: whole numbers clamped to the text, empty ranges and ranges without a link dropped, sorted, and no overlaps (an earlier range wins). */
+/** Clean a range list from a file or an edit: whole numbers clamped to the text, empty ranges and ranges with neither a link nor a weight dropped, sorted, and no overlaps (an earlier range wins). */
 export function normalizeTextRanges(ranges: unknown, length: number): TextRange[] {
   if (!Array.isArray(ranges)) return [];
   const cleaned: TextRange[] = [];
@@ -16,9 +16,10 @@ export function normalizeTextRanges(ranges: unknown, length: number): TextRange[
     const start = Math.max(0, Math.min(length, Math.round(range.start)));
     const end = Math.max(0, Math.min(length, Math.round(range.end)));
     if (!(end > start)) continue;
-    // Only links are modelled, so a range without one carries nothing and is dropped.
-    if (typeof range.link !== 'string' || range.link.trim() === '') continue;
-    cleaned.push({ start, end, link: range.link });
+    const link = typeof range.link === 'string' && range.link.trim() !== '' ? range.link : undefined;
+    const fontWeight = typeof range.fontWeight === 'number' && range.fontWeight >= 1 && range.fontWeight <= 1000 ? Math.round(range.fontWeight) : undefined;
+    if (link === undefined && fontWeight === undefined) continue;
+    cleaned.push({ start, end, ...(link !== undefined ? { link } : {}), ...(fontWeight !== undefined ? { fontWeight } : {}) });
   }
   cleaned.sort((a, b) => a.start - b.start);
   const out: TextRange[] = [];
@@ -28,6 +29,25 @@ export function normalizeTextRanges(ranges: unknown, length: number): TextRange[
     if (range.end > start) out.push({ ...range, start });
   }
   return out;
+}
+
+/**
+ * The span from `start` to `end` cut at the existing ranges, each piece keeping the weight it had. A link set over
+ * bold characters keeps them bold.
+ */
+function spanPieces(ranges: TextRange[], start: number, end: number): TextRange[] {
+  const pieces: TextRange[] = [];
+  let cursor = start;
+  for (const range of ranges) {
+    const from = Math.max(range.start, start);
+    const to = Math.min(range.end, end);
+    if (to <= from) continue;
+    if (from > cursor) pieces.push({ start: cursor, end: from });
+    pieces.push({ start: from, end: to, ...(range.fontWeight !== undefined ? { fontWeight: range.fontWeight } : {}) });
+    cursor = to;
+  }
+  if (cursor < end) pieces.push({ start: cursor, end });
+  return pieces;
 }
 
 /** Set (or, with `link` null, clear) the link on characters `start` to `end`, splitting any range that overlaps. */
@@ -41,7 +61,8 @@ export function setTextLink(ranges: TextRange[], start: number, end: number, lin
     if (range.start < start) kept.push({ ...range, end: start });
     if (range.end > end) kept.push({ ...range, start: end });
   }
-  if (link !== null && link.trim() !== '') kept.push({ start, end, link });
+  const target = link !== null && link.trim() !== '' ? link : null;
+  for (const piece of spanPieces(ranges, start, end)) kept.push(target === null ? piece : { ...piece, link: target });
   return normalizeTextRanges(kept, length);
 }
 

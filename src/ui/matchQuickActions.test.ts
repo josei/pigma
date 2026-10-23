@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchQuickActions } from './quickActions';
+import { matchQuickActions } from './matchQuickActions';
 import type { MenuItem } from './Menu';
 
 const items: MenuItem[] = [

@@ -55,6 +55,49 @@ describe('text ranges', () => {
   });
 });
 
+describe('per-range bold', () => {
+  it('keeps a range that carries only a weight, and rounds it', () => {
+    expect(normalizeTextRanges([{ start: 0, end: 4, fontWeight: 699.6 }], 10)).toEqual([{ start: 0, end: 4, fontWeight: 700 }]);
+  });
+
+  it('drops a weight outside 1 to 1000, and a range with neither a link nor a weight', () => {
+    expect(normalizeTextRanges([{ start: 0, end: 4, fontWeight: 0 }, { start: 5, end: 8, fontWeight: 'bold' }], 10)).toEqual([]);
+  });
+
+  it('keeps a link and a weight together on one range', () => {
+    expect(normalizeTextRanges([{ start: 0, end: 4, link: 'https://b.example', fontWeight: 700 }], 10)).toEqual([
+      { start: 0, end: 4, link: 'https://b.example', fontWeight: 700 },
+    ]);
+  });
+
+  it('keeps the bold of characters a link is set over', () => {
+    const bold = [{ start: 2, end: 5, fontWeight: 700 }];
+    expect(setTextLink(bold, 0, 8, 'https://x.example', 10)).toEqual([
+      { start: 0, end: 2, link: 'https://x.example' },
+      { start: 2, end: 5, link: 'https://x.example', fontWeight: 700 },
+      { start: 5, end: 8, link: 'https://x.example' },
+    ]);
+  });
+
+  it('keeps bold when a link is cleared', () => {
+    const linkedBold = [{ start: 0, end: 6, link: 'https://x.example', fontWeight: 700 }];
+    expect(setTextLink(linkedBold, 0, 6, null, 10)).toEqual([{ start: 0, end: 6, fontWeight: 700 }]);
+  });
+
+  it('keeps a bold range through a JSON round trip', async () => {
+    const { createTextNode } = await import('./factory');
+    const { emptyFile, validatePigmaFile } = await import('./validate');
+    const file = emptyFile('Bold');
+    const page = file.document.children[0]!;
+    const text = createTextNode(null, 0, 0, 'Make one word bold');
+    text.textRanges = [{ start: 5, end: 8, fontWeight: 700 }];
+    page.children = [text];
+    const loaded = validatePigmaFile(JSON.parse(JSON.stringify(file)));
+    const node = loaded.file!.document.children[0]!.children[0]! as { textRanges?: unknown[] };
+    expect(node.textRanges).toEqual([{ start: 5, end: 8, fontWeight: 700 }]);
+  });
+});
+
 describe('a line split into plain and linked parts', () => {
   it('keeps a line with no link, or no source, as one plain part', () => {
     expect(lineSegments('plain line', undefined, [{ start: 0, end: 5, link: 'https://x.example' }])).toEqual([{ text: 'plain line' }]);

@@ -432,12 +432,14 @@ export interface ShapeNode extends BaseNode {
 
 /**
  * A part of a text layer with its own properties: characters `start` (inclusive) to `end` (exclusive). Figma's
- * text links are ranges like this. Only the link is modelled for now; ranges of other styles are a later step.
+ * text links and bold weights are ranges like this.
  */
 export interface TextRange {
   start: number;
   end: number;
   link?: string;
+  /** The weight of these characters, when bold is set on part of the layer (per-range bold). */
+  fontWeight?: number;
 }
 
 export interface TextNode extends BaseNode {

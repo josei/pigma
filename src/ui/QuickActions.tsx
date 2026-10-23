@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useEditor } from '../store/editorStore';
 import { MENU_ITEMS, runMenuItem } from './Menu';
-import { matchQuickActions } from './quickActions';
+import { matchQuickActions } from './matchQuickActions';
 import { useEscapeToClose } from './useEscapeToClose';
 
 /**
