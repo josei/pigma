@@ -23,6 +23,15 @@ test('B112a Ctrl+/ opens quick actions, a typed word lists matching commands, an
   await expect(dialog(page)).toHaveCount(0);
 });
 
+test('B112c Ctrl+K opens the same quick actions dialog as Ctrl+/, and Escape closes it', async ({ page }) => {
+  await boot(page, { blank: true });
+  await page.keyboard.press('Control+K');
+  await expect(dialog(page)).toBeVisible();
+  await expect(dialog(page)).toContainText('Type a word to find a command.');
+  await page.keyboard.press('Escape');
+  await expect(dialog(page)).toHaveCount(0);
+});
+
 test('B112b the arrow keys move the highlight, Escape closes, and a word that matches nothing says so', async ({ page }) => {
   await boot(page, { blank: true });
   await page.keyboard.press('Control+/');

@@ -95,7 +95,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'Help',
     rows: [
-      { keys: '⌘/', label: 'Quick actions: search the menu commands' },
+      { keys: '⌘K / ⌘/', label: 'Quick actions: search the menu commands' },
       { keys: '⇧⌘/', label: 'Keyboard shortcuts' },
     ],
   },

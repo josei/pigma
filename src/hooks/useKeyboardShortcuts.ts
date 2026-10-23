@@ -249,8 +249,8 @@ export function useKeyboardShortcuts(): void {
         else state.groupSelection();
         return;
       }
-      // Quick actions: Cmd/Ctrl+/ searches the menu's commands (Figma's Quick actions).
-      if (meta && !event.shiftKey && !event.altKey && (event.key === '/' || event.code === 'Slash')) {
+      // Quick actions: Cmd/Ctrl+/ (Figma's Quick actions) and Cmd/Ctrl+K (Sketch's Command Bar) search the menu's commands.
+      if (meta && !event.shiftKey && !event.altKey && (event.key === '/' || event.code === 'Slash' || event.key.toLowerCase() === 'k')) {
         event.preventDefault();
         state.setQuickActionsOpen(true);
         return;
