@@ -679,6 +679,29 @@ export function pasteAtTarget(
   return { file: touch({ ...inserted.file, document: document as PigmaFile['document'] }), newIds };
 }
 
+/**
+ * Paste over selection, and Paste to replace, into each target in turn: one copy per target, placed as
+ * `pasteAtTarget` places it. A target that can no longer take the paste is skipped: one removed by an earlier
+ * replace (the same layer listed twice, or a child of a replaced frame), or one that is not a layer. Returns every
+ * copy's top-level id, in target order, and the file unchanged when no target took the paste.
+ */
+export function pasteAtTargets(
+  file: PigmaFile,
+  payload: SceneNode[],
+  targetIds: string[],
+  replace: boolean,
+): { file: PigmaFile; newIds: string[] } {
+  let current = file;
+  const newIds: string[] = [];
+  for (const targetId of targetIds) {
+    const result = pasteAtTarget(current, payload, targetId, replace);
+    if (result.newIds.length === 0) continue;
+    current = result.file;
+    newIds.push(...result.newIds);
+  }
+  return { file: current, newIds };
+}
+
 /** Wrap a node in a frame sized to the node (Figma "frame selection"). */
 export function frameSelection(file: PigmaFile, ids: string[]): { file: PigmaFile; frameId: string | null } {
   const first = ids[0];

@@ -10,6 +10,7 @@ import {
   instantiateClipboard,
   isEffectivelyVisible,
   pasteAtTarget,
+  pasteAtTargets,
   positionNodes,
   reorderNodes,
   resizeFromHandle,
@@ -352,6 +353,45 @@ describe('document operations', () => {
     expect(container(findNode(result.file.document, pageId)).children).toHaveLength(3);
     // The copy takes the replaced layer's place in the stack, between a and c.
     expect(container(findNode(result.file.document, pageId)).children.map((child) => child.id)).toEqual([a, result.newIds[0], c]);
+  });
+
+  it('paste over several targets puts a copy on each, at its own x and y, and keeps every target', () => {
+    const { file, a, b, c, pageId } = setup();
+    const payload = [findNode(file.document, a) as SceneNode];
+    const result = pasteAtTargets(file, payload, [b, c], false);
+    expect(result.newIds).toHaveLength(2);
+    expect(findNode(result.file.document, b)).not.toBeNull();
+    expect(findNode(result.file.document, c)).not.toBeNull();
+    const [onB, onC] = result.newIds.map((id) => findNode(result.file.document, id)!);
+    expect(onB!.transform.tx).toBe(200);
+    expect(onC!.transform.tx).toBe(400);
+    expect(container(findNode(result.file.document, pageId)).children).toHaveLength(5);
+  });
+
+  it('paste to replace on several targets removes each and puts a copy where it was', () => {
+    const { file, a, b, c, pageId } = setup();
+    const payload = [findNode(file.document, a) as SceneNode];
+    const result = pasteAtTargets(file, payload, [b, c], true);
+    expect(result.newIds).toHaveLength(2);
+    expect(findNode(result.file.document, b)).toBeNull();
+    expect(findNode(result.file.document, c)).toBeNull();
+    expect(container(findNode(result.file.document, pageId)).children.map((child) => child.id)).toEqual([a, ...result.newIds]);
+  });
+
+  it('a target listed twice is replaced once: the second pass finds it already removed', () => {
+    const { file, a, b, pageId } = setup();
+    const payload = [findNode(file.document, a) as SceneNode];
+    const result = pasteAtTargets(file, payload, [b, b], true);
+    expect(result.newIds).toHaveLength(1);
+    expect(container(findNode(result.file.document, pageId)).children).toHaveLength(3);
+  });
+
+  it('returns the file unchanged when no target can take the paste', () => {
+    const { file, a } = setup();
+    const payload = [findNode(file.document, a) as SceneNode];
+    const result = pasteAtTargets(file, payload, [file.document.id, 'no-such-layer'], false);
+    expect(result.newIds).toEqual([]);
+    expect(result.file).toBe(file);
   });
 
   it('refuses a target with no parent to paste into', () => {

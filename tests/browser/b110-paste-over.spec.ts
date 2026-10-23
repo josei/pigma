@@ -49,3 +49,34 @@ test('B110c Paste over with nothing selected says what to do and adds nothing', 
   await expect(page.locator('.toast, [role="status"]').filter({ hasText: 'Select a layer to paste over' })).toBeVisible();
   await expect(rectRows(page)).toHaveCount(2);
 });
+
+/** Three rectangles: a 60-wide one copied, and two 80-wide ones selected together from the layers panel. */
+async function threeRectsWithTwoSelected(page: import('@playwright/test').Page) {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 60, 60, -150, 0);
+  await drawShape(page, 'Rectangle', 80, 40, 150, 0);
+  await drawShape(page, 'Rectangle', 80, 40, 150, 120);
+  await page.locator('.layer-row', { hasText: 'Rectangle 1' }).first().click();
+  await page.keyboard.press('Control+c');
+  // The layers panel lists the newest layer first, so Rectangle 3 then Shift-click Rectangle 2 selects both.
+  await page.locator('.layer-row', { hasText: 'Rectangle 3' }).first().click();
+  await page.locator('.layer-row', { hasText: 'Rectangle 2' }).first().click({ modifiers: ['Shift'] });
+  await expect(page.getByText('2 layers selected')).toBeVisible();
+}
+
+test('B110d Paste over with several layers selected puts a copy on each of them', async ({ page }) => {
+  await threeRectsWithTwoSelected(page);
+  await page.keyboard.press('Control+Shift+v');
+  await expect(rectRows(page)).toHaveCount(5);
+  await expect(page.getByText('2 layers selected'), 'the two copies are the new selection').toBeVisible();
+  expect(Number(await field(page, 'W').inputValue()), 'the copy is the 60-wide rectangle that was copied').toBe(60);
+});
+
+test('B110e Paste to replace with several layers selected replaces each of them', async ({ page }) => {
+  await threeRectsWithTwoSelected(page);
+  await page.keyboard.press('Control+Shift+r');
+  await expect(rectRows(page)).toHaveCount(3);
+  await expect(page.getByText('2 layers selected')).toBeVisible();
+  expect(Number(await field(page, 'W').inputValue())).toBe(60);
+});
+
