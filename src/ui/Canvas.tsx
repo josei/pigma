@@ -32,6 +32,7 @@ import {
 } from '../model/vector';
 import { localPoint } from '../model/tree';
 import { layersInRect } from '../model/keyboardSelect';
+import { boldToggleWeight } from '../model/textRanges';
 import { Rulers } from './Rulers';
 import { Icon } from './icons';
 import { decodeImageFile, imageFromDataTransfer } from './imageInput';
@@ -1867,6 +1868,16 @@ function TextEditor() {
           if (element.selectionStart !== element.selectionEnd) {
             event.preventDefault();
             useEditor.getState().openLinkPrompt(node.id, element.selectionStart, element.selectionEnd);
+          }
+        }
+        // Cmd/Ctrl+B over selected text toggles bold on it (one undo step), as Figma does while editing.
+        if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'b') {
+          const element = event.currentTarget;
+          if (element.selectionStart !== element.selectionEnd) {
+            event.preventDefault();
+            const baseWeight = style.fontWeight ?? (style.fontStyle?.includes('Bold') ? 700 : 400);
+            const weight = boldToggleWeight(node.textRanges ?? [], element.selectionStart, element.selectionEnd, baseWeight);
+            useEditor.getState().setTextWeight(node.id, element.selectionStart, element.selectionEnd, weight);
           }
         }
       }}

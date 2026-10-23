@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lineSegments, linkAt, normalizeTextRanges, setTextLink, setTextWeight, textSegments, weightRunsOf } from './textRanges';
+import { lineSegments, linkAt, normalizeTextRanges, setTextLink, setTextWeight, textSegments, weightRunsOf, boldToggleWeight } from './textRanges';
 
 describe('text ranges', () => {
   it('clamps, drops empty and bad ranges, sorts, and keeps an earlier range over an overlap', () => {
@@ -199,5 +199,18 @@ describe('setting and clearing bold on a span', () => {
   it('bolds plain characters, and a span that is not bold stays as it was', () => {
     expect(setTextWeight([], 0, 4, 600, 10)).toEqual([{ start: 0, end: 4, fontWeight: 600 }]);
     expect(setTextWeight([{ start: 0, end: 4, fontWeight: 600 }], 0, 4, null, 10)).toEqual([]);
+  });
+});
+
+describe('the Cmd/Ctrl+B toggle on a selection', () => {
+  it('bolds a selection with any plain character, and clears one that is all bold', () => {
+    expect(boldToggleWeight([], 0, 4, 400)).toBe(700);
+    expect(boldToggleWeight([{ start: 0, end: 2, fontWeight: 700 }], 0, 4, 400)).toBe(700);
+    expect(boldToggleWeight([{ start: 0, end: 4, fontWeight: 700 }], 1, 3, 400)).toBeNull();
+  });
+
+  it('makes a bold layer plain with an explicit weight, since clearing would leave it bold', () => {
+    expect(boldToggleWeight([], 0, 4, 700)).toBe(400);
+    expect(boldToggleWeight([{ start: 0, end: 4, fontWeight: 400 }], 0, 4, 700)).toBe(700);
   });
 });

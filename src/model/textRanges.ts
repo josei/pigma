@@ -143,3 +143,17 @@ export function lineSegments(
   const segments = textSegments(body, local);
   return prefix === '' ? segments : [{ text: prefix }, ...segments];
 }
+
+/**
+ * The weight Cmd/Ctrl+B gives a selection, or null to clear it. A selection that is all bold becomes plain; anything
+ * else becomes bold. A layer that is bold itself is made plain with an explicit weight, since clearing would leave it bold.
+ */
+export function boldToggleWeight(ranges: TextRange[], start: number, end: number, baseWeight: number): number | null {
+  let allBold = true;
+  for (let index = start; index < end; index++) {
+    const range = ranges.find((candidate) => index >= candidate.start && index < candidate.end);
+    if ((range?.fontWeight ?? baseWeight) < 700) allBold = false;
+  }
+  if (!allBold) return 700;
+  return baseWeight >= 700 ? 400 : null;
+}
