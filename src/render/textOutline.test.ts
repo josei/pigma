@@ -150,3 +150,21 @@ describe('outlineRefusal', () => {
     expect(outlineRefusal(textOf('ж'))).toMatch(/no glyph for "ж"/);
   });
 });
+
+describe('a bold run in an outline', () => {
+  it('outlines a run in the bold face: a run that covers the whole layer matches a bold layer', () => {
+    const plain = textOf('docs');
+    const runBold = { ...textOf('docs'), textRanges: [{ start: 0, end: 4, fontWeight: 700 }] };
+    const layerBold = textOf('docs', { fontWeight: 700 });
+    expect(textOutline(runBold)).toBe(textOutline(layerBold));
+    expect(textOutline(runBold)).not.toBe(textOutline(plain));
+  });
+
+  it('draws only the run in the bold face, and the rest in the layer face', () => {
+    const plain = textOutline(textOf('Read the docs'))!;
+    const partial = textOutline({ ...textOf('Read the docs'), textRanges: [{ start: 9, end: 13, fontWeight: 700 }] })!;
+    expect(partial).not.toBe(plain);
+    // The bold word is wider, so the outline reaches further right than the plain one.
+    expect(boundsOf(partial).maxX).toBeGreaterThan(boundsOf(plain).maxX);
+  });
+});

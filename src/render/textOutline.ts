@@ -1,4 +1,4 @@
-import { parse, type Font, type PathCommand } from 'opentype.js';
+import { parse, type Font, type Glyph, type PathCommand } from 'opentype.js';
 import { INTER_BOLD_WOFF_BASE64 } from '../assets/fonts/inter-bold';
 import { INTER_REGULAR_WOFF_BASE64 } from '../assets/fonts/inter-regular';
 import type { TextNode, TextStyle } from '../model/types';
@@ -24,8 +24,25 @@ const faces = new Map<Face, Font>();
 
 /** The face a style is outlined in: bold weights get Inter Bold, the rest Inter Regular. */
 export function faceFor(style: TextStyle): Face {
-  const weight = style.fontWeight ?? (style.fontStyle?.includes('Bold') ? 700 : 400);
+  return faceOfWeight(weightOf(style));
+}
+
+function weightOf(style: TextStyle): number {
+  return style.fontWeight ?? (style.fontStyle?.includes('Bold') ? 700 : 400);
+}
+
+function faceOfWeight(weight: number): Face {
   return weight >= 600 ? 'bold' : 'regular';
+}
+
+/**
+ * The weight at a character of a text layer: its bold run's weight, else the layer's own. A negative index (a list
+ * marker or wrap indent, which is not in the text) takes the layer's weight.
+ */
+function weightsOf(node: TextNode): (index: number) => number {
+  const base = weightOf(node.style);
+  const runs = weightRunsOf(node.textRanges ?? []);
+  return (index) => (index < 0 ? base : (runs.find((run) => index >= run.start && index < run.end)?.fontWeight ?? base));
 }
 
 function interFont(face: Face): Font {
@@ -120,18 +137,23 @@ function bar(x: number, top: number, width: number, thickness: number): PathComm
 
 /**
  * Why a text layer cannot be outlined, or `null` when it can. Outlines are drawn in
- * Inter, so a layer in another family, or with a character Inter lacks, is refused
- * rather than silently drawn in a different face.
+ * Inter, so a layer in another family, or with a character Inter lacks in the face its
+ * run uses, is refused rather than silently drawn in a different face.
  */
 export function outlineRefusal(node: TextNode): string | null {
   const family = node.style.fontFamily.trim().toLowerCase();
   if (family !== 'inter') {
     return `Flatten outlines Inter text only: "${node.style.fontFamily}" is not Inter. Set the font to Inter first.`;
   }
-  const font = interFont(faceFor(node.style));
-  for (const char of new Set(Array.from(node.characters))) {
-    if (char === '\n') continue;
-    if (font.charToGlyph(char).index === 0) {
+  const weightAt = weightsOf(node);
+  const checked = new Set<string>();
+  let index = 0;
+  for (const char of node.characters) {
+    const face = faceOfWeight(weightAt(index));
+    index += char.length;
+    if (char === '\n' || checked.has(`${face}${char}`)) continue;
+    checked.add(`${face}${char}`);
+    if (interFont(face).charToGlyph(char).index === 0) {
       return `Inter has no glyph for "${char}", so this text cannot be outlined.`;
     }
   }
@@ -140,7 +162,9 @@ export function outlineRefusal(node: TextNode): string | null {
 
 /**
  * The outline of a text layer, in its own coordinates, or `null` when it has no
- * glyphs to draw (empty text).
+ * glyphs to draw (empty text). Each character is outlined in the face of its run, so a
+ * bold run is drawn in Inter Bold among regular text; underline and strikethrough follow
+ * the layer's own face.
  */
 export function textOutline(node: TextNode): string | null {
   const style = node.style;
@@ -150,24 +174,40 @@ export function textOutline(node: TextNode): string | null {
   const lineHeight = resolveLineHeight(style);
   const paragraphSpacing = style.paragraphSpacing ?? 0;
   const baseline = firstBaselineOffset(style);
-  const layout = layoutText(node.characters, style, node.width, style.textAutoResize === 'HEIGHT' || style.textAutoResize === 'NONE', weightRunsOf(node.textRanges ?? []));
+  const autoResize = style.textAutoResize ?? 'WIDTH_AND_HEIGHT';
+  const layout = layoutText(node.characters, style, node.width, autoResize === 'HEIGHT' || autoResize === 'NONE', weightRunsOf(node.textRanges ?? []));
   const vertical = style.textAlignVertical ?? 'TOP';
   const offsetY =
     vertical === 'CENTER' ? (node.height - layout.height) / 2 : vertical === 'BOTTOM' ? node.height - layout.height : 0;
   const align = style.textAlignHorizontal ?? 'LEFT';
   const anchorX = align === 'CENTER' ? node.width / 2 : align === 'RIGHT' ? node.width : 0;
+  // A truncated line is not a slice of the text, so it is outlined in the layer's weight, as it is drawn.
+  const sources = autoResize === 'TRUNCATE' ? [] : layout.sources;
+  const weightAt = weightsOf(node);
 
   const decoration = style.textDecoration ?? 'NONE';
   const commands: PathCommand[] = [];
   textLinesOf(node).forEach((line, index) => {
-    const glyphs = Array.from(line).map((char) => font.charToGlyph(char));
-    const width = glyphs.reduce((sum, glyph) => sum + glyph.advanceWidth * scale, 0) + spacing * Math.max(0, glyphs.length - 1);
+    const source = sources[index];
+    const prefixLength = source ? line.length - (source.end - source.start) : line.length;
+    const cells: Array<{ font: Font; glyph: Glyph }> = [];
+    let offset = 0;
+    for (const char of line) {
+      const body = offset - prefixLength;
+      const at = source && body >= 0 ? source.start + body : -1;
+      const cellFont = interFont(faceOfWeight(weightAt(at)));
+      cells.push({ font: cellFont, glyph: cellFont.charToGlyph(char) });
+      offset += char.length;
+    }
+    const width =
+      cells.reduce((sum, cell) => sum + cell.glyph.advanceWidth * (style.fontSize / cell.font.unitsPerEm), 0) +
+      spacing * Math.max(0, cells.length - 1);
     const y = offsetY + baseline + index * (lineHeight + paragraphSpacing);
     let x = align === 'CENTER' ? anchorX - width / 2 : align === 'RIGHT' ? anchorX - width : anchorX;
     const left = x;
-    for (const glyph of glyphs) {
-      commands.push(...glyph.getPath(x, y, style.fontSize).commands);
-      x += glyph.advanceWidth * scale + spacing;
+    for (const cell of cells) {
+      commands.push(...cell.glyph.getPath(x, y, style.fontSize).commands);
+      x += cell.glyph.advanceWidth * (style.fontSize / cell.font.unitsPerEm) + spacing;
     }
     if (width > 0 && decoration === 'UNDERLINE') {
       // The font's underline sits below the baseline, so its top is at -position.
