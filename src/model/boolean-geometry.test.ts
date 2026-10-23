@@ -72,8 +72,8 @@ describe('boolean geometry', () => {
     // Arcs and relative commands are refused rather than tokenised into a wrong polyline — a refusal is visible,
     // a wrong polyline is not.
     expect(anchorsFromPathData('M 0 0 A 50 50 0 0 1 100 0 Z')).toBeNull();
-    expect(anchorsFromPathData('M 0 0 q 50 100 100 0 Z')).toBeNull();
-    expect(anchorsFromPathData('m 0 0 l 10 10 z')).toBeNull();
+    expect(anchorsFromPathData('M 0 0 H 10 Z')).toBeNull();
+    expect(anchorsFromPathData('M 0 0 a 5 5 0 0 1 10 0 Z')).toBeNull();
   });
 
   it('samples an ellipse at 64 points and a cubic at 64', () => {
@@ -207,5 +207,12 @@ describe('a quadratic curve in a boolean', () => {
     const outline = nodePolygons(file.document, vector.id);
     expect(outline).not.toBeNull();
     expect(outline![0]![0]).toHaveLength(2 + CURVE_SAMPLES);
+  });
+});
+
+describe('relative commands in a vector path', () => {
+  it('reads a relative path as the same anchors its absolute form gives', () => {
+    expect(anchorsFromPathData('m 10 10 c 5 0 10 5 10 10 l -20 0 z')).toEqual(anchorsFromPathData('M 10 10 C 15 10 20 15 20 20 L 0 20 Z'));
+    expect(anchorsFromPathData('M 0 0 m 10 10 q 20 0 30 10')).toEqual(anchorsFromPathData('M 0 0 M 10 10 Q 30 10 40 20'));
   });
 });

@@ -68,12 +68,86 @@ export function pathDataFromAnchors(path: VectorPath): string {
 
 const NUMBER = String.raw`-?\d*\.?\d+(?:e[-+]?\d+)?`;
 
-/** Parse absolute M/L/C/Z path data into anchors, or null when unsupported. */
-export function anchorsFromPathData(pathData: string): VectorPath | null {
-  if (!pathData.trim()) return null;
-  // Only absolute M/L/Q/C/Z (plus numbers) are editable; a quadratic is raised to a cubic exactly. Anything else -
-  // arcs, relative commands, unknown letters - must be refused rather than tokenised into a wrong polyline.
-  if (!/^[\s\d.,+\-eEMLQCZ]*$/.test(pathData)) return null;
+/**
+ * The same path with every relative command written absolutely (m, l, q, c, z), so the parser below sees only absolute
+ * commands. Exact: each relative point is offset from the current point. Arcs, horizontal and vertical lines and unknown
+ * letters are refused (`null`), as they always were.
+ */
+function absoluteCommands(pathData: string): string | null {
+  const tokens = pathData.match(new RegExp(`[A-Za-z]|${NUMBER}`, 'g'));
+  if (!tokens) return null;
+  const out: string[] = [];
+  let index = 0;
+  let command = '';
+  let cx = 0;
+  let cy = 0;
+  let sx = 0;
+  let sy = 0;
+  const next = (): number | null => {
+    const token = tokens[index];
+    if (token === undefined || /[A-Za-z]/.test(token)) return null;
+    index += 1;
+    return Number(token);
+  };
+  while (index < tokens.length) {
+    const token = tokens[index] as string;
+    if (/[A-Za-z]/.test(token)) {
+      command = token;
+      index += 1;
+      if (command === 'Z' || command === 'z') {
+        out.push('Z');
+        cx = sx;
+        cy = sy;
+        command = '';
+        continue;
+      }
+    }
+    if (command === '') return null;
+    const relative = command === command.toLowerCase();
+    const ox = relative ? cx : 0;
+    const oy = relative ? cy : 0;
+    const kind = command.toUpperCase();
+    if (kind === 'M' || kind === 'L') {
+      const x = next();
+      const y = next();
+      if (x === null || y === null) return null;
+      cx = ox + x;
+      cy = oy + y;
+      if (kind === 'M') {
+        sx = cx;
+        sy = cy;
+        command = relative ? 'l' : 'L';
+      }
+      out.push(`${kind} ${cx} ${cy}`);
+    } else if (kind === 'Q' || kind === 'C') {
+      const count = kind === 'Q' ? 2 : 3;
+      const points: number[] = [];
+      for (let k = 0; k < count * 2; k += 1) {
+        const value = next();
+        if (value === null) return null;
+        points.push(value);
+      }
+      const absolute: number[] = [];
+      for (let k = 0; k < points.length; k += 2) {
+        absolute.push(ox + (points[k] as number), oy + (points[k + 1] as number));
+      }
+      cx = absolute[absolute.length - 2] as number;
+      cy = absolute[absolute.length - 1] as number;
+      out.push(`${kind} ${absolute.map((value) => String(value)).join(' ')}`);
+    } else {
+      return null;
+    }
+  }
+  return out.join(' ');
+}
+
+/** Parse absolute M/L/Q/C/Z path data into anchors, or null when unsupported. */
+export function anchorsFromPathData(input: string): VectorPath | null {
+  if (!input.trim()) return null;
+  // Only M/L/Q/C/Z (plus numbers) are editable; a quadratic is raised to a cubic exactly. Relative commands are written
+  // absolutely first. Anything else - arcs, unknown letters - must be refused rather than tokenised into a wrong polyline.
+  const pathData = /[mlqcz]/.test(input) ? absoluteCommands(input) : input;
+  if (pathData === null || !/^[\s\d.,+\-eEMLQCZ]*$/.test(pathData)) return null;
   const tokens = pathData.match(new RegExp(`[MLQCZmlqcz]|${NUMBER}`, 'gi'));
   if (!tokens) return null;
 

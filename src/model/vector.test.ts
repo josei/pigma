@@ -54,7 +54,7 @@ describe('vector paths', () => {
 
   it('refuses paths it cannot anchor-edit instead of guessing', () => {
     expect(anchorsFromPathData('')).toBeNull();
-    expect(anchorsFromPathData('M 0 0 q 10 10 20 0')).toBeNull();
+    expect(anchorsFromPathData('M 0 0 h 20')).toBeNull();
     expect(anchorsFromPathData('M 0 0 a 5 5 0 0 1 10 10')).toBeNull();
     expect(anchorsFromPathData('nonsense')).toBeNull();
   });
