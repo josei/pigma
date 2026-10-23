@@ -274,9 +274,10 @@ function shadingName(
 /** The link colour as PDF components: the same blue the canvas and SVG use (#0070c4). */
 const LINK_RGB: [number, number, number] = [0, 0x70 / 255, 0xc4 / 255];
 
-/** The base-14 face for a weight: bold from 700, and the italic face for italic text. */
-function faceFor(weight: number, italic: boolean): 'F1' | 'F2' | 'F3' {
-  return italic ? 'F3' : weight >= 700 ? 'F2' : 'F1';
+/** The base-14 face for a weight and style: bold from 700, italic in its own face, and bold italic in the bold-oblique one. */
+function faceFor(weight: number, italic: boolean): 'F1' | 'F2' | 'F3' | 'F4' {
+  if (italic) return weight >= 700 ? 'F4' : 'F3';
+  return weight >= 700 ? 'F2' : 'F1';
 }
 
 function paintText(builder: PdfBuilder, node: Extract<SceneNode, { type: 'TEXT' }>): void {
@@ -475,11 +476,11 @@ export function renderVectorPdf(file: PigmaFile, nodes: SceneNode[], options: Ve
 function assemblePdf(builder: PdfBuilder, options: VectorPdfOptions): Uint8Array {
   const contentBytes = encoder.encode(builder.content.join('\n'));
   const objects: Array<{ head: string; stream?: Uint8Array }> = [];
-  const shadingIds = builder.shadings.map((_, index) => 8 + index);
+  const shadingIds = builder.shadings.map((_, index) => 9 + index);
 
   const resources = [
-    // Objects 5/6/7 are the three base-14 faces registered below.
-    '/Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R >>',
+    // Objects 5 to 8 are the four base-14 faces registered below.
+    '/Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R /F4 8 0 R >>',
     builder.gstates.size > 0
       ? `/ExtGState << ${[...builder.gstates.entries()].map(([alpha, index]) => `/GS${index} << /ca ${alpha} /CA ${alpha} >>`).join(' ')} >>`
       : '',
@@ -501,6 +502,7 @@ function assemblePdf(builder: PdfBuilder, options: VectorPdfOptions): Uint8Array
     head: `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>`,
   });
   objects.push({ head: '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>' });
+  objects.push({ head: '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-BoldOblique /Encoding /WinAnsiEncoding >>' });
   for (const shading of builder.shadings) objects.push({ head: shading });
   if (options.title) {
     objects.push({ head: `<< /Title (${pdfString(options.title)}) /Producer (Pigma) >>` });

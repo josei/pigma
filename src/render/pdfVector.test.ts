@@ -257,6 +257,13 @@ describe('text depth in the vector PDF', () => {
     expect(body({ fontWeight: 400, fontStyle: 'normal' })).toContain('/F1 ');
   });
 
+  it('draws a bold italic layer in the bold-oblique face, and embeds that face', () => {
+    const text = body({ fontWeight: 700, fontStyle: 'italic' });
+    expect(text).toContain('/F4 ');
+    expect(text).toContain('/BaseFont /Helvetica-BoldOblique');
+    expect(text).toContain('/Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R /F4 8 0 R >>');
+  });
+
   it('wraps HEIGHT text and truncates TRUNCATE text', () => {
     const wrapped = decode(
       renderVectorPdf(...(() => { const r = textNode({ textAutoResize: 'HEIGHT' }, 'one two three four five six seven eight'); return [r.file, r.nodes] as const; })(), { width: 60, height: 200 }).bytes,
@@ -289,5 +296,15 @@ describe('linked text in a PDF', () => {
     const body = decode(renderVectorPdf(file, nodes, { width: 200, height: 60 }).bytes);
     expect(body, 'the bold word is not drawn in F2').toMatch(/\/F2 \S+ Tf\n\S+ Tc\n1 0 0 1 \S+ \S+ Tm\n\(docs\) Tj/);
     expect(body, 'the plain word is not drawn in F1').toMatch(/\/F1 \S+ Tf\n\S+ Tc\n1 0 0 1 \S+ \S+ Tm\n\(Read the \) Tj/);
+  });
+
+  it('draws a bold part of an italic layer in the bold-oblique face, and the rest in the oblique one', () => {
+    const text = createTextNode(null, 0, 0, 'Read the docs');
+    text.style = { ...text.style, fontStyle: 'italic' };
+    text.textRanges = [{ start: 9, end: 13, fontWeight: 700 }];
+    const { file, nodes } = page([text]);
+    const body = decode(renderVectorPdf(file, nodes, { width: 200, height: 60 }).bytes);
+    expect(body, 'the bold word is not drawn in F4').toMatch(/\/F4 \S+ Tf\n\S+ Tc\n1 0 0 1 \S+ \S+ Tm\n\(docs\) Tj/);
+    expect(body, 'the plain word is not drawn in F3').toMatch(/\/F3 \S+ Tf\n\S+ Tc\n1 0 0 1 \S+ \S+ Tm\n\(Read the \) Tj/);
   });
 });
