@@ -281,4 +281,13 @@ describe('linked text in a PDF', () => {
     expect(body, 'the linked word is not drawn on its own').toContain('(docs) Tj');
     expect(body, 'the link is not underlined').toMatch(/0\.5 w \S+ \S+ m \S+ \S+ l S/);
   });
+
+  it('draws a bold part in the bold face, and the rest in the layer face', () => {
+    const text = createTextNode(null, 0, 0, 'Read the docs');
+    text.textRanges = [{ start: 9, end: 13, fontWeight: 700 }];
+    const { file, nodes } = page([text]);
+    const body = decode(renderVectorPdf(file, nodes, { width: 200, height: 60 }).bytes);
+    expect(body, 'the bold word is not drawn in F2').toMatch(/\/F2 \S+ Tf\n\S+ Tc\n1 0 0 1 \S+ \S+ Tm\n\(docs\) Tj/);
+    expect(body, 'the plain word is not drawn in F1').toMatch(/\/F1 \S+ Tf\n\S+ Tc\n1 0 0 1 \S+ \S+ Tm\n\(Read the \) Tj/);
+  });
 });

@@ -274,6 +274,11 @@ function shadingName(
 /** The link colour as PDF components: the same blue the canvas and SVG use (#0070c4). */
 const LINK_RGB: [number, number, number] = [0, 0x70 / 255, 0xc4 / 255];
 
+/** The base-14 face for a weight: bold from 700, and the italic face for italic text. */
+function faceFor(weight: number, italic: boolean): 'F1' | 'F2' | 'F3' {
+  return italic ? 'F3' : weight >= 700 ? 'F2' : 'F1';
+}
+
 function paintText(builder: PdfBuilder, node: Extract<SceneNode, { type: 'TEXT' }>): void {
   const autoResize = node.style.textAutoResize ?? 'WIDTH_AND_HEIGHT';
   // HEIGHT/NONE wrap to the node width, TRUNCATE clips to one line, like the canvas.
@@ -284,7 +289,7 @@ function paintText(builder: PdfBuilder, node: Extract<SceneNode, { type: 'TEXT' 
   const weight = style.fontWeight ?? (style.fontStyle?.includes('Bold') ? 700 : 400);
   const italic = style.fontStyle?.toLowerCase().includes('italic') ?? false;
   // Bold and italic use their own base-14 faces rather than a fake-bold hack.
-  const font = italic ? 'F3' : weight >= 700 ? 'F2' : 'F1';
+  const font = faceFor(weight, italic);
   if (style.fontFamily && !/^(helvetica|arial|sans-serif)$/i.test(style.fontFamily)) {
     warnOnce(builder, 'font', `Text falls back to Helvetica (${style.fontFamily} is not embedded)`);
   }
@@ -327,7 +332,9 @@ function paintText(builder: PdfBuilder, node: Extract<SceneNode, { type: 'TEXT' 
       for (const [part, segment] of segments.entries()) {
         const segmentX = lineStart + measureParts(segments.slice(0, part), style);
         const [cr, cg, cb] = segment.link === undefined ? [r, g, b] : LINK_RGB;
+        const face = segment.fontWeight === undefined ? font : faceFor(segment.fontWeight, italic);
         builder.content.push(`${num(cr)} ${num(cg)} ${num(cb)} rg`);
+        builder.content.push(`/${face} ${num(size)} Tf`);
         builder.content.push(`${num(spacing)} Tc`);
         builder.content.push(`1 0 0 1 ${num(segmentX)} ${num(textY)} Tm`);
         builder.content.push(`(${pdfString(segment.text)}) Tj`);
@@ -338,9 +345,10 @@ function paintText(builder: PdfBuilder, node: Extract<SceneNode, { type: 'TEXT' 
           builder.content.push('ET');
           builder.content.push(`0.5 w ${num(segmentX)} ${num(ruleY)} m ${num(segmentX + segmentWidth)} ${num(ruleY)} l S`);
           builder.content.push('BT');
-          builder.content.push(`/${font} ${num(size)} Tf`);
+          builder.content.push(`/${face} ${num(size)} Tf`);
         }
       }
+      builder.content.push(`/${font} ${num(size)} Tf`);
       builder.content.push(`${num(r)} ${num(g)} ${num(b)} rg`);
       if (decoration !== 'NONE') {
         const ruleY = decoration === 'UNDERLINE' ? textY - size * 0.12 : textY + size * 0.28;
