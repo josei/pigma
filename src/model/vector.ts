@@ -85,13 +85,13 @@ function absoluteCommands(pathData: string): string | null {
   let sy = 0;
   const next = (): number | null => {
     const token = tokens[index];
-    if (token === undefined || /[A-Za-z]/.test(token)) return null;
+    if (token === undefined || /^[A-Za-z]$/.test(token)) return null;
     index += 1;
     return Number(token);
   };
   while (index < tokens.length) {
     const token = tokens[index] as string;
-    if (/[A-Za-z]/.test(token)) {
+    if (/^[A-Za-z]$/.test(token)) {
       command = token;
       index += 1;
       if (command === 'Z' || command === 'z') {

@@ -215,4 +215,9 @@ describe('relative commands in a vector path', () => {
     expect(anchorsFromPathData('m 10 10 c 5 0 10 5 10 10 l -20 0 z')).toEqual(anchorsFromPathData('M 10 10 C 15 10 20 15 20 20 L 0 20 Z'));
     expect(anchorsFromPathData('M 0 0 m 10 10 q 20 0 30 10')).toEqual(anchorsFromPathData('M 0 0 M 10 10 Q 30 10 40 20'));
   });
+
+  it('reads exponent numbers in a relative path, as exporters write tiny offsets', () => {
+    expect(anchorsFromPathData('M 0 0 l 1e3 0')).toEqual(anchorsFromPathData('M 0 0 L 1000 0'));
+    expect(anchorsFromPathData('M 0 0 l 1e-7 0')).toEqual(anchorsFromPathData('M 0 0 L 1e-7 0'));
+  });
 });
