@@ -34,6 +34,9 @@ mkdir -p "$STATE"
 RESTART=0
 [ "${1:-}" = "--restart" ] && RESTART=1
 
+# macOS has no setsid; nohup gives the same detachment there.
+detach() { if command -v setsid >/dev/null 2>&1; then setsid "$@"; else nohup "$@"; fi; }
+
 log() { printf '%s %s\n' "$(date +%H:%M:%S)" "$*" >>"$STATE/preview.log"; }
 
 # The current URL, if the tunnel that produced it is still alive.
@@ -53,7 +56,7 @@ start_tunnel() {
   # setsid + all three fds redirected: a child that inherits the caller's
   # stdout keeps the caller's pipe open, so a script that "returns a URL" would
   # hang instead of returning.
-  setsid cloudflared tunnel --url "http://127.0.0.1:$PORT" --no-autoupdate \
+  detach cloudflared tunnel --url "http://127.0.0.1:$PORT" --no-autoupdate \
     </dev/null >>"$TUNNEL_LOG" 2>&1 &
   echo $! >"$PID_FILE"
   # The hostname appears in the banner; poll rather than sleep a fixed time.
@@ -81,7 +84,7 @@ ensure_deployment() {
   log "re-pointing the deployment at $origin (it advertised '${advertised:-nothing}')"
   pkill -f "server/index.ts --port $PORT" 2>/dev/null || true
   sleep 1
-  ( cd "$ROOT" && setsid node_modules/.bin/vite-node server/index.ts \
+  ( cd "$ROOT" && detach node_modules/.bin/vite-node server/index.ts \
       --port "$PORT" --host 127.0.0.1 --hosted --no-data \
       --public-url "$origin" </dev/null >>"$DEPLOY_LOG" 2>&1 & )
   for _ in $(seq 1 40); do
