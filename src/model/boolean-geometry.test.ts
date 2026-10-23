@@ -22,7 +22,7 @@ import { describe, expect, it } from 'vitest';
 import { emptyFile } from './validate';
 import { createEllipseNode, createRectNode } from './factory';
 import { booleanGeometry, nodePolygons } from './boolean';
-import { anchorsFromPathData } from './vector';
+import { anchorsFromPathData, type VectorAnchor } from './vector';
 import { findNode } from './tree';
 import { renderSvgDocument } from '../render/svgExport';
 import type { PigmaFile } from './types';
@@ -53,11 +53,26 @@ describe('boolean geometry', () => {
     expect(path!.closed).toBe(true);
   });
 
+  it('raises a quadratic to the same cubic, so its midpoint is unchanged', () => {
+    const path = anchorsFromPathData('M 0 0 Q 50 100 100 0 Z');
+    expect(path).not.toBeNull();
+    const [start, end] = path!.anchors as [VectorAnchor, VectorAnchor];
+    expect(start.out!.x).toBeCloseTo(100 / 3, 6);
+    expect(start.out!.y).toBeCloseTo(200 / 3, 6);
+    expect(end.in!.x).toBeCloseTo(-100 / 3, 6);
+    expect(end.in!.y).toBeCloseTo(200 / 3, 6);
+    // Cubic at t = 1/2: (P0 + 3 C1 + 3 C2 + P3) / 8, which is the quadratic's midpoint (50, 50).
+    const c1 = { x: start.x + start.out!.x, y: start.y + start.out!.y };
+    const c2 = { x: end.x + end.in!.x, y: end.y + end.in!.y };
+    expect((start.x + 3 * c1.x + 3 * c2.x + end.x) / 8).toBeCloseTo(50, 6);
+    expect((start.y + 3 * c1.y + 3 * c2.y + end.y) / 8).toBeCloseTo(50, 6);
+  });
+
   it('refuses geometry it cannot represent exactly', () => {
-    // Quadratics, arcs and relative commands are refused rather than tokenised
-    // into a wrong polyline — a refusal is visible, a wrong polyline is not.
-    expect(anchorsFromPathData('M 0 0 Q 50 100 100 0 Z')).toBeNull();
+    // Arcs and relative commands are refused rather than tokenised into a wrong polyline — a refusal is visible,
+    // a wrong polyline is not.
     expect(anchorsFromPathData('M 0 0 A 50 50 0 0 1 100 0 Z')).toBeNull();
+    expect(anchorsFromPathData('M 0 0 q 50 100 100 0 Z')).toBeNull();
     expect(anchorsFromPathData('m 0 0 l 10 10 z')).toBeNull();
   });
 
@@ -180,5 +195,17 @@ describe('a vector with several contours', () => {
     const { file, id } = vectorWith('M0 0 L10 0 L10 10 L0 10 Z M20 0 L30 0 L30 10 L20 10 Z');
     const polygons = nodePolygons(file.document, id)!;
     expect(polygons).toHaveLength(2);
+  });
+});
+
+describe('a quadratic curve in a boolean', () => {
+  it('is sampled as its cubic, so a vector with a quadratic outline is no longer refused', () => {
+    const file = emptyFile('Quadratic');
+    const vector = { ...createRectNode(file.document, 0, 0, 100, 100), type: 'VECTOR' as const, fills: [], pathData: 'M 0 0 Q 50 100 100 0 Z' };
+    const page = file.document.children[0]!;
+    page.children = [...page.children, vector];
+    const outline = nodePolygons(file.document, vector.id);
+    expect(outline).not.toBeNull();
+    expect(outline![0]![0]).toHaveLength(2 + CURVE_SAMPLES);
   });
 });

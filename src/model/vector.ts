@@ -71,11 +71,10 @@ const NUMBER = String.raw`-?\d*\.?\d+(?:e[-+]?\d+)?`;
 /** Parse absolute M/L/C/Z path data into anchors, or null when unsupported. */
 export function anchorsFromPathData(pathData: string): VectorPath | null {
   if (!pathData.trim()) return null;
-  // Only absolute M/L/C/Z (plus numbers) are editable. Anything else - arcs,
-  // quadratics, relative commands, unknown letters - must be refused rather than
-  // tokenised into a wrong polyline.
-  if (!/^[\s\d.,+\-eEMLCZ]*$/.test(pathData)) return null;
-  const tokens = pathData.match(new RegExp(`[MLCZmlcz]|${NUMBER}`, 'gi'));
+  // Only absolute M/L/Q/C/Z (plus numbers) are editable; a quadratic is raised to a cubic exactly. Anything else -
+  // arcs, relative commands, unknown letters - must be refused rather than tokenised into a wrong polyline.
+  if (!/^[\s\d.,+\-eEMLQCZ]*$/.test(pathData)) return null;
+  const tokens = pathData.match(new RegExp(`[MLQCZmlqcz]|${NUMBER}`, 'gi'));
   if (!tokens) return null;
 
   const anchors: VectorAnchor[] = [];
@@ -83,7 +82,7 @@ export function anchorsFromPathData(pathData: string): VectorPath | null {
   let index = 0;
   const next = (): number | null => {
     const token = tokens[index];
-    if (token === undefined || /[MLCZmlcz]/.test(token)) return null;
+    if (token === undefined || /[MLQCZmlqcz]/.test(token)) return null;
     index += 1;
     return Number(token);
   };
@@ -96,7 +95,7 @@ export function anchorsFromPathData(pathData: string): VectorPath | null {
   let command = '';
   while (index < tokens.length) {
     const token = tokens[index] as string;
-    if (/[MLCZmlcz]/.test(token)) {
+    if (/[MLQCZmlqcz]/.test(token)) {
       command = token;
       index += 1;
     }
@@ -116,6 +115,19 @@ export function anchorsFromPathData(pathData: string): VectorPath | null {
       const p = point();
       if (!p) return null;
       anchors.push({ x: p.x, y: p.y });
+      continue;
+    }
+    if (command === 'Q') {
+      const control = point();
+      const p = point();
+      if (!control || !p) return null;
+      const previous = anchors[anchors.length - 1];
+      if (!previous) return null;
+      // The same curve as a cubic: each handle is two thirds of the way from its end point to the control point.
+      const c1 = { x: previous.x + (2 / 3) * (control.x - previous.x), y: previous.y + (2 / 3) * (control.y - previous.y) };
+      const c2 = { x: p.x + (2 / 3) * (control.x - p.x), y: p.y + (2 / 3) * (control.y - p.y) };
+      previous.out = { x: c1.x - previous.x, y: c1.y - previous.y };
+      anchors.push({ x: p.x, y: p.y, in: { x: c2.x - p.x, y: c2.y - p.y } });
       continue;
     }
     if (command === 'C' || command === 'c') {
