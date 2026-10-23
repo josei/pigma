@@ -1,4 +1,5 @@
 import type { TextNode, TextStyle } from '../model/types';
+import { weightRunsOf } from '../model/textRanges';
 
 /**
  * Text measurement used by both the on-canvas renderer and the JSON/SVG
@@ -102,6 +103,15 @@ export function measureRuns(parts: Array<{ text: string; fontWeight?: number }>,
 }
 
 /**
+ * The width of parts of one line. Without a bold part the line is measured whole, as it always was; with one, each part
+ * is measured at its own weight.
+ */
+export function measureParts(parts: Array<{ text: string; fontWeight?: number }>, style: TextStyle): number {
+  if (parts.every((part) => part.fontWeight === undefined)) return measureLine(parts.map((part) => part.text).join(''), style);
+  return measureRuns(parts, style);
+}
+
+/**
  * The width of `text` placed at text offset `from`, with the weight runs that cover it. Characters outside every run are
  * measured at the layer's own style.
  */
@@ -119,6 +129,16 @@ function measureAt(text: string, from: number, style: TextStyle, runs: WeightRun
   }
   if (cursor < text.length) parts.push({ text: text.slice(cursor) });
   return measureRuns(parts, style);
+}
+
+/**
+ * The width of a laid-out line. Its characters are measured by the weight runs that cover them, from the offset the
+ * line's source gives; a list marker or wrap indent before them is plain. Without runs it is the whole line, as before.
+ */
+function lineWidthOf(line: string, source: { start: number; end: number } | undefined, style: TextStyle, runs: WeightRun[]): number {
+  if (runs.length === 0 || !source) return measureLine(line, style);
+  const prefixLength = line.length - (source.end - source.start);
+  return measureLine(line.slice(0, prefixLength), style) + measureAt(line.slice(prefixLength), source.start, style, runs);
 }
 
 export function layoutText(
@@ -184,7 +204,7 @@ export function layoutText(
   // A case transform can change the length, which would move every offset: then no offsets are offered.
   if (transformed.length !== characters.length) sources.length = 0;
 
-  const width = wrap && maxWidth !== undefined ? maxWidth : Math.max(0, ...lines.map((line) => measureLine(line, style)));
+  const width = wrap && maxWidth !== undefined ? maxWidth : Math.max(0, ...lines.map((line, index) => lineWidthOf(line, sources[index], style, runs)));
   const spacing = style.paragraphSpacing ?? 0;
   return {
     lines,
@@ -213,7 +233,7 @@ export function textLinesOf(node: TextNode): string[] {
   const autoResize = node.style.textAutoResize ?? 'WIDTH_AND_HEIGHT';
   if (autoResize === 'TRUNCATE') return [truncate(node.characters, node.style, node.width)];
   const wrap = autoResize === 'HEIGHT' || autoResize === 'NONE';
-  return layoutText(node.characters, node.style, node.width, wrap).lines;
+  return layoutText(node.characters, node.style, node.width, wrap, weightRunsOf(node.textRanges ?? [])).lines;
 }
 
 function truncate(characters: string, style: TextNode['style'], maxWidth: number): string {

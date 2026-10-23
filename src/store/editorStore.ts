@@ -17,7 +17,7 @@ import { layersInRect } from '../model/keyboardSelect';
 import { moveGridTrack } from '../model/gridTracks';
 import { activeGuideContainer, addGuide as addGuideTo, moveGuide as moveGuideTo, removeGuide as removeGuideFrom } from '../model/guides';
 import { matchingLayerIds } from '../model/matching';
-import { setTextLink } from '../model/textRanges';
+import { setTextLink, setTextWeight } from '../model/textRanges';
 import { firstVisibleFill, gradientEnds, withGradientEnds, withRadialHandle } from '../model/paint';
 import { flattenFrameOp, toVectorOp } from '../model/flatten';
 import type { Paint } from '../model/types';
@@ -398,6 +398,8 @@ export interface EditorState {
   closeLinkPrompt: () => void;
   /** Link characters `start` to `end` of a text layer (`link` null clears it). One undo step. */
   setTextLink: (nodeId: string, start: number, end: number, link: string | null) => void;
+  /** Make characters `start` to `end` of a text layer bold at `fontWeight` (null clears it). One undo step. */
+  setTextWeight: (nodeId: string, start: number, end: number, fontWeight: number | null) => void;
   clearSelection: () => void;
   setEnteredContainer: (id: string | null) => void;
 
@@ -1083,6 +1085,15 @@ export const useEditor = create<EditorState>((set, get) => ({
       if (!node || node.type !== 'TEXT') return file;
       return applyNodePatch(file, nodeId, {
         textRanges: setTextLink(node.textRanges ?? [], start, end, link, node.characters.length),
+      });
+    });
+  },
+  setTextWeight: (nodeId, start, end, fontWeight) => {
+    get().apply('Set text weight', (file) => {
+      const node = findNode(file.document, nodeId);
+      if (!node || node.type !== 'TEXT') return file;
+      return applyNodePatch(file, nodeId, {
+        textRanges: setTextWeight(node.textRanges ?? [], start, end, fontWeight, node.characters.length),
       });
     });
   },

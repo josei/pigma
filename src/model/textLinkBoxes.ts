@@ -1,6 +1,6 @@
 import type { TextNode, TextRange } from './types';
-import { layoutText, measureLine } from '../render/textMetrics';
-import { lineSegments, normalizeTextRanges } from './textRanges';
+import { layoutText, measureParts } from '../render/textMetrics';
+import { lineSegments, normalizeTextRanges, weightRunsOf } from './textRanges';
 
 /**
  * Figma stores a text link as a hyperlink box: a rectangle, a URL and no character range (TextData.hyperlinkBoxes in
@@ -20,7 +20,7 @@ export function linkBoxesOf(node: TextNode, ranges: TextRange[] = node.textRange
   const autoResize = node.style.textAutoResize ?? 'WIDTH_AND_HEIGHT';
   if (autoResize === 'TRUNCATE') return [];
   const wrap = autoResize === 'HEIGHT' || autoResize === 'NONE';
-  const layout = layoutText(node.characters, node.style, node.width, wrap);
+  const layout = layoutText(node.characters, node.style, node.width, wrap, weightRunsOf(ranges));
   if (layout.sources.length !== layout.lines.length) return [];
   const align = node.style.textAlignHorizontal ?? 'LEFT';
   const x = align === 'CENTER' ? node.width / 2 : align === 'RIGHT' ? node.width : 0;
@@ -33,22 +33,22 @@ export function linkBoxesOf(node: TextNode, ranges: TextRange[] = node.textRange
     if (line === '') return;
     const source = layout.sources[index]!;
     const segments = lineSegments(line, source, ranges);
-    const lineWidth = measureLine(line, node.style);
+    const lineWidth = measureParts(segments, node.style);
     const lineStart = align === 'CENTER' ? x - lineWidth / 2 : align === 'RIGHT' ? x - lineWidth : x;
     // The part of the line before its own characters (a list marker or wrap indent) is not text in the layer.
     const prefixLength = line.length - (source.end - source.start);
     const top = offsetY + index * (layout.lineHeight + spacing);
     let consumed = '';
-    for (const segment of segments) {
+    for (const [part, segment] of segments.entries()) {
       const start = source.start + Math.max(0, consumed.length - prefixLength);
-      const segmentX = lineStart + measureLine(consumed, node.style);
+      const segmentX = lineStart + measureParts(segments.slice(0, part), node.style);
       consumed += segment.text;
       if (segment.link === undefined) continue;
       boxes.push({
         start,
         end: start + segment.text.length,
         link: segment.link,
-        bounds: { x: segmentX, y: top, width: measureLine(segment.text, node.style), height: layout.lineHeight },
+        bounds: { x: segmentX, y: top, width: measureParts([segment], node.style), height: layout.lineHeight },
       });
     }
   });

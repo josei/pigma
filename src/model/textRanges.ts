@@ -32,8 +32,7 @@ export function normalizeTextRanges(ranges: unknown, length: number): TextRange[
 }
 
 /**
- * The span from `start` to `end` cut at the existing ranges, each piece keeping the weight it had. A link set over
- * bold characters keeps them bold.
+ * The span from `start` to `end` cut at the existing ranges, each piece keeping the link and weight it had.
  */
 function spanPieces(ranges: TextRange[], start: number, end: number): TextRange[] {
   const pieces: TextRange[] = [];
@@ -43,15 +42,15 @@ function spanPieces(ranges: TextRange[], start: number, end: number): TextRange[
     const to = Math.min(range.end, end);
     if (to <= from) continue;
     if (from > cursor) pieces.push({ start: cursor, end: from });
-    pieces.push({ start: from, end: to, ...(range.fontWeight !== undefined ? { fontWeight: range.fontWeight } : {}) });
+    pieces.push({ ...range, start: from, end: to });
     cursor = to;
   }
   if (cursor < end) pieces.push({ start: cursor, end });
   return pieces;
 }
 
-/** Set (or, with `link` null, clear) the link on characters `start` to `end`, splitting any range that overlaps. */
-export function setTextLink(ranges: TextRange[], start: number, end: number, link: string | null, length: number): TextRange[] {
+/** The ranges with the span from `start` to `end` cut out of them. */
+function outside(ranges: TextRange[], start: number, end: number): TextRange[] {
   const kept: TextRange[] = [];
   for (const range of ranges) {
     if (range.end <= start || range.start >= end) {
@@ -61,8 +60,22 @@ export function setTextLink(ranges: TextRange[], start: number, end: number, lin
     if (range.start < start) kept.push({ ...range, end: start });
     if (range.end > end) kept.push({ ...range, start: end });
   }
+  return kept;
+}
+
+/** Set (or, with `link` null, clear) the link on characters `start` to `end`, splitting any range that overlaps. */
+export function setTextLink(ranges: TextRange[], start: number, end: number, link: string | null, length: number): TextRange[] {
+  const kept = outside(ranges, start, end);
   const target = link !== null && link.trim() !== '' ? link : null;
-  for (const piece of spanPieces(ranges, start, end)) kept.push(target === null ? piece : { ...piece, link: target });
+  // A link set over bold characters keeps them bold; clearing the link keeps the weight too.
+  for (const piece of spanPieces(ranges, start, end)) kept.push({ ...piece, link: target ?? undefined });
+  return normalizeTextRanges(kept, length);
+}
+
+/** Set (or, with `fontWeight` null, clear) the weight of characters `start` to `end`. A link on them is kept. */
+export function setTextWeight(ranges: TextRange[], start: number, end: number, fontWeight: number | null, length: number): TextRange[] {
+  const kept = outside(ranges, start, end);
+  for (const piece of spanPieces(ranges, start, end)) kept.push({ ...piece, fontWeight: fontWeight ?? undefined });
   return normalizeTextRanges(kept, length);
 }
 
@@ -71,13 +84,35 @@ export function linkAt(ranges: TextRange[], index: number): string | undefined {
   return ranges.find((range) => index >= range.start && index < range.end)?.link;
 }
 
-/** The whole text as segments, each linked or plain, in order. Their texts join back to `characters`. */
-export function textSegments(characters: string, ranges: TextRange[]): Array<{ text: string; link?: string }> {
-  const segments: Array<{ text: string; link?: string }> = [];
+/** The weights the ranges set, as the runs layout measures (a range with no weight is left out). */
+export function weightRunsOf(ranges: TextRange[]): Array<{ start: number; end: number; fontWeight: number }> {
+  return ranges.flatMap((range) =>
+    range.fontWeight === undefined ? [] : [{ start: range.start, end: range.end, fontWeight: range.fontWeight }],
+  );
+}
+
+/** A piece of text with the link and weight of the range it came from, if any. */
+export interface TextSegment {
+  text: string;
+  link?: string;
+  fontWeight?: number;
+}
+
+function segmentOf(text: string, range: TextRange): TextSegment {
+  return {
+    text,
+    ...(range.link !== undefined ? { link: range.link } : {}),
+    ...(range.fontWeight !== undefined ? { fontWeight: range.fontWeight } : {}),
+  };
+}
+
+/** The whole text as segments, each with its link or weight or plain, in order. Their texts join back to `characters`. */
+export function textSegments(characters: string, ranges: TextRange[]): TextSegment[] {
+  const segments: TextSegment[] = [];
   let cursor = 0;
   for (const range of ranges) {
     if (range.start > cursor) segments.push({ text: characters.slice(cursor, range.start) });
-    segments.push(range.link === undefined ? { text: characters.slice(range.start, range.end) } : { text: characters.slice(range.start, range.end), link: range.link });
+    segments.push(segmentOf(characters.slice(range.start, range.end), range));
     cursor = range.end;
   }
   if (cursor < characters.length) segments.push({ text: characters.slice(cursor) });
@@ -93,7 +128,7 @@ export function lineSegments(
   line: string,
   source: { start: number; end: number } | undefined,
   ranges: TextRange[],
-): Array<{ text: string; link?: string }> {
+): TextSegment[] {
   if (!source || ranges.length === 0) return [{ text: line }];
   const bodyLength = source.end - source.start;
   const prefix = line.slice(0, line.length - bodyLength);
@@ -103,7 +138,7 @@ export function lineSegments(
   for (const range of ranges) {
     const start = Math.max(range.start, source.start) - source.start;
     const end = Math.min(range.end, source.end) - source.start;
-    if (end > start && range.link !== undefined) local.push({ start, end, link: range.link });
+    if (end > start) local.push({ ...range, start, end });
   }
   const segments = textSegments(body, local);
   return prefix === '' ? segments : [{ text: prefix }, ...segments];

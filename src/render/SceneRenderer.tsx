@@ -22,7 +22,7 @@ import {
   resolvePaint,
 } from './paintRender';
 import { resolveNodeVariables } from '../model/variables';
-import { lineSegments } from '../model/textRanges';
+import { lineSegments, weightRunsOf } from '../model/textRanges';
 import { resolvedProperties, resolvePropertyReferences } from '../model/variants';
 import { firstBaselineOffset, layoutText, letterSpacingOf, textLinesOf } from './textMetrics';
 
@@ -867,7 +867,7 @@ function StrokeShapes({ node, path }: { node: SceneNode; path: string | null }) 
 function TextContent({ node }: { node: TextNode }) {
   const autoResize = node.style.textAutoResize ?? 'WIDTH_AND_HEIGHT';
   const wrap = autoResize === 'HEIGHT' || autoResize === 'NONE';
-  const layout = layoutText(node.characters, node.style, node.width, wrap);
+  const layout = layoutText(node.characters, node.style, node.width, wrap, weightRunsOf(node.textRanges ?? []));
   const lineHeight = layout.lineHeight;
   const baseline = firstBaselineOffset(node.style);
   const weight = node.style.fontWeight ?? (node.style.fontStyle?.includes('Bold') ? 700 : 400);
@@ -911,15 +911,20 @@ function TextContent({ node }: { node: TextNode }) {
     >
       {lines.map((line, index) => {
         const segments = autoResize === 'TRUNCATE' ? [] : lineSegments(line, layout.sources[index], node.textRanges ?? []);
-        const linked = segments.some((segment) => segment.link !== undefined);
+        const styled = segments.some((segment) => segment.link !== undefined || segment.fontWeight !== undefined);
         return (
           <tspan key={index} x={x} dy={index === 0 ? 0 : lineHeight + paragraphSpacing}>
-            {linked
+            {styled
               ? segments.map((segment, part) =>
-                  segment.link === undefined ? (
+                  segment.link === undefined && segment.fontWeight === undefined ? (
                     <Fragment key={part}>{segment.text}</Fragment>
                   ) : (
-                    <tspan key={part} fill={LINK_COLOUR} style={{ textDecoration: 'underline' }}>
+                    <tspan
+                      key={part}
+                      fill={segment.link === undefined ? undefined : LINK_COLOUR}
+                      fontWeight={segment.fontWeight}
+                      style={segment.link === undefined ? undefined : { textDecoration: 'underline' }}
+                    >
                       {segment.text}
                     </tspan>
                   ),

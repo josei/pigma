@@ -4,9 +4,9 @@ import { fromMatrix, multiply, roundTo } from '../model/matrix';
 
 import { cornerRadii, shapePath } from './SceneRenderer';
 import { pathToPdf } from './pdfPath';
-import { layoutText, measureLine } from './textMetrics';
+import { layoutText, measureLine, measureParts } from './textMetrics';
 import { letterSpacingOf, textLinesOf } from './textMetrics';
-import { lineSegments } from '../model/textRanges';
+import { lineSegments, weightRunsOf } from '../model/textRanges';
 import { resolveNodeVariables } from '../model/variables';
 import { rasterGradient } from './paintRender';
 
@@ -278,7 +278,7 @@ function paintText(builder: PdfBuilder, node: Extract<SceneNode, { type: 'TEXT' 
   const autoResize = node.style.textAutoResize ?? 'WIDTH_AND_HEIGHT';
   // HEIGHT/NONE wrap to the node width, TRUNCATE clips to one line, like the canvas.
   const lines = textLinesOf(node);
-  const layout = layoutText(node.characters, node.style, node.width, autoResize === 'HEIGHT' || autoResize === 'NONE');
+  const layout = layoutText(node.characters, node.style, node.width, autoResize === 'HEIGHT' || autoResize === 'NONE', weightRunsOf(node.textRanges ?? []));
   const style: TextStyle = node.style;
   const size = style.fontSize || 12;
   const weight = style.fontWeight ?? (style.fontStyle?.includes('Bold') ? 700 : 400);
@@ -321,13 +321,11 @@ function paintText(builder: PdfBuilder, node: Extract<SceneNode, { type: 'TEXT' 
     // A line with linked characters is drawn in pieces, each at its own offset, the linked ones in the link colour.
     const source = autoResize === 'TRUNCATE' ? undefined : layout.sources[index];
     const segments = lineSegments(line, source, node.textRanges ?? []);
-    if (segments.some((segment) => segment.link !== undefined)) {
-      const width = measureLine(line, style);
+    if (segments.some((segment) => segment.link !== undefined || segment.fontWeight !== undefined)) {
+      const width = measureParts(segments, style);
       const lineStart = align === 'CENTER' ? x - width / 2 : align === 'RIGHT' ? x - width : x;
-      let consumed = '';
-      for (const segment of segments) {
-        const segmentX = lineStart + measureLine(consumed, style);
-        consumed += segment.text;
+      for (const [part, segment] of segments.entries()) {
+        const segmentX = lineStart + measureParts(segments.slice(0, part), style);
         const [cr, cg, cb] = segment.link === undefined ? [r, g, b] : LINK_RGB;
         builder.content.push(`${num(cr)} ${num(cg)} ${num(cb)} rg`);
         builder.content.push(`${num(spacing)} Tc`);
@@ -335,7 +333,7 @@ function paintText(builder: PdfBuilder, node: Extract<SceneNode, { type: 'TEXT' 
         builder.content.push(`(${pdfString(segment.text)}) Tj`);
         if (segment.link !== undefined) {
           // A link is underlined, like the canvas draws it.
-          const segmentWidth = measureLine(segment.text, style);
+          const segmentWidth = measureParts([segment], style);
           const ruleY = textY - size * 0.12;
           builder.content.push('ET');
           builder.content.push(`0.5 w ${num(segmentX)} ${num(ruleY)} m ${num(segmentX + segmentWidth)} ${num(ruleY)} l S`);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lineSegments, linkAt, normalizeTextRanges, setTextLink, textSegments } from './textRanges';
+import { lineSegments, linkAt, normalizeTextRanges, setTextLink, setTextWeight, textSegments, weightRunsOf } from './textRanges';
 
 describe('text ranges', () => {
   it('clamps, drops empty and bad ranges, sorts, and keeps an earlier range over an overlap', () => {
@@ -134,5 +134,70 @@ describe('text links survive a save and a load', () => {
     const loaded = validatePigmaFile(JSON.parse(JSON.stringify(file)));
     const node = loaded.file!.document.children[0]!.children[0]! as { textRanges?: unknown[] };
     expect(node.textRanges).toEqual([{ start: 9, end: 13, link: 'https://docs.example' }]);
+  });
+});
+
+describe('a bold part of a line', () => {
+  it('lists only the ranges that set a weight, as the runs layout measures', () => {
+    expect(
+      weightRunsOf([
+        { start: 0, end: 3, link: 'https://x.example' },
+        { start: 4, end: 7, fontWeight: 700 },
+        { start: 8, end: 9, link: 'https://y.example', fontWeight: 600 },
+      ]),
+    ).toEqual([
+      { start: 4, end: 7, fontWeight: 700 },
+      { start: 8, end: 9, fontWeight: 600 },
+    ]);
+  });
+
+  it('carries its weight on its segment, and a segment with neither stays plain', () => {
+    expect(textSegments('one two', [{ start: 4, end: 7, fontWeight: 700 }])).toEqual([
+      { text: 'one ' },
+      { text: 'two', fontWeight: 700 },
+    ]);
+  });
+
+  it('is split out of a wrapped line, using the line\'s own offsets', () => {
+    // The second line is "two three", starting at offset 4; only "two" is bold.
+    expect(lineSegments('two three', { start: 4, end: 13 }, [{ start: 4, end: 7, fontWeight: 700 }])).toEqual([
+      { text: 'two', fontWeight: 700 },
+      { text: ' three' },
+    ]);
+  });
+
+  it('keeps the link and the weight of a part that has both', () => {
+    expect(lineSegments('two', { start: 4, end: 7 }, [{ start: 4, end: 7, link: 'https://two.example', fontWeight: 700 }])).toEqual([
+      { text: 'two', link: 'https://two.example', fontWeight: 700 },
+    ]);
+  });
+});
+
+describe('setting and clearing bold on a span', () => {
+  it('bolds a span inside a link and keeps the link on it', () => {
+    expect(setTextWeight([{ start: 0, end: 10, link: 'https://x.example' }], 3, 6, 700, 10)).toEqual([
+      { start: 0, end: 3, link: 'https://x.example' },
+      { start: 3, end: 6, link: 'https://x.example', fontWeight: 700 },
+      { start: 6, end: 10, link: 'https://x.example' },
+    ]);
+  });
+
+  it('clears the bold of a span and leaves a link and the bold around it', () => {
+    expect(setTextWeight([{ start: 0, end: 10, link: 'https://x.example', fontWeight: 700 }], 3, 6, null, 10)).toEqual([
+      { start: 0, end: 3, link: 'https://x.example', fontWeight: 700 },
+      { start: 3, end: 6, link: 'https://x.example' },
+      { start: 6, end: 10, link: 'https://x.example', fontWeight: 700 },
+    ]);
+  });
+
+  it('clearing a link on bold text keeps the bold', () => {
+    expect(setTextLink([{ start: 0, end: 10, link: 'https://x.example', fontWeight: 700 }], 0, 10, null, 10)).toEqual([
+      { start: 0, end: 10, fontWeight: 700 },
+    ]);
+  });
+
+  it('bolds plain characters, and a span that is not bold stays as it was', () => {
+    expect(setTextWeight([], 0, 4, 600, 10)).toEqual([{ start: 0, end: 4, fontWeight: 600 }]);
+    expect(setTextWeight([{ start: 0, end: 4, fontWeight: 600 }], 0, 4, null, 10)).toEqual([]);
   });
 });

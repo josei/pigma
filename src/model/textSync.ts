@@ -2,6 +2,7 @@ import type { AnyNode, PigmaFile, TextNode } from './types';
 import { hasChildren } from './types';
 import { walk } from './tree';
 import { layoutText } from '../render/textMetrics';
+import { weightRunsOf } from './textRanges';
 
 /**
  * Keep auto-sized text nodes in sync with their measured content so selection
@@ -17,7 +18,7 @@ export function syncTextSizes(file: PigmaFile): PigmaFile {
     const mode = text.style.textAutoResize ?? 'WIDTH_AND_HEIGHT';
     if (mode === 'NONE' || mode === 'TRUNCATE') return;
     const wrap = mode === 'HEIGHT';
-    const layout = layoutText(text.characters, text.style, text.width, wrap);
+    const layout = layoutText(text.characters, text.style, text.width, wrap, weightRunsOf(text.textRanges ?? []));
     const width = wrap ? text.width : Math.max(1, Math.ceil(layout.width));
     const height = Math.max(1, Math.ceil(layout.height));
     if (Math.abs(width - text.width) > 0.01 || Math.abs(height - text.height) > 0.01) {

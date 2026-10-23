@@ -2,6 +2,7 @@ import { parse, type Font, type PathCommand } from 'opentype.js';
 import { INTER_BOLD_WOFF_BASE64 } from '../assets/fonts/inter-bold';
 import { INTER_REGULAR_WOFF_BASE64 } from '../assets/fonts/inter-regular';
 import type { TextNode, TextStyle } from '../model/types';
+import { weightRunsOf } from '../model/textRanges';
 import { firstBaselineOffset, layoutText, letterSpacingOf, resolveLineHeight, textLinesOf } from './textMetrics';
 
 /**
@@ -149,7 +150,7 @@ export function textOutline(node: TextNode): string | null {
   const lineHeight = resolveLineHeight(style);
   const paragraphSpacing = style.paragraphSpacing ?? 0;
   const baseline = firstBaselineOffset(style);
-  const layout = layoutText(node.characters, style, node.width, style.textAutoResize === 'HEIGHT' || style.textAutoResize === 'NONE');
+  const layout = layoutText(node.characters, style, node.width, style.textAutoResize === 'HEIGHT' || style.textAutoResize === 'NONE', weightRunsOf(node.textRanges ?? []));
   const vertical = style.textAlignVertical ?? 'TOP';
   const offsetY =
     vertical === 'CENTER' ? (node.height - layout.height) / 2 : vertical === 'BOTTOM' ? node.height - layout.height : 0;
