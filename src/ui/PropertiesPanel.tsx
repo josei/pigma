@@ -2,8 +2,8 @@ import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './icons';
 import { selectedNodes, useEditor } from '../store/editorStore';
 import type { AlignMode, ReorderMode } from '../model/ops';
-import { firstVisibleFill, gradientAngle, paintToCssBackground, radialPlacement, rgbaToHex, hexToRgba, withGradientAngle, withRadialPlacement } from '../model/paint';
-import type { BlendMode, ContainerNode, OverlayPosition, Paint, SceneNode, TextNode, TextStyle } from '../model/types';
+import { firstVisibleFill, gradientAngle, paintToCssBackground, radialPlacement, rgbaToHex, hexToRgba, selectionPaintOf, withGradientAngle, withRadialPlacement } from '../model/paint';
+import type { BlendMode, ContainerNode, OverlayPosition, Paint, RGBA, SceneNode, TextNode, TextStyle } from '../model/types';
 import { OVERLAY_POSITIONS } from '../model/overlay';
 import { limitsOf } from '../model/sizing';
 import { cropOf, imageFillsOf } from '../model/image';
@@ -182,11 +182,14 @@ function PaintRow({
   paint,
   onChange,
   variableProperty,
+  mixed,
 }: {
   label: string;
   paint: Paint | null;
   onChange: (paint: Paint | null) => void;
   variableProperty?: string;
+  /** Several layers differ: one entry per distinct paint, `null` for a layer with none. Edits still set every layer. */
+  mixed?: Array<Paint | null>;
 }) {
   const color = paint?.type === 'SOLID' ? paint.color : { r: 0, g: 0, b: 0 };
   const alpha = paint?.type === 'SOLID' ? paint.opacity ?? 1 : 1;
@@ -196,6 +199,19 @@ function PaintRow({
       <div className="prop-row">
         <span className="prop-row__label" style={{ minWidth: 44 }}>{label}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+        {mixed ? (
+          <span role="group" aria-label={`${label} values`} style={{ display: 'inline-flex', gap: 2 }}>
+            {mixed.map((entry, index) => (
+              <span
+                key={index}
+                className="color-well color-well--static"
+                title={entry ? (entry.type === 'SOLID' ? rgbaToHex(entry.color as RGBA) : entry.type.toLowerCase()) : 'No paint'}
+                style={{ background: entry ? paintToCssBackground(entry) : 'var(--figma-bg)' }}
+              />
+            ))}
+          </span>
+        ) : null}
+        {mixed ? <span className="prop-row__label">Mixed</span> : null}
         {paint?.type === 'SOLID' ? (
           <>
             <input
@@ -205,7 +221,7 @@ function PaintRow({
               value={rgbaToHex(color)}
               onChange={(event) => onChange({ ...paint, color: hexToRgba(event.target.value) })}
             />
-            <HexField label={label} value={rgbaToHex(color)} onCommit={(hex) => onChange({ ...paint, color: hexToRgba(hex) })} />
+            <HexField label={label} value={mixed ? '' : rgbaToHex(color)} onCommit={(hex) => onChange({ ...paint, color: hexToRgba(hex) })} />
           </>
         ) : paint?.type === 'GRADIENT_LINEAR' || paint?.type === 'GRADIENT_RADIAL' ? (
           <>
@@ -232,10 +248,10 @@ function PaintRow({
             <span className="color-well color-well--static" style={{ background: paintToCssBackground(paint) }} />
             <span className="prop-row__label">image</span>
           </>
-        ) : (
+        ) : mixed ? null : (
           <span className="prop-row__label" style={{ flex: 1 }}>None</span>
         )}
-        {paint ? (
+        {paint && !mixed ? (
         <input
           className="input input--numeric input--alpha"
           aria-label={`${label} opacity`}
@@ -558,10 +574,13 @@ function blendModeOptions(node: SceneNode) {
     : BLEND_MODE_OPTIONS;
 }
 
-function AppearanceSection({ node }: { node: SceneNode }) {
+function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[] }) {
   const updateSelected = useEditor((state) => state.updateSelected);
   const fill = firstVisibleFill(node.fills);
   const stroke = firstVisibleFill(node.strokes);
+  // One row value for the whole selection: the same paint everywhere, or the distinct paints when they differ.
+  const fillState = selectionPaintOf(nodes.map((entry) => firstVisibleFill(entry.fills)));
+  const strokeState = selectionPaintOf(nodes.map((entry) => firstVisibleFill(entry.strokes)));
   const radii = (node as { cornerRadius?: number }).cornerRadius ?? 0;
   const blendMode: BlendMode = node.blendMode ?? 'NORMAL';
   const corners = cornerRadii(node);
@@ -578,12 +597,14 @@ function AppearanceSection({ node }: { node: SceneNode }) {
           label="Fill"
           paint={fill}
           variableProperty="fill"
+          mixed={fillState.kind === 'mixed' ? fillState.paints : undefined}
           onChange={(paint) => updateSelected({ fills: paint ? [paint] : [] }, 'Set fill')}
         />
         <PaintRow
           label="Stroke"
           paint={stroke}
           variableProperty="stroke"
+          mixed={strokeState.kind === 'mixed' ? strokeState.paints : undefined}
           onChange={(paint) => updateSelected({ strokes: paint ? [paint] : [] }, 'Set stroke')}
         />
         {node.strokes.length > 0 ? (
@@ -2101,7 +2122,7 @@ export function PropertiesPanel() {
               </div>
             ) : null}
             <TransformSection node={node} />
-            <AppearanceSection node={node} />
+            <AppearanceSection node={node} nodes={nodes} />
             {node.type === 'TEXT' ? <TextSection node={node} /> : null}
             <BooleanSection />
             <EffectsSection node={node} />

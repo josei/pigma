@@ -7,6 +7,7 @@ import {
   hexToRgba,
   paintToCssBackground,
   rgbaToHex,
+  selectionPaintOf,
   solidPaint,
 } from './paint';
 import type { Paint } from './types';
@@ -75,5 +76,33 @@ describe('paint helpers', () => {
     const image: Paint = { type: 'IMAGE', imageRef: 'ref', dataUrl: 'data:image/png;base64,AAA' };
     expect(paintToCssBackground(image)).toContain('data:image/png');
     expect(paintToCssBackground({ type: 'IMAGE' })).toBe('#c4c4c4');
+  });
+});
+
+describe('selectionPaintOf: the paint a row shows for several layers', () => {
+  const red = solidPaint({ r: 1, g: 0, b: 0 });
+  const redAgain = solidPaint({ r: 1, g: 0, b: 0 });
+  const blue = solidPaint({ r: 0, g: 0, b: 1 });
+
+  it('is none when no layer has a visible paint', () => {
+    expect(selectionPaintOf([null, null])).toEqual({ kind: 'none' });
+    expect(selectionPaintOf([])).toEqual({ kind: 'none' });
+  });
+
+  it('is the same paint when every layer shares it, even as separate objects', () => {
+    expect(selectionPaintOf([red, redAgain])).toEqual({ kind: 'same', paint: red });
+  });
+
+  it('is mixed when the colours differ, listing each distinct paint once', () => {
+    expect(selectionPaintOf([red, blue, redAgain])).toEqual({ kind: 'mixed', paints: [red, blue] });
+  });
+
+  it('is mixed when one layer has no paint and another has one', () => {
+    expect(selectionPaintOf([red, null])).toEqual({ kind: 'mixed', paints: [red, null] });
+  });
+
+  it('is mixed when opacity differs, even with the same colour', () => {
+    const faint = solidPaint({ r: 1, g: 0, b: 0 }, 0.5);
+    expect(selectionPaintOf([red, faint]).kind).toBe('mixed');
   });
 });

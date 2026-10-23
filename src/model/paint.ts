@@ -57,6 +57,33 @@ export function firstVisibleFill(paints: Paint[] | undefined): Paint | null {
   return null;
 }
 
+/**
+ * What one paint row shows for a selection: nothing, the same paint on every layer, or several different paints
+ * (`mixed`, listed once each, with `null` for a layer that has no paint).
+ */
+export type SelectionPaint =
+  | { kind: 'none' }
+  | { kind: 'same'; paint: Paint }
+  | { kind: 'mixed'; paints: Array<Paint | null> };
+
+/** A paint's identity for comparison: a solid by its colour, alpha and opacity, any other paint by its content. */
+function paintIdentity(paint: Paint): string {
+  if (paint.type === 'SOLID') return `SOLID ${rgbaToHex(paint.color as RGBA)} ${(paint.color as RGBA).a ?? 1} ${paint.opacity ?? 1}`;
+  return JSON.stringify(paint);
+}
+
+/**
+ * Reduce each selected layer's first visible paint (or `null`) to one row value. A paint that every layer shares is
+ * `same`; any difference, including some layers having no paint, is `mixed`.
+ */
+export function selectionPaintOf(paints: Array<Paint | null>): SelectionPaint {
+  if (paints.every((paint) => paint === null)) return { kind: 'none' };
+  const distinct = new Map<string, Paint | null>();
+  for (const paint of paints) distinct.set(paint ? paintIdentity(paint) : 'NONE', paint);
+  if (distinct.size === 1) return { kind: 'same', paint: paints[0] as Paint };
+  return { kind: 'mixed', paints: [...distinct.values()] };
+}
+
 export function solidPaint(color: RGBA, opacity = 1): Paint {
   return { type: 'SOLID', color: { r: color.r, g: color.g, b: color.b }, opacity: color.a ?? opacity };
 }
