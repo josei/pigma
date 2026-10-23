@@ -19,3 +19,6 @@ src-tauri/sidecar/
 
 # Vite writes a config-timestamp file beside the config while it loads it.
 vite.config.ts.timestamp-*
+
+# Screenshots the Paseo build/review heartbeats take to show their work; not product assets.
+.critic-shots/
