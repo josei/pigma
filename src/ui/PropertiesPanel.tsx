@@ -24,6 +24,7 @@ import {
   flowsOf,
   interactionsOf,
   prototypeDestinations,
+  actionLabel,
   triggerLabel,
 } from '../model/prototype';
 import type { PrototypeAction } from '../model/types';
@@ -2318,6 +2319,34 @@ function PrototypeSection({ node }: { node: SceneNode | null }) {
           </button>
         </div>
         <div className="section__body">
+          {selection.length > 1 ? (
+            // Several layers: each one's interactions, read-only. The editing below is for the first selected layer.
+            <div data-testid="interactions-selection" className="prop-stack" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
+              {selection.map((id) => {
+                const layer = findNode(file.document, id);
+                const list = layer ? interactionsOf(layer) : [];
+                return (
+                  <div key={id} className="prop-row" style={{ flexWrap: 'wrap' }}>
+                    <span className="prop-row__label" style={{ minWidth: 90 }}>{layer?.name ?? id}</span>
+                    {list.length === 0 ? (
+                      <span style={{ color: 'var(--figma-text-secondary)' }}>No interactions</span>
+                    ) : (
+                      <span>
+                        {list.map((entry, index) => (
+                          <span key={index} style={{ display: 'block' }}>
+                            {triggerLabel(entry.trigger.type)}: {entry.actions.map(actionLabel).join(', ')}
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+              <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>
+                Edits apply to the first selected layer. Select one layer to edit another.
+              </p>
+            </div>
+          ) : null}
           {!node ? (
             <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>Select a layer to add prototype links.</p>
           ) : null}
