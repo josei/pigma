@@ -590,6 +590,7 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
   const fillState = selectionPaintOf(nodes.map((entry) => firstVisibleFill(entry.fills)));
   const strokeState = selectionPaintOf(nodes.map((entry) => firstVisibleFill(entry.strokes)));
   const radii = (node as { cornerRadius?: number }).cornerRadius ?? 0;
+  const radiusMixed = isMixedValue(nodes.map((entry) => (entry as { cornerRadius?: number }).cornerRadius ?? 0));
   const blendMode: BlendMode = node.blendMode ?? 'NORMAL';
   const corners = cornerRadii(node);
   const [individualCorners, setIndividualCorners] = useState(!!node.rectangleCornerRadii);
@@ -654,6 +655,7 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
             <NumberField
               label="Radius"
               value={node.cornerRadius ?? 0}
+              mixed={radiusMixed}
               min={0}
               onCommit={(value) => updateSelected({ cornerRadius: value }, 'Set corner radius')}
             />
@@ -690,6 +692,7 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
               <NumberField
                 label="Radius"
                 value={radii}
+                mixed={radiusMixed}
                 min={0}
                 onCommit={(value) =>
                   // A uniform radius replaces the per-corner values.
