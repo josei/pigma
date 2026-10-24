@@ -603,6 +603,7 @@ function blendModeOptions(nodes: SceneNode[]) {
 
 function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[] }) {
   const stepSelected = useEditor((state) => state.stepSelected);
+  const stepSelectedCorner = useEditor((state) => state.stepSelectedCorner);
   const updateSelected = useEditor((state) => state.updateSelected);
   const fill = firstVisibleFill(node.fills);
   const stroke = firstVisibleFill(node.strokes);
@@ -706,6 +707,7 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
                   label={label}
                   value={corners[index]!}
                   mixed={cornersMixed[index]}
+                  onStep={(delta) => stepSelectedCorner(index, delta, { min: 0, max: Number.POSITIVE_INFINITY }, 'Set corner radius')}
                   min={0}
                   onCommit={(value) => {
                     const next = [...corners] as [number, number, number, number];

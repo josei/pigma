@@ -97,3 +97,34 @@ test('B131d a layer stepped to 45 in a mixed selection reads as equal to a layer
   await expect(field(page, 'Opacity'), 'equal layers read as Mixed: the stepped value drifted').toHaveValue('45');
   await expect(field(page, 'Opacity')).not.toHaveAttribute('placeholder', '—');
 });
+
+test('B131e an arrow step on a mixed corner moves that corner on each layer from its own value', async ({ page }) => {
+  await boot(page, { blank: true });
+  // Two rectangles with independent corners: the first's top left is 10, the second's is 20.
+  await drawShape(page, 'Rectangle', 120, 90, -120, 0);
+  await page.getByLabel('Independent corners').check();
+  await field(page, 'Top left').fill('10');
+  await field(page, 'Top left').press('Enter');
+  await drawShape(page, 'Rectangle', 120, 90, 120, 0);
+  await page.getByLabel('Independent corners').check();
+  await field(page, 'Top left').fill('20');
+  await field(page, 'Top left').press('Enter');
+  await page.keyboard.press('Control+A');
+  await expect(page.getByText('2 layers selected')).toBeVisible();
+
+  const topLeft = field(page, 'Top left');
+  await expect(topLeft).toHaveAttribute('placeholder', '—');
+  await topLeft.focus();
+  for (let i = 0; i < 3; i += 1) await page.keyboard.press('ArrowUp');
+  await nextPaint(page);
+  await expect(topLeft, 'the step made the corners equal, or lost the mixed state').toHaveAttribute('placeholder', '—');
+
+  // Each layer kept its own corner and moved it by the same three points.
+  await page.locator('.layer-row', { hasText: 'Rectangle 1' }).first().click();
+  await nextPaint(page);
+  await expect(field(page, 'Top left')).toHaveValue('13');
+  await page.locator('.layer-row', { hasText: 'Rectangle 2' }).first().click();
+  await nextPaint(page);
+  await expect(field(page, 'Top left')).toHaveValue('23');
+});
+

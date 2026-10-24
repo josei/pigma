@@ -442,6 +442,8 @@ export interface EditorState {
     bounds: { min: number; max: number; fallback: number },
     label?: string,
   ) => void;
+  /** The same relative step for one corner (0 top left, clockwise), each layer's own corner. */
+  stepSelectedCorner: (index: number, delta: number, bounds: { min: number; max: number }, label?: string) => void;
   /** Drop an image into the document, or fill the selection with it. */
   placeImage: (dataUrl: string, options: { width: number; height: number; x?: number; y?: number }) => void;
   applyImageFill: (dataUrl: string, size?: { width: number; height: number }) => boolean;
@@ -1347,6 +1349,29 @@ export const useEditor = create<EditorState>((set, get) => ({
     }
     get().apply(replace ? 'Paste to replace' : 'Paste over selection', () => result.file);
     set({ selection: result.newIds });
+  },
+
+  stepSelectedCorner: (index, delta, bounds, label = 'Set corner radius') => {
+    const ids = get().selection;
+    if (ids.length === 0) return;
+    get().apply(label, (file) => {
+      let next = file;
+      for (const id of ids) {
+        const ancestry = instanceAncestryOf(file.document, id);
+        if (ancestry && ancestry.instance.id !== id) continue;
+        const node = findNode(next.document, id);
+        if (!node || node.type === 'DOCUMENT' || node.type === 'CANVAS') continue;
+        const shape = node as { cornerRadius?: number; rectangleCornerRadii?: [number, number, number, number] };
+        const uniform = shape.cornerRadius ?? 0;
+        const corners: [number, number, number, number] = shape.rectangleCornerRadii
+          ? [...shape.rectangleCornerRadii]
+          : [uniform, uniform, uniform, uniform];
+        // Rounded as stepSelected rounds, so a stepped corner equals the same corner typed in.
+        corners[index] = Math.round(Math.min(bounds.max, Math.max(bounds.min, corners[index]! + delta)) * 1e6) / 1e6;
+        next = applyNodePatch(next, id, { rectangleCornerRadii: corners } as NodePatch);
+      }
+      return next;
+    });
   },
 
   stepSelected: (key, delta, bounds, label = 'Change properties') => {
