@@ -1551,6 +1551,17 @@ function AutoLayoutSection({ node }: { node: SceneNode }) {
                 onChange={(value) => setAutoLayout({ primaryAxisAlignItems: value })}
               />
             </div>
+            <div className="prop-row">
+              <label className="prop-row__label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="checkbox"
+                  aria-label="Include stroke in layout"
+                  checked={layout.strokesIncludedInLayout === true}
+                  onChange={(event) => setAutoLayout({ strokesIncludedInLayout: event.target.checked })}
+                />
+                Include stroke in layout
+              </label>
+            </div>
             <div className="prop-stack">
               <Segmented
                 label="Counter"

@@ -116,3 +116,40 @@ test('B13e a negative Gap overlaps the children, and the field keeps the negativ
   expect(second.x - first.x).toBeCloseTo(first.w - 10, 0);
 });
 
+test('B13f Include stroke in layout moves the children apart by the stroke, and the geometry keeps its size', async ({ page }) => {
+  const { frame, a, b } = await frameWithTwoRects(page);
+  // Each child gets a 10px centred stroke ("Mid"), so its layout box is 10px wider with the flag on. New rectangles
+  // default to an inside stroke, which adds nothing to the box.
+  const appearance = page.locator('.section', { has: page.locator('.section__header', { hasText: 'Appearance' }) });
+  for (const name of [a, b]) {
+    await selectLayer(page, name);
+    await page.getByRole('button', { name: 'Add Stroke' }).click();
+    await field(page, 'Weight').fill('10');
+    await field(page, 'Weight').press('Enter');
+    await appearance.locator('.segmented__option', { hasText: 'Mid' }).click();
+    await nextPaint(page);
+  }
+
+  await selectLayer(page, frame);
+  const autoLayout = page.locator('.section', { has: page.locator('.section__header', { hasText: 'Auto layout' }) });
+  await autoLayout.locator('.segmented__option', { hasText: 'Row' }).click();
+  await nextPaint(page);
+
+  const gapBetween = async () => {
+    await selectLayer(page, a);
+    const first = await nodeGeometry(page);
+    await selectLayer(page, b);
+    const second = await nodeGeometry(page);
+    return { distance: second.x - first.x, width: first.w };
+  };
+  const before = await gapBetween();
+
+  await selectLayer(page, frame);
+  await page.getByLabel('Include stroke in layout').check();
+  await nextPaint(page);
+  const after = await gapBetween();
+
+  expect(after.distance - before.distance).toBeCloseTo(10, 0);
+  expect(after.width, 'the geometry keeps its size, the stroke is only in the box').toBeCloseTo(before.width, 0);
+});
+

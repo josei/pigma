@@ -218,6 +218,11 @@ export interface AutoLayout {
   layoutWrap?: 'NO_WRAP' | 'WRAP';
   /** Gap between wrapped lines (Figma's `counterAxisSpacing`). */
   counterAxisSpacing?: number;
+  /**
+   * When set, a child's visible stroke counts toward its layout box: the stroke reaches past the geometry by its
+   * outward extent on each side, and the child is placed inside that box. Off by default.
+   */
+  strokesIncludedInLayout?: boolean;
   layoutSizingHorizontal?: LayoutSizing;
   layoutSizingVertical?: LayoutSizing;
   /**

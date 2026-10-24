@@ -4,6 +4,7 @@ import { createFrameNode, createRectNode } from './factory';
 import { emptyFile } from './validate';
 import { findNode } from './tree';
 import { parseFile, serializeFile } from './serialize';
+import { solidPaint } from './paint';
 import type { AnyNode, AutoLayout, ParentNode, SceneNode } from './types';
 import { hasChildren } from './types';
 
@@ -333,3 +334,52 @@ describe('auto layout wrap', () => {
     expect(Math.round(frame.width)).toBe(292);
   });
 });
+
+/** Three 100x50 rectangles with a 10px stroke, in a row; the frame's stroke flag and the stroke's alignment are the variables. */
+function strokedRow(align: 'INSIDE' | 'CENTER' | 'OUTSIDE', strokesIncluded: boolean) {
+  const file = emptyFile('Stroked');
+  const page = file.document.children[0]!;
+  const frame = createFrameNode(null, 0, 0, 600, 400, { name: 'Row' });
+  frame.autoLayout = { ...defaultAutoLayout('HORIZONTAL'), strokesIncludedInLayout: strokesIncluded };
+  frame.children = [0, 1, 2].map(() => {
+    const rect = createRectNode(null, 0, 0, 100, 50);
+    rect.strokes = [solidPaint({ r: 0, g: 0, b: 0 })];
+    rect.strokeWeight = 10;
+    rect.strokeAlign = align;
+    return rect;
+  });
+  page.children = [frame];
+  return { file, frameId: frame.id, childIds: frame.children.map((child) => child.id) };
+}
+
+describe('auto layout with strokes in the layout box', () => {
+  it('a centred stroke adds half its weight per side, and the geometry is placed inside the box', () => {
+    const { file, frameId, childIds } = strokedRow('CENTER', true);
+    const reflowed = reflowTree(file.document);
+    // Each box is 110 wide (100 + 5 each side), with the 12px gap between boxes; the geometry sits 5px in from its box.
+    expect(childTransforms({ ...file, document: reflowed }, childIds).map((child) => child.x)).toEqual([21, 143, 265]);
+    expect(childTransforms({ ...file, document: reflowed }, childIds).map((child) => child.w)).toEqual([100, 100, 100]);
+    expect(Math.round((findNode(reflowed, frameId) as SceneNode).width)).toBe(386);
+  });
+
+  it('an outside stroke adds its full weight per side, so the frame hugs the larger boxes on both axes', () => {
+    const { file, frameId, childIds } = strokedRow('OUTSIDE', true);
+    const reflowed = reflowTree(file.document);
+    // Boxes are 120 wide (100 + 10 each side) with 12px gaps, and 70 tall (50 + 10 each side).
+    expect(childTransforms({ ...file, document: reflowed }, childIds).map((child) => child.x)).toEqual([26, 158, 290]);
+    const frame = findNode(reflowed, frameId) as SceneNode;
+    expect(Math.round(frame.width)).toBe(416);
+    expect(Math.round(frame.height)).toBe(102);
+  });
+
+  it('with the flag off, a stroke does not change the layout', () => {
+    const { file, childIds } = strokedRow('CENTER', false);
+    expect(childTransforms({ ...file, document: reflowTree(file.document) }, childIds).map((child) => child.x)).toEqual([16, 128, 240]);
+  });
+
+  it('an inside stroke adds nothing to the box, even with the flag on', () => {
+    const { file, childIds } = strokedRow('INSIDE', true);
+    expect(childTransforms({ ...file, document: reflowTree(file.document) }, childIds).map((child) => child.x)).toEqual([16, 128, 240]);
+  });
+});
+

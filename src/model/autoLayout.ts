@@ -1,4 +1,5 @@
 import { clampSize } from './sizing';
+import { firstVisibleFill } from './paint';
 import type { AnyNode, AutoLayout, GridTrackSize, SceneNode } from './types';
 import { hasChildren } from './types';
 
@@ -229,6 +230,18 @@ function layoutGridContainer<T extends AnyNode>(node: T, layout: AutoLayout): T 
   return { ...node, width, height, children: nextChildren } as T;
 }
 
+/**
+ * How far a child's visible stroke reaches past its geometry on each side: none for an inside stroke, half the weight for
+ * a centred one, the full weight for an outside one. A child with no visible stroke reaches nowhere.
+ */
+export function strokeInsetOf(node: SceneNode): number {
+  if (!firstVisibleFill(node.strokes)) return 0;
+  const weight = node.strokeWeight ?? 1;
+  const align = node.strokeAlign ?? 'CENTER';
+  if (align === 'INSIDE') return 0;
+  return align === 'OUTSIDE' ? weight : weight / 2;
+}
+
 /** Lay out one auto-layout container. Returns the same node when nothing moved. */
 function layoutContainer<T extends AnyNode>(node: T, layout: AutoLayout): T {
   if (layout.layoutMode === 'GRID') return layoutGridContainer(node, layout);
@@ -242,8 +255,10 @@ function layoutContainer<T extends AnyNode>(node: T, layout: AutoLayout): T {
   const primaryPadding = horizontal ? pad.left + pad.right : pad.top + pad.bottom;
   const counterPadding = horizontal ? pad.top + pad.bottom : pad.left + pad.right;
 
-  const primaryOf = (child: SceneNode) => (horizontal ? child.width : child.height);
-  const counterOf = (child: SceneNode) => (horizontal ? child.height : child.width);
+  // With strokes in the layout, a child's box is its geometry plus its stroke on both sides; the geometry is placed inside.
+  const insetOf = (child: SceneNode) => (layout.strokesIncludedInLayout ? strokeInsetOf(child) : 0);
+  const primaryOf = (child: SceneNode) => (horizontal ? child.width : child.height) + 2 * insetOf(child);
+  const counterOf = (child: SceneNode) => (horizontal ? child.height : child.width) + 2 * insetOf(child);
 
   const naturalPrimary = children.reduce((sum, child) => sum + primaryOf(child), 0) + spacing * (children.length - 1);
   const naturalCounter = Math.max(0, ...children.map(counterOf));
@@ -358,10 +373,12 @@ function layoutContainer<T extends AnyNode>(node: T, layout: AutoLayout): T {
             ? (counterExtent - cross) / 2
             : counterExtent - cross;
 
-      const tx = horizontal ? cursorPrimary : cursorCounter + crossStart + pad.left;
-      const ty = horizontal ? cursorCounter + crossStart + pad.top : cursorPrimary;
-      const targetWidth = horizontal ? main : cross;
-      const targetHeight = horizontal ? cross : main;
+      // The box is measured with the stroke; the geometry is the box less the stroke on both sides, inset by one side.
+      const inset = insetOf(child);
+      const tx = horizontal ? cursorPrimary + inset : cursorCounter + crossStart + pad.left + inset;
+      const ty = horizontal ? cursorCounter + crossStart + pad.top + inset : cursorPrimary + inset;
+      const targetWidth = (horizontal ? main : cross) - 2 * inset;
+      const targetHeight = (horizontal ? cross : main) - 2 * inset;
 
       const moved = child.transform.tx !== tx || child.transform.ty !== ty;
       const resized = child.width !== targetWidth || child.height !== targetHeight;
