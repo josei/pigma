@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { useEditor } from '../store/editorStore';
 import { MENU_ITEMS, runMenuItem } from './Menu';
-import { matchQuickActions } from './matchQuickActions';
+import { documentQuickActions, matchQuickActions } from './matchQuickActions';
 import { useEscapeToClose } from './useEscapeToClose';
 
 /**
- * Quick actions (Cmd/Ctrl+/): a search over the main menu's commands. Type a word, move with the arrow keys,
- * and Enter runs the highlighted command. It runs the same entries as the menu, so it cannot offer a command
- * the menu does not have.
+ * Quick actions (Cmd/Ctrl+/): a search over the main menu's commands, the layers on the current page and the pages.
+ * Type a word, move with the arrow keys, and Enter runs the highlighted entry. The commands are the menu's own
+ * entries, so the palette cannot offer a command the menu does not have; a layer or page entry selects or opens it.
  */
 export function QuickActions() {
   const open = useEditor((state) => state.quickActionsOpen);
   const setOpen = useEditor((state) => state.setQuickActionsOpen);
+  const file = useEditor((state) => state.file);
+  const pageId = useEditor((state) => state.pageId);
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -26,7 +28,14 @@ export function QuickActions() {
 
   if (!open) return null;
 
-  const matches = matchQuickActions(MENU_ITEMS, query);
+  const entries = [
+    ...MENU_ITEMS,
+    ...documentQuickActions(file, pageId, {
+      selectLayer: (id) => useEditor.getState().select([id], 'replace'),
+      openPage: (id) => useEditor.getState().setPage(id),
+    }),
+  ];
+  const matches = matchQuickActions(entries, query);
   const run = (position: number) => {
     const item = matches[position];
     if (!item) return;
@@ -69,7 +78,7 @@ export function QuickActions() {
           ) : (
             matches.map((item, position) => (
               <button
-                key={item.label}
+                key={`${position}-${item.label}`}
                 type="button"
                 role="option"
                 aria-selected={position === index}
