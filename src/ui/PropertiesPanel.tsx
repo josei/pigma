@@ -624,6 +624,7 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
               <NumberField
                 label="Weight"
                 value={node.strokeWeight ?? 1}
+                mixed={isMixedValue(nodes.map((entry) => entry.strokeWeight ?? 1))}
                 min={0}
                 onCommit={(value) => updateSelected({ strokeWeight: value }, 'Set stroke weight')}
               />
