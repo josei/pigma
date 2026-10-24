@@ -94,3 +94,25 @@ test('B13d clearing auto layout removes the layout fields', async ({ page }) => 
   await nextPaint(page);
   await expect(field(page, 'Gap')).toHaveCount(0);
 });
+
+test('B13e a negative Gap overlaps the children, and the field keeps the negative value', async ({ page }) => {
+  const { frame, a, b } = await frameWithTwoRects(page);
+  await selectLayer(page, frame);
+  const autoLayout = page.locator('.section', { has: page.locator('.section__header', { hasText: 'Auto layout' }) });
+  await autoLayout.locator('.segmented__option', { hasText: 'Row' }).click();
+  await nextPaint(page);
+
+  const gap = field(page, 'Gap');
+  await gap.fill('-10');
+  await gap.press('Enter');
+  await nextPaint(page);
+  await expect(gap).toHaveValue('-10');
+
+  await selectLayer(page, a);
+  const first = await nodeGeometry(page);
+  await selectLayer(page, b);
+  const second = await nodeGeometry(page);
+  // The second child starts one width less the 10px overlap after the first.
+  expect(second.x - first.x).toBeCloseTo(first.w - 10, 0);
+});
+

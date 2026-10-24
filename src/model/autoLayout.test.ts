@@ -318,4 +318,18 @@ describe('auto layout wrap', () => {
     expect(round.autoLayout?.layoutWrap).toBe('WRAP');
     expect(round.autoLayout?.counterAxisSpacing).toBe(12);
   });
+
+  it('a negative gap overlaps the children by that amount', () => {
+    const { file, childIds } = horizontalFrame({ itemSpacing: -20 });
+    const placed = childTransforms({ ...file, document: reflowTree(file.document) }, childIds);
+    // Each child starts 100 - 20 = 80 after the one before it, from the 16px padding.
+    expect(placed.map((child) => child.x)).toEqual([16, 96, 176]);
+  });
+
+  it('a hugging frame shrinks by the overlap, so the padding still frames the children', () => {
+    const { file, frameId } = horizontalFrame({ itemSpacing: -20 });
+    const frame = findNode(reflowTree(file.document), frameId) as SceneNode;
+    // 3 x 100 - 2 x 20 of overlap, plus 16px of padding on each side.
+    expect(Math.round(frame.width)).toBe(292);
+  });
 });

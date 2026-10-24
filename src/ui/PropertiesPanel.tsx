@@ -1542,7 +1542,6 @@ function AutoLayoutSection({ node }: { node: SceneNode }) {
               <NumberField
                 label="Gap"
                 value={layout.itemSpacing ?? 0}
-                min={0}
                 onCommit={(value) => setAutoLayout({ itemSpacing: value })}
               />
               <Segmented
