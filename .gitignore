@@ -22,3 +22,7 @@ vite.config.ts.timestamp-*
 
 # Screenshots the Paseo build/review heartbeats take to show their work; not product assets.
 .critic-shots/
+
+# Local-only folders the tooling writes into the checkout, never committed.
+.preview/
+.pw-browsers/

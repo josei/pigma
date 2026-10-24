@@ -1,4 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { boot, drawShape, openMenu, tool, nextPaint } from './helpers';
 
 async function exportFile(page: Page, label: string, target: string) {
@@ -16,7 +18,7 @@ test('B8a Export .pigma downloads a .pigma file', async ({ page }) => {
   await drawShape(page, 'Rectangle', 200, 120);
 
   // The native format: `.pigma` with its own media type (docs/FORMAT.md).
-  const download = await exportFile(page, 'Export .pigma', '/tmp/pigma-qa-export.pigma');
+  const download = await exportFile(page, 'Export .pigma', join(tmpdir(), 'pigma-qa-export.pigma'));
   expect(download.suggestedFilename()).toMatch(/\.pigma$/i);
 });
 
@@ -25,7 +27,7 @@ test('B8b an exported document re-imports with its content intact', async ({ pag
   await drawShape(page, 'Rectangle', 200, 120);
   const expected = await page.locator('.layer-row').count();
 
-  await exportFile(page, 'Export .pigma', '/tmp/pigma-qa-roundtrip.pigma');
+  await exportFile(page, 'Export .pigma', join(tmpdir(), 'pigma-qa-roundtrip.pigma'));
 
   // Clear the document, then import the file we just exported.
   await openMenu(page);
@@ -39,7 +41,7 @@ test('B8b an exported document re-imports with its content intact', async ({ pag
     page.waitForEvent('filechooser'),
     page.locator('.menu__item', { hasText: 'Import Pigma document' }).first().click(),
   ]);
-  await chooser.setFiles('/tmp/pigma-qa-roundtrip.pigma');
+  await chooser.setFiles(join(tmpdir(), 'pigma-qa-roundtrip.pigma'));
 
   await expect(page.locator('.layer-row')).toHaveCount(expected);
 });
@@ -48,7 +50,7 @@ test('B8c Export SVG downloads an .svg file', async ({ page }) => {
   await boot(page);
   await drawShape(page, 'Rectangle', 200, 120);
 
-  const download = await exportFile(page, 'Export SVG', '/tmp/pigma-qa-export.svg');
+  const download = await exportFile(page, 'Export SVG', join(tmpdir(), 'pigma-qa-export.svg'));
   expect(download.suggestedFilename()).toMatch(/\.svg$/i);
 });
 
@@ -57,7 +59,7 @@ test('B8d the exported SVG contains the drawn geometry', async ({ page }) => {
   await drawShape(page, 'Rectangle', 260, 160);
   await tool(page, 'Move').click();
 
-  const download = await exportFile(page, 'Export SVG', '/tmp/pigma-qa-geometry.svg');
+  const download = await exportFile(page, 'Export SVG', join(tmpdir(), 'pigma-qa-geometry.svg'));
   const stream = await download.createReadStream();
   let body = '';
   for await (const chunk of stream) body += chunk;

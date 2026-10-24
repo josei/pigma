@@ -1,5 +1,5 @@
 /**
- * The desktop sidecar's supervisor (ROADMAP M17). It runs the relay and the MCP server as
+ * The desktop sidecar's supervisor . It runs the relay and the MCP server as
  * child processes, and stops them when its standard input closes. The desktop shell holds the
  * other end of that pipe, so the servers stop when the app exits, however it exits: a normal
  * quit, a SIGTERM, or a crash. A bare process would be left running as an orphan.

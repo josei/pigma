@@ -82,7 +82,7 @@ export function cornerSmoothingOf(node: BaseNode): number {
  * Corner smoothing, an approximation. Figma's exact curve is not published, so these two constants are fitted to
  * the common description of the feature: at full smoothing the corner's tangent points sit about 1.53 times the
  * radius from the corner, and the curve's handles lengthen, so the corner flattens toward a square. At 0 the
- * corner is the circular arc, unchanged. See docs/DECISIONS.md.
+ * corner is the circular arc, unchanged.
  */
 const SMOOTH_EXTENT = 0.5287;
 const SMOOTH_HANDLE = 0.2;

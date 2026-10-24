@@ -143,7 +143,7 @@ external MCP client ──(stdio | HTTP)──▶ MCP server ──▶ RelaySess
 
 Verified end-to-end: an external MCP client created a frame in a running browser,
 the layers panel updated, and `Ctrl+Z` restored the exact baseline document
-(screenshot: `/tmp/pigma-mcp-bridge-e2e.webp`).
+(screenshot: `test-results/pigma-mcp-bridge-e2e.webp`).
 
 ---
 
@@ -419,8 +419,7 @@ name or comment that does, each checked against the parity table's outcome
 | This file named `src/mcp/toolCatalog.ts` as the registry; the registry is `allTools` in `src/mcp/tools/index.ts` (that module holds the state filters) | **wrong fact — fixed** |
 | `tests/mcp/naming.test.ts` ran the same title-brand test twice | **dead duplicate — removed** |
 
-No tool is undescribed: all 35 are named and characterised here. `README.md` and
-`docs/ROADMAP.md` make no per-tool behaviour claim, so there is nothing to audit there.
+No tool is undescribed: all 35 are named and characterised here. `README.md` makes no per-tool behaviour claim, so there is nothing to audit there.
 
 #### Parity with Figma's published MCP surface - MEASURED 2026-10-05
 
@@ -494,7 +493,7 @@ editor bridge and `/mcp`:
 
 ```sh
 npm run relay -- --host 0.0.0.0 --port 8080 --hosted --token-ttl 1800000 \
-  --data-dir /var/lib/pigma/rooms
+  --data-dir ./data/rooms
 # or: PIGMA_HOSTED=1 HOST=0.0.0.0 PORT=8080 PIGMA_MCP_TOKEN_TTL_MS=1800000 \
 #     PIGMA_BRIDGE_TOKEN=<operator-secret> npm run relay
 ```
@@ -684,7 +683,7 @@ operands, not a `booleanOperation` field. Variables and variable collections are
 first-class in the model and fully served by the MCP tools, but no REST importer
 populates them: Figma's file JSON has no variables table (they come from the separate
 `/variables/local` endpoint). The native `.fig` reader does extract the variable tables from
-the `VARIABLE_SET` and `VARIABLE` nodes that the exporter writes (see docs/DECISIONS.md).
+the `VARIABLE_SET` and `VARIABLE` nodes that the exporter writes.
 Native `.fig` **export** is implemented for both native round-trips and the
 editor model — see [`docs/FIGMA_IMPORT.md`](./FIGMA_IMPORT.md) for the mapping
 and its documented limitations (component sets, numeric font weight).

@@ -44,16 +44,10 @@ past drawing:
 - MCP bridge (connect, resilience, remote edit + undo round trip) and
   collaboration presence (cursors, follow)
 
-Evidence: **1233 unit tests across 138 files**, **435 browser tests passing / 0 failing**
-on Chromium (`CI=true npm run test:browser`; Firefox is an opt-in second engine),
-**15 Rust tests passing**, and a parity script that separates its INTERNAL
+Evidence: the unit, browser and Rust suites (see below), and a parity script that separates its INTERNAL
 contract rows (**11/11** - Pigma's own values, not evidence about Figma) from its
 EXTERNAL references (one cited structural fact, **0 pixel references**), so it
-reports the 1:1 visual-parity claim as **UNSUPPORTED**. See
-[`docs/ROADMAP.md`](docs/ROADMAP.md), "How the Figma matching was actually
-done". See [`docs/ROADMAP.md`](docs/ROADMAP.md) for
-the milestone-by-milestone status, the specs that prove each claim, and the known
-limitations.
+reports the 1:1 visual-parity claim as **UNSUPPORTED**.
 
 
 ## Objective
@@ -69,8 +63,8 @@ The current milestone is deliberately limited. The overall objective is not.
 
 ## Feature areas
 
-Targets rather than a shipped list — [`docs/ROADMAP.md`](docs/ROADMAP.md) records
-what is verified today.
+Targets rather than a shipped list. The browser specs in `tests/browser` and the
+unit tests beside the source show what is verified today.
 
 | Area | Target |
 | --- | --- |
@@ -99,12 +93,8 @@ what is verified today.
   validation semantics, where documents live, and the versioning policy.
 - [`docs/FIGMA_COMPAT.md`](docs/FIGMA_COMPAT.md) — the `.fig` round-trip
   compatibility matrix, with the known losses stated explicitly.
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — milestone status with the specs that
-  prove each claim.
 - [`docs/MCP.md`](docs/MCP.md) — the MCP surface.
 - [`docs/UI_CONTRACT.md`](docs/UI_CONTRACT.md) — the UI class/token contract.
-- [`docs/DECISIONS.md`](docs/DECISIONS.md) — open questions settled without a
-  person, with the options and the reason for each choice.
 
 ## Getting started
 
@@ -133,10 +123,8 @@ the selection in the right-hand panel.
 | `npm run mcp` | the MCP server over stdio |
 | `npm run relay` | the collaboration / MCP relay server |
 
-Current evidence: **1233 unit tests across 138 files**, **435 browser tests
-passing** on Chromium, and **15 Rust tests passing** - see [`docs/ROADMAP.md`](docs/ROADMAP.md) for
-what each milestone
-proves and for the known limitations.
+Current evidence comes from the suites: `npx vitest run` (unit), `npm run test:browser`
+(Chromium), and `cargo test` in `src-tauri` (Rust).
 
 ## License
 

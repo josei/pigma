@@ -1,5 +1,5 @@
 /**
- * Features that looked present and did nothing (docs/ROADMAP.md, "a feature that is
+ * Features that looked present and did nothing ("a feature that is
  * present and does nothing"). Each one is driven and its result measured, so a
  * regression puts a control back in the menu or the key table that does nothing.
  */

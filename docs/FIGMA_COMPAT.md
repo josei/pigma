@@ -301,8 +301,7 @@ It is **not a cure-all**, and it should not be read as one. It does not touch:
   **VISUAL PARITY: UNSUPPORTED** - exiting **non-zero by design**. The INTERNAL rows
   are contracts on **our own** constants (four of them are Pigma-at-DPR-2 vs
   Pigma-at-DPR-1, so **no Figma rendering is measured**); the one EXTERNAL row is a
-  cited outside source and **currently fails**.** See the Open QA parity entry and
-  the M9 row in the ROADMAP;
+  cited outside source and **currently fails**.** See the parity check (`scripts/parity-spec.mjs`);
 - the **environment blockers** - hosted infrastructure, the Tauri **system
   libraries**, and the **unit transient**.
 
@@ -347,7 +346,7 @@ Legend: **✅** survives · **≈** survives with a stated approximation ·
 | Auto layout: **grid** | ❌ | ❌ | No model equivalent — reported as `autoLayout:GRID` | documented-from-code: no model equivalent, reported as `autoLayout:GRID` |
 | Prototype interactions (triggers, actions, overlay) | ✅ | ✅ | **FIXED, and proven through the REAL BINARY path.** A document carrying a `NAVIGATE` (`SMART_ANIMATE`, 250ms, `IN_CUBIC`) **and** a `SWAP_STATE` interaction round-trips with **both** interactions, the **trigger** intact, the **transition** intact, and the destination resolving to the **reimported** node. **The assertion that matters: the recovered swap still plays back as a `SWAP` AFTER the round trip** (applying it leaves the presented frame and the stack untouched) - which proves the feature survives a **FILE**, not just memory. | test-backed: `tests/figma/roundTripLoss.test.ts`; unit `src/model/prototype.test.ts` | test-backed: `b14-presentation`, `b21-prototype-inspect`; loss measured by `tests/figma/roundTripLoss.test.ts` |
 | Prototype transitions incl. smart animate | ✅ | ✅ | Duration and type carried | test-backed: `b33-animate-scroll` |
-| Set variable action (`SET_VARIABLE`: variable and value) | ✅ | ✅ | Written from the schema embedded in the `.fig` (`connectionType` SET_VARIABLE, `targetVariableID` as a GUID, `targetVariableValue` as `boolValue` or `floatValue`) and read back. **Not confirmed by Figma:** no Figma-made file has been checked against this encoding. **Ids:** a variable id not in `session:local` form gets a GUID derived from its text, so the same id is the same GUID on every export. **Variables:** the definitions are written as `VARIABLE_SET` and `VARIABLE` nodes on the internal canvas and read back (`roundTripLoss.test.ts`); the canvas placement is inferred from the styles, not confirmed by Figma. | test-backed: `tests/figma/roundTripLoss.test.ts` ("a Set variable action survives a file") | decision: docs/DECISIONS.md |
+| Set variable action (`SET_VARIABLE`: variable and value) | ✅ | ✅ | Written from the schema embedded in the `.fig` (`connectionType` SET_VARIABLE, `targetVariableID` as a GUID, `targetVariableValue` as `boolValue` or `floatValue`) and read back. **Not confirmed by Figma:** no Figma-made file has been checked against this encoding. **Ids:** a variable id not in `session:local` form gets a GUID derived from its text, so the same id is the same GUID on every export. **Variables:** the definitions are written as `VARIABLE_SET` and `VARIABLE` nodes on the internal canvas and read back (`roundTripLoss.test.ts`); the canvas placement is inferred from the styles, not confirmed by Figma. | test-backed: `tests/figma/roundTripLoss.test.ts` ("a Set variable action survives a file") |
 | Unknown / future node types | ❌ | ❌ | Reported as `nodeType:<TYPE>`; the source object is still preserved in `raw` | documented-from-code: reported as `nodeType:<TYPE>` |
 
 ## 2. What the round-trip probe measured
@@ -507,7 +506,7 @@ model uses Figma's **NATIVE** name **`SWAP_STATE`** rather than the REST name
 `CHANGE_TO`, and handles the REST spelling as an importer **ALIAS**
 (`NAVIGATION_ALIASES = { CHANGE_TO: 'SWAP_STATE' }`). So the model keeps **one
 vocabulary** while a REST-sourced document still lands - which is exactly the
-remedy for the sub-class named in the ROADMAP's pattern section.
+remedy for the sub-class of this pattern.
 
 **`SCROLL_TO` STAYS WITHDRAWN, on evidence rather than as deferred.** It is one
 field short in **form** - `extraScrollOffset` is a `Vector` and the model has no

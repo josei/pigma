@@ -24,7 +24,7 @@ Two environment quirks in this workspace:
 Browsers live out-of-tree (the built-in tooling cannot install Chromium here):
 
 ```
-PLAYWRIGHT_BROWSERS_PATH=/tmp/pw-browsers npx playwright test
+PLAYWRIGHT_BROWSERS_PATH=.pw-browsers npx playwright test
 ```
 
 Firefox is an opt-in second engine (off by default to keep the normal run fast):
@@ -185,7 +185,7 @@ from a run I had not repeated that round - corrected here.
 
 ### ROOMS discovery (ran the script first, as agreed)
 
-Control surface, printed from the live app (`/tmp/rooms-discovery.mjs`):
+Control surface, printed from the live app (from a throwaway script):
 
     Nickname    input[aria-label="Room nickname"]
     Room        input[aria-label="Room id"]      placeholder "studio"
@@ -387,7 +387,7 @@ style), and the 2x pass proves the values are scale independent.
 
 ## Verification baseline
 
-`.` is a git repository with a committed verified-green state
+This repository is a git repository with a committed verified-green state
 (`697d88b`). QA changes are reported against it with `git status --porcelain` and
 `git diff --stat` - a real diff against a real baseline - instead of the
 content/mtime comparisons used before the repo had one. Nothing QA-side commits
@@ -596,7 +596,7 @@ pass script, so this entry states what was measured and not more.
 
 A test waits on the condition it checks, never on a fixed time, where it can. `expect(locator)` and `expect.poll(...)`
 retry until the state holds. A fixed `waitForTimeout` passes on a fast machine and fails on a slow one (WebKit finished
-a layer drop later than Chromium, and B85c failed once because of one; see docs/DECISIONS.md).
+a layer drop later than Chromium, and B85c failed once because of one).
 
 Done in two steps:
 - The 16 fixed waits that sat directly before a retrying locator assertion were removed.

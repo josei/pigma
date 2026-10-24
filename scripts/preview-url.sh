@@ -24,7 +24,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PORT="${PIGMA_PREVIEW_PORT:-8788}"
-STATE="${PIGMA_PREVIEW_STATE:-/tmp/pigma-preview}"
+STATE="${PIGMA_PREVIEW_STATE:-$ROOT/.preview}"
 TUNNEL_LOG="$STATE/tunnel.log"
 DEPLOY_LOG="$STATE/deploy.log"
 URL_FILE="$STATE/url.txt"

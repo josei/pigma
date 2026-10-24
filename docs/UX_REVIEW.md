@@ -44,20 +44,20 @@ other than Chromium. Nothing below should be read as a claim about those.
 ## Open
 
 - **Shell parity is unmeasured against Figma (done by proxy).** The parity diff compares our own
-  constants, so pixel parity is not claimed. See `docs/DECISIONS.md`.
+  constants, so pixel parity is not claimed.
 - **No outside user yet.** The biggest product risk is untested assumptions. The next
   useful artifact is one designer finishing a real task and a written list of where
   they stalled.
 - **Hosted deployment: decided, not yet.** The online copy is published to GitHub Pages (docs/ONLINE.md).
   The owner decided not to host a relay or MCP server for others yet. The server mode is built and
-  tested. See `docs/DECISIONS.md`.
+  tested.
 
 ## Resolved
 
 - Create component on a layer that was already a component said "Select a single layer, a frame or a shape", which was wrong for a component. It now says the layer is already a component (B119a); several layers still get the select-one message (B119b).
 - Other engines: Firefox and WebKit were not run after the Pages work. Both are re-run and green: Firefox 426 passed, 9 skipped (clipboard); WebKit 425 passed, 10 skipped (clipboard, and the offline reload) (5 clipboard, and the offline reload that Playwright's WebKit build cannot run). Measured on the Pages-era code, with `PIGMA_FIREFOX=1` and `PIGMA_WEBKIT=1`.
 - Alignment had no keyboard shortcuts; Alt+A, Alt+H, Alt+D, Alt+W, Alt+V and Alt+S align the selection (B96a).
-- The pixel grid and snap-to-grid keys were Shift+G and Shift+X; they are Cmd/Ctrl+' and Cmd/Ctrl+Shift+' (B94a, DECISIONS.md).
+- The pixel grid and snap-to-grid keys were Shift+G and Shift+X; they are Cmd/Ctrl+' and Cmd/Ctrl+Shift+' (B94a).
 - Detach instance had no keyboard shortcut; Ctrl/Cmd+Alt+B now detaches the selected instance (B93a).
 - Ctrl/Cmd+Shift+D also duplicated the selection; Duplicate is Ctrl/Cmd+D alone (B93b).
 - A conditional interaction lost its condition on save and reload: the file loader rebuilt interactions
@@ -68,17 +68,17 @@ other than Chromium. Nothing below should be read as a claim about those.
 - An interaction can be made conditional on a variable, from an Only when row in the Prototype tab (B92a).
 - A designer could not make a component slot. A frame inside a component now offers **Make slot** in
   the context menu, which binds a SLOT property to it; a root component is refused with the reason
-  (B88a–b, DECISIONS.md).
+  (B88a–b).
 - Layers could not be reordered by dragging. A drag above or below a row moves the layer beside it,
   and a drop onto the middle of a frame or section puts it inside. Each move is one undo step and
-  keeps the layer's place on the canvas; instance children refuse drops (B85a–c, DECISIONS.md).
+  keeps the layer's place on the canvas; instance children refuse drops (B85a–c).
 - Export had no keyboard shortcut. Cmd/Ctrl+Shift+E now opens the export options for the selection,
   the menu shows ⇧⌘E beside it, and an empty selection says so (B84a–c).
 - Grid: the Rows count showed only the declared rows, so three children wrapping onto a second row read
   as one row. The panel now shows the rows the grid uses (`gridRowCount`, B57f).
 - Keyboard: F6 focuses the tools toolbar (B82b). The main menu no longer shows ⇧D beside the theme
   entry, since Shift+D is Dev Mode (B82a). Ctrl+Space keyboard box selection is built as a subset, from Figma's documentation
-  (B108a–c; docs/DECISIONS.md).
+  (B108a–c).
 - A vector with several contours (a glyph's counters, a compound shape, a boolean result with a
   hole) was read as one contour, so holes filled in and separate pieces joined. Each subpath is a
   contour now, and contours combine even-odd, so a counter is a hole (boolean-geometry.test.ts).

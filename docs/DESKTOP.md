@@ -2,8 +2,7 @@
 
 The desktop app is built in GitHub Actions for macOS, Windows and Linux (`.github/workflows/desktop.yml`), and
 the bundles are uploaded as artifacts. The builds are unsigned. The app starts its own MCP server and rooms relay on
-loopback, as a sidecar (see "Local servers for the desktop app" below). The plan and acceptance criteria are milestone
-M17 in `docs/ROADMAP.md`. Verified: `cargo test` and `cargo build` on Linux, and the packaged Linux app serves MCP and
+loopback, as a sidecar (see "Local servers for the desktop app" below). The plan and acceptance criteria are milestone M17. Verified: `cargo test` and `cargo build` on Linux, and the packaged Linux app serves MCP and
 rooms. CI runs the packaged app on all three platforms and checks its servers (run 39492897817).
 
 The desktop build is the **same editor** in a thin native shell. Nothing about
@@ -226,7 +225,7 @@ build was checked locally: `cargo tauri build --debug` produced one bundle,
 `Pigma_0.1.0_amd64.deb`, which contains `usr/bin/pigma-desktop` and a desktop entry.
 Windows (`msi`, `nsis`) is set in `src-tauri/tauri.windows.conf.json`. The CI workflow builds
 the bundles on Windows, macOS and Linux and uploads them as artifacts. The app is unsigned by
-decision, so Windows and macOS show a warning on first launch (DECISIONS.md).
+decision, so Windows and macOS show a warning on first launch.
 
 If a macOS job is cancelled with no steps, check its annotations. Run 39480031196 (commit 316bce2)
 was cancelled with "The job was not acquired by Runner of type hosted even after multiple
@@ -237,7 +236,7 @@ build time, and `deb` is enough for the first release.
 ## Local servers for the desktop app
 
 The app starts its own MCP server and rooms relay, on loopback only, and stops them when it
-exits. Three parts make that work (ROADMAP M17):
+exits. Three parts make that work:
 
 - `scripts/build-servers.mjs` bundles the relay and the MCP server into `dist-servers/`. The
   native rasterizer `@resvg/resvg-js` stays external: it ships a binary per platform.

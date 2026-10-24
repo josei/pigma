@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Build the local MCP server and the collaboration relay as standalone bundles, for the
- * desktop app's sidecar (ROADMAP M17). The output is `dist-servers/`:
+ * desktop app's sidecar. The output is `dist-servers/`:
  *
  *   relay.mjs, mcp.mjs     the two servers, bundled with their TypeScript dependencies
  *   node_modules/@resvg/   the native rasterizer, which stays external (it ships a

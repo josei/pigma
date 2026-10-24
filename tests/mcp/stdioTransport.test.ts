@@ -1,7 +1,7 @@
 /**
  * The stdio transport, end-to-end and without HTTP.
  *
- * `docs/ROADMAP.md` says "stdio stays an optional extra transport in the same
+ * The project says "stdio stays an optional extra transport in the same
  * binary". This proves it: the CLI is spawned in stdio mode, and a hand-written
  * line client sends `initialize`, `tools/list` and real `tools/call` requests
  * over stdin, reading newline-delimited replies from stdout. No HTTP is

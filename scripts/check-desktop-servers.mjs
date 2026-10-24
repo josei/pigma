@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Check a packaged desktop app's local servers (ROADMAP M17). Starts the app binary, waits for
+ * Check a packaged desktop app's local servers . Starts the app binary, waits for
  * the MCP endpoint and the rooms relay to answer, calls the MCP tool list and opens a rooms
  * socket, then stops the app and checks that both ports close. Exits 0 on success.
  *

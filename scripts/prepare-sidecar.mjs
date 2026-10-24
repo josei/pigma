@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Prepare the desktop app's sidecar (ROADMAP M17): the bundled MCP server and relay, and a
+ * Prepare the desktop app's sidecar : the bundled MCP server and relay, and a
  * Node runtime to run them. Output goes to `src-tauri/sidecar/`, which Tauri ships as a
  * resource. Run before `tauri build`; the build fails if the folder is missing.
  *

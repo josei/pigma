@@ -1,5 +1,5 @@
 /**
- * Where MCP is offered (product decision in docs/ROADMAP.md).
+ * Where MCP is offered.
  *
  * MCP is offered in three places, and they differ only in the endpoint and in
  * whether a token is required:

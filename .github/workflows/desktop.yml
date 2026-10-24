@@ -1,4 +1,4 @@
-# Build the Pigma desktop app on each platform (see ROADMAP M17 and docs/DESKTOP.md).
+# Build the Pigma desktop app on each platform (see docs/DESKTOP.md).
 # A build runs when the desktop shell or this workflow changes on main, and on demand.
 # Each platform uploads its bundles as an artifact. Builds are unsigned for now.
 name: Desktop
@@ -55,7 +55,7 @@ jobs:
       - run: npm ci
       - name: Build the desktop app
         run: npx --yes @tauri-apps/cli@2 build
-      # The packaged app must start, serve MCP and rooms, and stop them when it quits (ROADMAP M17).
+      # The packaged app must start, serve MCP and rooms, and stop them when it quits.
       - name: Check the packaged app's servers (Linux)
         if: matrix.name == 'linux'
         run: |

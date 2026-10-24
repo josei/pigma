@@ -1,7 +1,7 @@
 /**
  * The no-log / no-store policy for MCP traffic, and the hosted deployment.
  *
- * Direction (recorded in `docs/ROADMAP.md`): the hosted site serves a fully
+ * Direction: the hosted site serves a fully
  * working MCP endpoint through the relay, which means the server *sees* tool
  * calls. It must therefore log nothing and store nothing of them: no payload in
  * any log line (error paths included), no file or database write, and a metrics

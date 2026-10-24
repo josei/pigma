@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
 /**
- * MCP panel states (product decision recorded in docs/ROADMAP.md).
+ * MCP panel states.
  *
  * There is no built-in MCP endpoint: an agent needs a Pigma server, which the
  * desktop app or a self-hosted server provides. With nothing advertised the panel

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * The desktop sidecar's servers (ROADMAP M17): the build script bundles the relay and the MCP
+ * The desktop sidecar's servers : the build script bundles the relay and the MCP
  * server, and each bundle must start from its own directory with no repository around it.
  */
 const ROOT = process.cwd();

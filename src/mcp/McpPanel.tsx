@@ -8,7 +8,7 @@ import { minutesLeft, mintSessionToken, type SessionToken } from './sessionToken
 import { useEditor } from '../store/editorStore';
 
 /**
- * The one MCP panel, in three states (product decision in docs/ROADMAP.md).
+ * The one MCP panel, in three states .
  *
  * The panel asks what this environment offers (src/config/mcpAvailability.ts)
  * and shows the same connection surface in every case — status, endpoint, masked

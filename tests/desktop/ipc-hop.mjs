@@ -126,7 +126,7 @@ async function main() {
   if (!existsSync(TAURI_DRIVER)) fail('tauri-driver', `not found at ${TAURI_DRIVER} (cargo install tauri-driver --locked)`);
   if (!process.env.DISPLAY) fail('display', 'DISPLAY is unset — run under `xvfb-run -a`');
 
-  const driver = spawn(TAURI_DRIVER, ['--port', String(DRIVER_PORT), '--native-port', String(NATIVE_PORT), '--native-driver', '/usr/bin/WebKitWebDriver'], {
+  const driver = spawn(TAURI_DRIVER, ['--port', String(DRIVER_PORT), '--native-port', String(NATIVE_PORT), '--native-driver', process.env.WEBKIT_WEBDRIVER ?? 'WebKitWebDriver'], {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, PATH: `${process.env.HOME}/.cargo/bin:${process.env.PATH}` },
   });

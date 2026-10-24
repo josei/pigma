@@ -12,7 +12,7 @@ Three suites, all real:
 
 ```
 [vite] Pre-transform error: Transform failed with 1 error:
-./src/model/types.ts:1:22: ERROR: Unexpected end of file
+src/model/types.ts:1:22: ERROR: Unexpected end of file
 ```
 
 This is **not a test failure**. It means a source file was written **while vite was

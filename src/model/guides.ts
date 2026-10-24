@@ -15,7 +15,7 @@ export function guidesOf(file: PigmaFile, containerId: string): UserGuide[] {
 
 /**
  * The container the guide tools act on: the selected frame when exactly one frame is selected, otherwise the page.
- * Only this container's guides are shown and snapped to (docs/DECISIONS.md, frame guides).
+ * Only this container's guides are shown and snapped to (frame guides).
  */
 export function activeGuideContainer(file: PigmaFile, pageId: string, selection: readonly string[]): string {
   const [only] = selection;

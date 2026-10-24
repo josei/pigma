@@ -106,7 +106,7 @@ must not collide with imported ids.
 | `FRAME`, `GROUP`, `SECTION`, `BOOLEAN_OPERATION` | `ContainerNode` |
 | `COMPONENT`, `COMPONENT_SET` | `ComponentNode` (+ `componentPropertyDefinitions`, `description`) |
 | `INSTANCE` | `InstanceNode` (+ `componentId`, `componentProperties`) |
-| `RECTANGLE`, `ROUNDED_RECTANGLE` | `ShapeNode` `RECTANGLE` (+ `cornerRadius`, `rectangleCornerRadii`). Figma's `cornerSmoothing` is not read (see docs/DECISIONS.md, corner smoothing) |
+| `RECTANGLE`, `ROUNDED_RECTANGLE` | `ShapeNode` `RECTANGLE` (+ `cornerRadius`, `rectangleCornerRadii`). Figma's `cornerSmoothing` is not read |
 | `ELLIPSE`, `LINE`, `STAR`, `REGULAR_POLYGON`/`POLYGON` | `ShapeNode` `ELLIPSE`/`LINE`/`STAR`/`POLYGON` |
 | `VECTOR` | `ShapeNode` `VECTOR` (+ `pathData`, `windingRule`) |
 | `TEXT` | `TextNode` (+ `characters`, `style`, `styleRuns`) |

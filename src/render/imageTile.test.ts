@@ -10,7 +10,7 @@ import type { PigmaFile, SceneNode } from '../model/types';
 /**
  * TILE image fills.
  *
- * The roadmap listed "TILE renders as cover" as a known limitation: the mode was
+ * An earlier known limitation was "TILE renders as cover": the mode was
  * offered and stored, but the pattern tile was the node box, so the image was
  * stretched over the fill area once instead of repeating. These tests prove the
  * repetition by *sampling pixels*, which is the only thing that tells tiling

@@ -22,11 +22,11 @@ const viteNode = `${repoRoot}node_modules/.bin/vite-node`;
 describe('relay flags', () => {
   it('defaults to the deployment shape and lets flags win over the environment', () => {
     expect(parseRelayArgs([], {})).toMatchObject({ port: 8080, host: '0.0.0.0', dataDir: 'data', staticDir: 'dist', help: false });
-    expect(parseRelayArgs([], { PORT: '9000', HOST: '127.0.0.1', DATA_DIR: '/tmp/d', STATIC_DIR: '/tmp/s' })).toMatchObject({
+    expect(parseRelayArgs([], { PORT: '9000', HOST: '127.0.0.1', DATA_DIR: 'relay-data', STATIC_DIR: 'relay-static' })).toMatchObject({
       port: 9000,
       host: '127.0.0.1',
-      dataDir: '/tmp/d',
-      staticDir: '/tmp/s',
+      dataDir: 'relay-data',
+      staticDir: 'relay-static',
     });
     expect(parseRelayArgs(['--port', '8788', '--host', '127.0.0.1'], { PORT: '9000' })).toMatchObject({
       port: 8788,
@@ -42,7 +42,7 @@ describe('relay flags', () => {
     expect(options.staticDir).toBeUndefined();
     expect(options.token).toBe('sekret');
     // Environment values are dropped by the negative flags too.
-    expect(parseRelayArgs(['--no-data'], { DATA_DIR: '/tmp/d' }).dataDir).toBeUndefined();
+    expect(parseRelayArgs(['--no-data'], { DATA_DIR: 'relay-data' }).dataDir).toBeUndefined();
   });
 
   it('guards against being orphaned, and can be told not to', () => {

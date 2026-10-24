@@ -1,4 +1,4 @@
-//! The local MCP server and collaboration relay, started with the app (ROADMAP M17).
+//! The local MCP server and collaboration relay, started with the app.
 //!
 //! They run from the sidecar that Tauri ships as a resource: `sidecar/node` runs
 //! `relay.mjs` and `mcp.mjs`, which `scripts/prepare-sidecar.mjs` puts there. Both listen on
