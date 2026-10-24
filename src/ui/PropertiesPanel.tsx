@@ -7,7 +7,7 @@ import type { BlendMode, ContainerNode, OverlayPosition, Paint, RGBA, SceneNode,
 import { OVERLAY_POSITIONS } from '../model/overlay';
 import { limitsOf } from '../model/sizing';
 import { cropOf, imageFillsOf } from '../model/image';
-import { isMixedValue } from '../model/selectionValue';
+import { canonicalKey, isMixedValue } from '../model/selectionValue';
 import { decodeImageFile } from './imageInput';
 import { hasChildren } from '../model/types';
 import { defaultAutoLayout, gridRowCount } from '../model/autoLayout';
@@ -1283,12 +1283,14 @@ function ConstraintsSection({ node }: { node: SceneNode }) {
 }
 
 /** Effects editor: one row per effect with live controls. */
-function EffectsSection({ node }: { node: SceneNode }) {
+function EffectsSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[] }) {
   const addEffect = useEditor((state) => state.addEffect);
   const updateEffect = useEditor((state) => state.updateEffect);
   const removeEffect = useEditor((state) => state.removeEffect);
   const toggleEffect = useEditor((state) => state.toggleEffect);
-  const effects: Effect[] = node.effects ?? [];
+  // Edits address an effect by its index on every selected layer, so rows are only offered when the lists agree.
+  const differ = isMixedValue(nodes.map((entry) => canonicalKey(entry.effects ?? [])));
+  const effects: Effect[] = differ ? [] : node.effects ?? [];
 
   return (
     <div className="section">
@@ -1296,6 +1298,11 @@ function EffectsSection({ node }: { node: SceneNode }) {
         <span>Effects</span>
       </div>
       <div className="section__body">
+        {differ ? (
+          <p className="prop-row__label" style={{ margin: '0 0 6px' }} data-testid="effects-mixed">
+            Effects differ across the selection. Adding an effect adds it to every layer; the rows return once the layers match.
+          </p>
+        ) : null}
         {effects.map((effect, index) => {
           const hidden = effect.visible === false;
           return (
@@ -1346,7 +1353,7 @@ function EffectsSection({ node }: { node: SceneNode }) {
             </div>
           );
         })}
-        <details className="advanced" data-testid="effects-add" open={effects.length > 0}>
+        <details className="advanced" data-testid="effects-add" open={differ || (node.effects ?? []).length > 0}>
           <summary>Add effect</summary>
         <div className="prop-grid prop-grid--4">
           {EFFECT_TYPES.map((kind) => (
@@ -2160,7 +2167,7 @@ export function PropertiesPanel() {
             <AppearanceSection node={node} nodes={nodes} />
             {node.type === 'TEXT' ? <TextSection node={node} /> : null}
             <BooleanSection />
-            <EffectsSection node={node} />
+            <EffectsSection node={node} nodes={nodes} />
             <ConstraintsSection node={node} />
             <AutoLayoutSection node={node} />
             <SizeLimitsSection node={node} />
