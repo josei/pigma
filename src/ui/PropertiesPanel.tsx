@@ -591,6 +591,8 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
   const strokeState = selectionPaintOf(nodes.map((entry) => firstVisibleFill(entry.strokes)));
   const radii = (node as { cornerRadius?: number }).cornerRadius ?? 0;
   const radiusMixed = isMixedValue(nodes.map((entry) => (entry as { cornerRadius?: number }).cornerRadius ?? 0));
+  // Each corner is compared on its own, so a selection that agrees on the top corners can still mix the bottom ones.
+  const cornersMixed = [0, 1, 2, 3].map((index) => isMixedValue(nodes.map((entry) => cornerRadii(entry)[index]!)));
   const blendMode: BlendMode = node.blendMode ?? 'NORMAL';
   const corners = cornerRadii(node);
   const [individualCorners, setIndividualCorners] = useState(!!node.rectangleCornerRadii);
@@ -678,6 +680,7 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
                   key={label}
                   label={label}
                   value={corners[index]!}
+                  mixed={cornersMixed[index]}
                   min={0}
                   onCommit={(value) => {
                     const next = [...corners] as [number, number, number, number];
