@@ -66,3 +66,34 @@ test('B131c a scrub on a mixed opacity moves each layer by the same drag, from i
   expect(first, 'the first layer did not move by the drag').toBeCloseTo(50, 0);
   expect(second, 'the second layer did not move by the drag from its own value').toBeCloseTo(70, 0);
 });
+
+test('B131d a layer stepped to 45 in a mixed selection reads as equal to a layer typed to 45', async ({ page }) => {
+  await boot(page, { blank: true });
+  // Rectangle 1 is typed to 45, Rectangle 2 starts at 40 and Rectangle 3 at 60. The layers panel lists the newest first,
+  // so Rectangles 3 and 2 are adjacent, and so are 2 and 1: Shift-click selects each pair.
+  await drawShape(page, 'Rectangle', 120, 90, -240, 0);
+  await field(page, 'Opacity').fill('45');
+  await field(page, 'Opacity').press('Enter');
+  await drawShape(page, 'Rectangle', 120, 90, 0, 0);
+  await field(page, 'Opacity').fill('40');
+  await field(page, 'Opacity').press('Enter');
+  await drawShape(page, 'Rectangle', 120, 90, 240, 0);
+  await field(page, 'Opacity').fill('60');
+  await field(page, 'Opacity').press('Enter');
+
+  // Step Rectangles 3 and 2 (40 and 60, so mixed) up by five points together.
+  await page.locator('.layer-row', { hasText: 'Rectangle 3' }).first().click();
+  await page.locator('.layer-row', { hasText: 'Rectangle 2' }).first().click({ modifiers: ['Shift'] });
+  await expect(page.getByText('2 layers selected')).toBeVisible();
+  await expect(field(page, 'Opacity')).toHaveAttribute('placeholder', '—');
+  await field(page, 'Opacity').focus();
+  for (let i = 0; i < 5; i += 1) await page.keyboard.press('ArrowUp');
+  await nextPaint(page);
+
+  // Rectangle 2 is now stepped to 45, and Rectangle 1 was typed to 45: the pair reads 45, not Mixed.
+  await page.locator('.layer-row', { hasText: 'Rectangle 2' }).first().click();
+  await page.locator('.layer-row', { hasText: 'Rectangle 1' }).first().click({ modifiers: ['Shift'] });
+  await expect(page.getByText('2 layers selected')).toBeVisible();
+  await expect(field(page, 'Opacity'), 'equal layers read as Mixed: the stepped value drifted').toHaveValue('45');
+  await expect(field(page, 'Opacity')).not.toHaveAttribute('placeholder', '—');
+});

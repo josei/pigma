@@ -1353,7 +1353,9 @@ export const useEditor = create<EditorState>((set, get) => ({
         const node = findNode(next.document, id) as unknown as Record<string, unknown> | null;
         if (!node) continue;
         const current = typeof node[key] === 'number' ? (node[key] as number) : bounds.fallback;
-        const value = Math.min(bounds.max, Math.max(bounds.min, current + delta));
+        // Rounded to six places: a sum of steps drifts (0.4 + 5 x 0.01 is 0.45000000000000007), and a drifted value
+        // would read as different from the same value typed in, so the field would say Mixed for equal layers.
+        const value = Math.round(Math.min(bounds.max, Math.max(bounds.min, current + delta)) * 1e6) / 1e6;
         next = applyNodePatch(next, id, { [key]: value } as NodePatch);
       }
       return next;
