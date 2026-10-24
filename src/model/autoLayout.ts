@@ -191,7 +191,8 @@ function layoutGridContainer<T extends AnyNode>(node: T, layout: AutoLayout): T 
       const start = axis === 'column' ? entry.cell.column : entry.cell.row;
       const span = axis === 'column' ? entry.cell.columnSpan : entry.cell.rowSpan;
       if (index < start || index >= start + span) return max;
-      return Math.max(max, axis === 'column' ? entry.child.width : entry.child.height);
+      const inset = 2 * boxInset(entry.child, layout);
+      return Math.max(max, (axis === 'column' ? entry.child.width : entry.child.height) + inset);
     }, 0);
   const hugAxis = (tracks: GridTrackSize[], count: number, gap: number, axis: 'column' | 'row'): number => {
     const list = tracks.length > 0 ? tracks : [{ type: 'FLEX' as const, value: 1 }];
@@ -215,15 +216,19 @@ function layoutGridContainer<T extends AnyNode>(node: T, layout: AutoLayout): T 
     const { cell } = cells[index]!;
     const spanWidth = columnSizes.slice(cell.column, cell.column + cell.columnSpan).reduce((sum, size) => sum + size, 0) + columnGap * (cell.columnSpan - 1);
     const spanHeight = rowSizes.slice(cell.row, cell.row + cell.rowSpan).reduce((sum, size) => sum + size, 0) + rowGap * (cell.rowSpan - 1);
-    const tx = columnOffsets[cell.column] ?? pad.left;
-    const ty = rowOffsets[cell.row] ?? pad.top;
+    // The cell is the child's box: with strokes in the layout, the geometry fills the cell less the stroke, inset by one side.
+    const inset = boxInset(child, layout);
+    const tx = (columnOffsets[cell.column] ?? pad.left) + inset;
+    const ty = (rowOffsets[cell.row] ?? pad.top) + inset;
+    const targetWidth = spanWidth - 2 * inset;
+    const targetHeight = spanHeight - 2 * inset;
     const moved = child.transform.tx !== tx || child.transform.ty !== ty;
-    const resized = child.width !== spanWidth || child.height !== spanHeight;
+    const resized = child.width !== targetWidth || child.height !== targetHeight;
     if (!moved && !resized) return child;
     changed = true;
     // A grid child fills its cell, exactly as a stretched auto-layout child does.
-    const placed = { ...child, width: spanWidth, height: spanHeight, transform: { ...child.transform, tx, ty } };
-    return resized ? reflowTree(pinAxis(placed, child.width !== spanWidth, child.height !== spanHeight)) : placed;
+    const placed = { ...child, width: targetWidth, height: targetHeight, transform: { ...child.transform, tx, ty } };
+    return resized ? reflowTree(pinAxis(placed, child.width !== targetWidth, child.height !== targetHeight)) : placed;
   });
 
   if (!changed) return node;
@@ -242,6 +247,11 @@ export function strokeInsetOf(node: SceneNode): number {
   return align === 'OUTSIDE' ? weight : weight / 2;
 }
 
+/** The stroke reach a child adds to its layout box, when its container counts strokes; zero otherwise. */
+function boxInset(child: SceneNode, layout: AutoLayout): number {
+  return layout.strokesIncludedInLayout ? strokeInsetOf(child) : 0;
+}
+
 /** Lay out one auto-layout container. Returns the same node when nothing moved. */
 function layoutContainer<T extends AnyNode>(node: T, layout: AutoLayout): T {
   if (layout.layoutMode === 'GRID') return layoutGridContainer(node, layout);
@@ -256,7 +266,7 @@ function layoutContainer<T extends AnyNode>(node: T, layout: AutoLayout): T {
   const counterPadding = horizontal ? pad.top + pad.bottom : pad.left + pad.right;
 
   // With strokes in the layout, a child's box is its geometry plus its stroke on both sides; the geometry is placed inside.
-  const insetOf = (child: SceneNode) => (layout.strokesIncludedInLayout ? strokeInsetOf(child) : 0);
+  const insetOf = (child: SceneNode) => boxInset(child, layout);
   const primaryOf = (child: SceneNode) => (horizontal ? child.width : child.height) + 2 * insetOf(child);
   const counterOf = (child: SceneNode) => (horizontal ? child.height : child.width) + 2 * insetOf(child);
 

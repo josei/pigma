@@ -14,6 +14,7 @@ import { gridRowCount, reflowTree } from './autoLayout';
 import { settleDocument } from './settle';
 import { findNode } from './tree';
 import type { AutoLayout, ContainerNode, GridTrackSize, PigmaFile, SceneNode } from './types';
+import { solidPaint } from './paint';
 
 const FIXED = (value: number): GridTrackSize => ({ type: 'FIXED', value });
 const FLEX = (value: number): GridTrackSize => ({ type: 'FLEX', value });
@@ -204,4 +205,37 @@ describe('grid auto layout', () => {
     const laid = reflowTree(reloaded.document);
     expect(childrenOf({ ...reloaded, document: laid }, id)[0]!.width).toBeCloseTo(300, 3);
   });
+
+  it('with Include stroke in layout, a cell is the stroke box and the child fills it less the stroke', () => {
+    const layout = { gridColumns: [FLEX(1), FLEX(1)], gridRows: [FLEX(1)], gridColumnGap: 12, strokesIncludedInLayout: true };
+    const { file, id } = grid(600, 400, 2, layout);
+    const frame = findNode(file.document, id) as ContainerNode;
+    for (const child of frame.children) {
+      child.strokes = [solidPaint({ r: 0, g: 0, b: 0 })];
+      child.strokeWeight = 10;
+      child.strokeAlign = 'CENTER';
+    }
+    const [first, second] = (findNode(reflowTree(file.document), id) as ContainerNode).children;
+    // Two columns of (600 - 12) / 2 = 294. Each child is 294 less the 5px per side, placed 5px in from its cell.
+    expect(first!.transform.tx).toBeCloseTo(5, 0);
+    expect(first!.width).toBeCloseTo(284, 0);
+    expect(second!.transform.tx).toBeCloseTo(311, 0);
+    expect(second!.width).toBeCloseTo(284, 0);
+  });
+
+  it('with the flag off, the same strokes leave the grid unchanged', () => {
+    const { file, id } = grid(600, 400, 2, { gridColumns: [FLEX(1), FLEX(1)], gridRows: [FLEX(1)], gridColumnGap: 12 });
+    const frame = findNode(file.document, id) as ContainerNode;
+    for (const child of frame.children) {
+      child.strokes = [solidPaint({ r: 0, g: 0, b: 0 })];
+      child.strokeWeight = 10;
+      child.strokeAlign = 'CENTER';
+    }
+    const [first, second] = (findNode(reflowTree(file.document), id) as ContainerNode).children;
+    expect(first!.transform.tx).toBeCloseTo(0, 0);
+    expect(first!.width).toBeCloseTo(294, 0);
+    expect(second!.transform.tx).toBeCloseTo(306, 0);
+    expect(second!.width).toBeCloseTo(294, 0);
+  });
 });
+

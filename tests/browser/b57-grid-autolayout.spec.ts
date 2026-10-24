@@ -211,3 +211,33 @@ test('B57f the Rows count shows the rows the grid uses, not just the declared on
   const rows = page.locator('.prop-row', { has: page.locator('.prop-row__label', { hasText: /^Rows$/ }) });
   await expect(rows.locator('.prop-row__value')).toHaveText('2');
 });
+
+test('B57g Include stroke in layout works in a grid: each cell is the stroke box and the child fills it less the stroke', async ({ page }) => {
+  await frameWithChildren(page, 2);
+  await setDirection(page, 'Grid');
+
+  // A 10px centred stroke ("Mid") on each child. New rectangles default to an inside stroke, which adds nothing.
+  const appearance = page.locator('.section', { has: page.locator('.section__header', { hasText: 'Appearance' }) });
+  const rows = page.locator('.layer-row', { hasText: 'Rectangle' });
+  for (let i = 0; i < 2; i += 1) {
+    await rows.nth(i).click();
+    await nextPaint(page);
+    await page.getByRole('button', { name: 'Add Stroke' }).click();
+    await field(page, 'Weight').fill('10');
+    await field(page, 'Weight').press('Enter');
+    await appearance.locator('.segmented__option', { hasText: 'Mid' }).click();
+    await nextPaint(page);
+  }
+
+  await page.locator('.layer-row', { hasText: 'Frame' }).first().click();
+  await nextPaint(page);
+  const before = (await gridState(page)).kids[0]!;
+  await page.getByLabel('Include stroke in layout').check();
+  await nextPaint(page);
+  const after = (await gridState(page)).kids[0]!;
+
+  // The cell is the same; the child moves in by the 5px a centred stroke reaches, and gives up its 10px of width to it.
+  expect(after.x - before.x, 'the child did not move in by the stroke reach').toBe(5);
+  expect(before.w - after.w, 'the child did not give up the stroke width').toBe(10);
+});
+

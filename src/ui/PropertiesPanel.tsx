@@ -1503,6 +1503,23 @@ function GridTracks({ layout, rowCount, onChange }: { layout: AutoLayout; rowCou
 }
 
 /** Real auto-layout controls; every change reflows the frame immediately. */
+/** Whether a child's visible stroke counts toward its layout box. Shown for row, column and grid frames alike. */
+function StrokeInLayoutRow({ layout, onChange }: { layout: { strokesIncludedInLayout?: boolean }; onChange: (patch: { strokesIncludedInLayout: boolean }) => void }) {
+  return (
+    <div className="prop-row">
+      <label className="prop-row__label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <input
+          type="checkbox"
+          aria-label="Include stroke in layout"
+          checked={layout.strokesIncludedInLayout === true}
+          onChange={(event) => onChange({ strokesIncludedInLayout: event.target.checked })}
+        />
+        Include stroke in layout
+      </label>
+    </div>
+  );
+}
+
 function AutoLayoutSection({ node }: { node: SceneNode }) {
   const setAutoLayout = useEditor((state) => state.setAutoLayout);
   const clearAutoLayout = useEditor((state) => state.clearAutoLayout);
@@ -1534,7 +1551,10 @@ function AutoLayoutSection({ node }: { node: SceneNode }) {
         {layout.layoutMode === 'GRID' ? (
           // Grid TRACKS, not the layout GUIDES in the Constraints section: this
           // decides where children go, a guide is only drawn over them.
-          <GridTracks layout={layout} rowCount={gridRowCount(node.children as SceneNode[], layout)} onChange={setAutoLayout} />
+          <>
+            <GridTracks layout={layout} rowCount={gridRowCount(node.children as SceneNode[], layout)} onChange={setAutoLayout} />
+            <StrokeInLayoutRow layout={layout} onChange={setAutoLayout} />
+          </>
         ) : null}
         {active && layout.layoutMode !== 'GRID' ? (
           <>
@@ -1551,17 +1571,7 @@ function AutoLayoutSection({ node }: { node: SceneNode }) {
                 onChange={(value) => setAutoLayout({ primaryAxisAlignItems: value })}
               />
             </div>
-            <div className="prop-row">
-              <label className="prop-row__label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input
-                  type="checkbox"
-                  aria-label="Include stroke in layout"
-                  checked={layout.strokesIncludedInLayout === true}
-                  onChange={(event) => setAutoLayout({ strokesIncludedInLayout: event.target.checked })}
-                />
-                Include stroke in layout
-              </label>
-            </div>
+            <StrokeInLayoutRow layout={layout} onChange={setAutoLayout} />
             <div className="prop-stack">
               <Segmented
                 label="Counter"
