@@ -32,3 +32,22 @@ test('B132b picking a mode sets every selected layer, so the select shows it and
   await expect(blend(page)).toHaveValue('SCREEN');
   await expect(blend(page).locator('option', { hasText: 'Mixed' })).toHaveCount(0);
 });
+
+test('B132c a frame and a rectangle selected together do not offer Pass through, which only containers have', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Frame', 120, 90, -120, 0);
+  await drawShape(page, 'Rectangle', 120, 90, 120, 0);
+  await page.keyboard.press('Control+A');
+  await expect(page.getByText('2 layers selected')).toBeVisible();
+  await expect(blend(page).locator('option', { hasText: 'Pass through' })).toHaveCount(0);
+  await expect(blend(page).locator('option', { hasText: 'Multiply' })).toHaveCount(1);
+});
+
+test('B132d two frames selected together still offer Pass through', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Frame', 120, 90, -120, 0);
+  await drawShape(page, 'Frame', 120, 90, 120, 0);
+  await page.keyboard.press('Control+A');
+  await expect(page.getByText('2 layers selected')).toBeVisible();
+  await expect(blend(page).locator('option', { hasText: 'Pass through' })).toHaveCount(1);
+});

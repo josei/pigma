@@ -586,12 +586,19 @@ const BLEND_MODE_OPTIONS: Array<{ value: BlendMode; label: string }> = [
   { value: 'LUMINOSITY', label: 'Luminosity' },
 ];
 
-function blendModeOptions(node: SceneNode) {
-  const isContainer =
-    node.type === 'FRAME' || node.type === 'GROUP' || node.type === 'COMPONENT' || node.type === 'COMPONENT_SET' || node.type === 'INSTANCE';
-  return isContainer
-    ? [{ value: 'PASS_THROUGH' as BlendMode, label: 'Pass through' }, ...BLEND_MODE_OPTIONS]
-    : BLEND_MODE_OPTIONS;
+/**
+ * The blend modes the select offers for a selection: only those every selected layer has, so a mixed selection never lists
+ * a mode one of its layers rejects. "Pass through" belongs to containers alone.
+ */
+function blendModeOptions(nodes: SceneNode[]) {
+  const offeredBy = (node: SceneNode) => {
+    const isContainer =
+      node.type === 'FRAME' || node.type === 'GROUP' || node.type === 'COMPONENT' || node.type === 'COMPONENT_SET' || node.type === 'INSTANCE';
+    return isContainer ? [{ value: 'PASS_THROUGH' as BlendMode, label: 'Pass through' }, ...BLEND_MODE_OPTIONS] : BLEND_MODE_OPTIONS;
+  };
+  const lists = nodes.map(offeredBy);
+  if (lists.length === 0) return BLEND_MODE_OPTIONS;
+  return lists[0]!.filter((option) => lists.every((list) => list.some((entry) => entry.value === option.value)));
 }
 
 function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[] }) {
@@ -775,7 +782,7 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
                 Mixed
               </option>
             ) : null}
-            {blendModeOptions(node).map((option) => (
+            {blendModeOptions(nodes).map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
