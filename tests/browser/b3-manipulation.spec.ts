@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { boot, drawShape, field, toDoc, drag, tool, nwHandle, nodeGeometry, docToScreen, zoom, nextPaint } from './helpers';
+import { boot, drawShape, field, toDoc, drag, tool, nwHandle, nodeGeometry, docToScreen, zoom, nextPaint, bypassKey } from './helpers';
 
 /**
  * Free drag, snapping bypassed with Ctrl: the node must move by exactly the
@@ -69,13 +69,13 @@ test('B3c snapping can be bypassed with Ctrl', async ({ page }) => {
   const miss = 10;
   const start = await docToScreen(page, mover.x + mover.w / 2, mover.y + mover.h / 2);
   const target = await docToScreen(page, mover.x + mover.w / 2, anchor.y + miss + mover.h / 2);
-  await page.keyboard.down('Control');
+  await page.keyboard.down(bypassKey);
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
   await page.mouse.move(target.x, target.y, { steps: 10 });
   const guideCount = await page.locator('.canvas__guide').count();
   await page.mouse.up();
-  await page.keyboard.up('Control');
+  await page.keyboard.up(bypassKey);
   await nextPaint(page);
 
   const free = await nodeGeometry(page);

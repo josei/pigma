@@ -89,6 +89,12 @@ export async function nodeGeometry(page: Page) {
  * Drag on the canvas, in coordinates relative to the canvas centre.
  * `ctrl` holds Ctrl for the gesture, which bypasses smart snapping.
  */
+/**
+ * The snapping bypass: Meta or Control. On macOS Control with a press is a right click (a context menu, not a drag),
+ * so the bypass is held as Meta there. The editor reads either key.
+ */
+export const bypassKey = process.platform === 'darwin' ? 'Meta' : 'Control';
+
 export async function drag(
   page: Page,
   from: [number, number],
@@ -98,14 +104,14 @@ export async function drag(
   const box = await canvasBox(page);
   const cx = box.x + box.width / 2;
   const cy = box.y + box.height / 2;
-  if (options.ctrl) await page.keyboard.down('Control');
+  if (options.ctrl) await page.keyboard.down(bypassKey);
   try {
     await page.mouse.move(cx + from[0], cy + from[1]);
     await page.mouse.down();
     await page.mouse.move(cx + to[0], cy + to[1], { steps: 8 });
     await page.mouse.up();
   } finally {
-    if (options.ctrl) await page.keyboard.up('Control');
+    if (options.ctrl) await page.keyboard.up(bypassKey);
   }
 }
 

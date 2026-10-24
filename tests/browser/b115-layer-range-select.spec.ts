@@ -26,10 +26,10 @@ test('B115a Shift-click selects every layer from the clicked anchor to this row,
 test('B115b Cmd/Ctrl-click adds one layer and removes it again, leaving the others selected', async ({ page }) => {
   await threeRectangles(page);
   await page.locator('.layer-row', { hasText: 'Rectangle 3' }).first().click();
-  await page.locator('.layer-row', { hasText: 'Rectangle 1' }).first().click({ modifiers: ['Control'] });
+  await page.locator('.layer-row', { hasText: 'Rectangle 1' }).first().click({ modifiers: ['ControlOrMeta'] });
   await expect(selectedRows(page)).toHaveCount(2);
   await expect(page.locator('.layer-row', { hasText: 'Rectangle 2' }).first()).not.toHaveClass(/layer-row--selected/);
 
-  await page.locator('.layer-row', { hasText: 'Rectangle 1' }).first().click({ modifiers: ['Control'] });
+  await page.locator('.layer-row', { hasText: 'Rectangle 1' }).first().click({ modifiers: ['ControlOrMeta'] });
   await expect(selectedRows(page)).toHaveCount(1);
 });

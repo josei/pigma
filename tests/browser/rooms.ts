@@ -1,7 +1,7 @@
 import { test as base, expect } from '@playwright/test';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
-import { createServer } from 'node:net';
+import { createConnection, createServer } from 'node:net';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -45,19 +45,22 @@ async function freePort(): Promise<number> {
   return port;
 }
 
+/**
+ * Wait until something accepts a connection on the port. This connects rather than binding a probe: on macOS a socket
+ * can bind 127.0.0.1 while a wildcard listener holds the same port, so a bind probe reported the port free for the
+ * whole wait, and the relay was never seen even though it was up.
+ */
 async function waitForPort(port: number, timeoutMs = 30000): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const probe = createServer();
-    const ok = await new Promise<boolean>((resolve) => {
-      probe.once('error', () => resolve(false));
-      probe.listen(port, '127.0.0.1', () => {
-        const closed = once(probe, 'close');
-        probe.close();
-        void closed.then(() => resolve(true));
+    const up = await new Promise<boolean>((resolve) => {
+      const socket = createConnection({ port, host: '127.0.0.1' }, () => {
+        socket.end();
+        resolve(true);
       });
+      socket.once('error', () => resolve(false));
     });
-    if (!ok) return true; // something is already listening
+    if (up) return true;
     await delay(250);
   }
   return false;

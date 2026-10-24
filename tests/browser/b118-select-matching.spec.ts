@@ -10,7 +10,8 @@ import { boot, drawShape } from './helpers';
 async function rename(page: Page, from: string, to: string) {
   const row = page.locator('.layer-row', { hasText: from }).first();
   await row.dblclick();
-  await page.keyboard.press('Control+a');
+  // ControlOrMeta: inside the name field Control+A is "line start" on macOS, so the old name was not replaced.
+  await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.type(to);
   await page.keyboard.press('Enter');
 }
@@ -26,7 +27,7 @@ test('B118a Cmd/Ctrl+Alt+A selects the layers in the frame that match the one se
   await rename(page, 'Rectangle 3', 'Icon');
 
   await page.locator('.layer-row', { hasText: 'Card' }).first().click();
-  await page.keyboard.press('Control+Alt+a');
+  await page.keyboard.press('ControlOrMeta+Alt+a');
 
   await expect(page.locator('.layer-row--selected')).toHaveCount(2);
   await expect(page.locator('.layer-row--selected', { hasText: 'Card' })).toHaveCount(2);

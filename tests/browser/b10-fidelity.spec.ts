@@ -117,7 +117,8 @@ test('B10f typing into a numeric field with the keyboard resizes the shape', asy
 
   // A real interaction: click the field, select the value, type a new one.
   await w.click();
-  await page.keyboard.press('Control+a');
+  // ControlOrMeta: in a text field Chromium on macOS reads Control+A as "move to line start", not select all.
+  await page.keyboard.press('ControlOrMeta+a');
   await page.keyboard.type('300');
   await page.keyboard.press('Enter');
 
