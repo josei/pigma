@@ -60,6 +60,7 @@ function NumberField({
   max,
   suffix,
   mixed,
+  onStep,
 }: {
   label: string;
   value: number;
@@ -71,11 +72,13 @@ function NumberField({
   suffix?: string;
   /** Several layers differ: the field is empty and says "Mixed"; typing sets every layer. */
   mixed?: boolean;
+  /** With `mixed`, a scrub or arrow step arrives as a change, so each layer keeps its own value. */
+  onStep?: (delta: number) => void;
 }) {
   // `draft` is only set while the user is typing/scrubbing; otherwise the field
   // displays the store value directly, so it can never lag a render behind.
   const [draft, setDraft] = useState<string | null>(null);
-  const scrubbing = useRef<{ x: number; start: number } | null>(null);
+  const scrubbing = useRef<{ x: number; start: number; travelled: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const display = draft ?? (mixed ? '' : String(round(value)));
 
@@ -100,7 +103,7 @@ function NumberField({
         // Drag the field chrome (label/prefix) to scrub; typing in the input is
         // left completely alone.
         if (event.target === inputRef.current) return;
-        scrubbing.current = { x: event.clientX, start: value };
+        scrubbing.current = { x: event.clientX, start: value, travelled: 0 };
         useEditor.getState().beginTransaction();
         event.currentTarget.setPointerCapture(event.pointerId);
       }}
@@ -108,6 +111,12 @@ function NumberField({
         const state = scrubbing.current;
         if (!state) return;
         const delta = (event.clientX - state.x) * (event.shiftKey ? 10 : 1) * step;
+        if (mixed && onStep) {
+          // Relative: each move sends only what it added, so every layer moves by the same amount.
+          onStep(round(delta - state.travelled));
+          state.travelled = delta;
+          return;
+        }
         const next = Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min ?? Number.NEGATIVE_INFINITY, state.start + delta));
         onCommit(round(next));
       }}
@@ -144,7 +153,8 @@ function NumberField({
           if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
             event.preventDefault();
             const delta = (event.key === 'ArrowUp' ? 1 : -1) * (event.shiftKey ? step * 10 : step);
-            commit(String(round(value + delta)));
+            if (mixed && onStep) onStep(delta);
+            else commit(String(round(value + delta)));
           }
         }}
       />
@@ -472,6 +482,7 @@ function Segmented<T extends string>({
 }
 
 function TransformSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[] }) {
+  const stepSelected = useEditor((state) => state.stepSelected);
   const file = useEditor((state) => state.file);
   const updateSelected = useEditor((state) => state.updateSelected);
   const bounds = absoluteBounds(file.document, node.id);
@@ -522,6 +533,7 @@ function TransformSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[]
             label="Opacity"
             value={Math.round(node.opacity * 100)}
             mixed={isMixedValue(nodes.map((entry) => entry.opacity))}
+            onStep={(delta) => stepSelected('opacity', delta / 100, { min: 0, max: 1, fallback: 1 }, 'Set opacity')}
             min={0}
             max={100}
             suffix="%"
@@ -583,6 +595,7 @@ function blendModeOptions(node: SceneNode) {
 }
 
 function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[] }) {
+  const stepSelected = useEditor((state) => state.stepSelected);
   const updateSelected = useEditor((state) => state.updateSelected);
   const fill = firstVisibleFill(node.fills);
   const stroke = firstVisibleFill(node.strokes);
@@ -625,6 +638,7 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
                 label="Weight"
                 value={node.strokeWeight ?? 1}
                 mixed={isMixedValue(nodes.map((entry) => entry.strokeWeight ?? 1))}
+                onStep={(delta) => stepSelected('strokeWeight', delta, { min: 0, max: Number.POSITIVE_INFINITY, fallback: 1 }, 'Set stroke weight')}
                 min={0}
                 onCommit={(value) => updateSelected({ strokeWeight: value }, 'Set stroke weight')}
               />
@@ -659,6 +673,7 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
               label="Radius"
               value={node.cornerRadius ?? 0}
               mixed={radiusMixed}
+              onStep={(delta) => stepSelected('cornerRadius', delta, { min: 0, max: Number.POSITIVE_INFINITY, fallback: 0 }, 'Set corner radius')}
               min={0}
               onCommit={(value) => updateSelected({ cornerRadius: value }, 'Set corner radius')}
             />
@@ -697,6 +712,7 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
                 label="Radius"
                 value={radii}
                 mixed={radiusMixed}
+                onStep={(delta) => stepSelected('cornerRadius', delta, { min: 0, max: Number.POSITIVE_INFINITY, fallback: 0 }, 'Set corner radius')}
                 min={0}
                 onCommit={(value) =>
                   // A uniform radius replaces the per-corner values.

@@ -431,6 +431,16 @@ export interface EditorState {
   /** Paste over every selected layer (`replace` false), or replace each of them (`replace` true). */
   pasteAtSelection: (replace: boolean) => void;
   updateSelected: (patch: NodePatch, label?: string) => void;
+  /**
+   * Add `delta` to one number on every selected layer, clamped to the bounds. A relative step, so layers that differ keep
+   * their gap. Instance children are skipped: they take edits as overrides, which a relative step does not record.
+   */
+  stepSelected: (
+    key: 'opacity' | 'strokeWeight' | 'cornerRadius',
+    delta: number,
+    bounds: { min: number; max: number; fallback: number },
+    label?: string,
+  ) => void;
   /** Drop an image into the document, or fill the selection with it. */
   placeImage: (dataUrl: string, options: { width: number; height: number; x?: number; y?: number }) => void;
   applyImageFill: (dataUrl: string, size?: { width: number; height: number }) => boolean;
@@ -1330,6 +1340,24 @@ export const useEditor = create<EditorState>((set, get) => ({
     }
     get().apply(replace ? 'Paste to replace' : 'Paste over selection', () => result.file);
     set({ selection: result.newIds });
+  },
+
+  stepSelected: (key, delta, bounds, label = 'Change properties') => {
+    const ids = get().selection;
+    if (ids.length === 0) return;
+    get().apply(label, (file) => {
+      let next = file;
+      for (const id of ids) {
+        const ancestry = instanceAncestryOf(file.document, id);
+        if (ancestry && ancestry.instance.id !== id) continue;
+        const node = findNode(next.document, id) as unknown as Record<string, unknown> | null;
+        if (!node) continue;
+        const current = typeof node[key] === 'number' ? (node[key] as number) : bounds.fallback;
+        const value = Math.min(bounds.max, Math.max(bounds.min, current + delta));
+        next = applyNodePatch(next, id, { [key]: value } as NodePatch);
+      }
+      return next;
+    });
   },
 
   updateSelected: (patch, label = 'Change properties') => {
