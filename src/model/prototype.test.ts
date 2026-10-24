@@ -4,6 +4,7 @@ import {
   actionLabel,
   addFlow,
   addInteraction,
+  addInteractionToNodes,
   defaultInteraction,
   flowsOf,
   interactionsOf,
@@ -55,6 +56,16 @@ describe('prototyping', () => {
     expect(interactionsOf(findNode(removed.document, buttonId)!)).toHaveLength(2);
     expect(TRIGGERS).toHaveLength(3);
     expect(triggerLabel('ON_HOVER')).toBe('On hover');
+  });
+
+  it('adds one interaction to several nodes, each with its own copy', () => {
+    const { file, buttonId, detailsId, overlayId } = setup();
+    const next = addInteractionToNodes(file, [buttonId, overlayId], defaultInteraction(detailsId));
+    expect(interactionsOf(findNode(next.document, buttonId)!)).toHaveLength(1);
+    expect(interactionsOf(findNode(next.document, overlayId)!)).toHaveLength(1);
+    // Editing the first node's interaction leaves the second node's copy as it was.
+    const edited = updateInteraction(next, buttonId, 0, { trigger: { type: 'ON_HOVER' } });
+    expect(interactionsOf(findNode(edited.document, overlayId)!)[0]!.trigger.type).toBe('ON_CLICK');
   });
 
   it('labels every action kind', () => {

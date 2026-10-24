@@ -73,6 +73,14 @@ export function addInteraction(file: PigmaFile, nodeId: string, interaction: Pro
   return withInteractions(file, nodeId, (list) => [...list, interaction]);
 }
 
+/**
+ * Add one interaction to each of several nodes. Each node gets its own copy, so editing one node's interaction later does
+ * not change the others. The caller applies it as one document change.
+ */
+export function addInteractionToNodes(file: PigmaFile, nodeIds: readonly string[], interaction: PrototypeInteraction): PigmaFile {
+  return nodeIds.reduce((next, nodeId) => addInteraction(next, nodeId, structuredClone(interaction)), file);
+}
+
 export function updateInteraction(
   file: PigmaFile,
   nodeId: string,

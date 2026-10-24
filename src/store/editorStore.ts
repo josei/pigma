@@ -126,6 +126,7 @@ import { diffDocuments, type DocumentDiff } from '../model/versionDiff';
 import {
   addFlow as addFlowOp,
   addInteraction as addInteractionOp,
+  addInteractionToNodes as addInteractionToNodesOp,
   defaultInteraction,
   setVariableAction,
   removeFlow as removeFlowOp,
@@ -611,6 +612,12 @@ export interface EditorState {
   restoreVersion: (versionId: string) => void;
   addInteraction: (
     nodeId: string,
+    destinationId?: string,
+    kind?: PrototypeActionKind,
+    transition?: PrototypeAction['transition'],
+  ) => void;
+  /** Add the same interaction to every selected layer, as one undo step. */
+  addInteractionToSelection: (
     destinationId?: string,
     kind?: PrototypeActionKind,
     transition?: PrototypeAction['transition'],
@@ -2732,6 +2739,14 @@ export const useEditor = create<EditorState>((set, get) => ({
   addInteraction: (nodeId, destinationId, kind, transition) => {
     get().apply('Add interaction', (file) =>
       addInteractionOp(file, nodeId, defaultInteraction(destinationId, kind, transition)),
+    );
+  },
+
+  addInteractionToSelection: (destinationId, kind, transition) => {
+    const ids = get().selection;
+    if (ids.length === 0) return;
+    get().apply('Add interaction', (file) =>
+      addInteractionToNodesOp(file, ids, defaultInteraction(destinationId, kind, transition)),
     );
   },
 

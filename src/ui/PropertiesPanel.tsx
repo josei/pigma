@@ -2236,6 +2236,7 @@ function PrototypeSection({ node }: { node: SceneNode | null }) {
   const pageId = useEditor((state) => state.pageId);
   const selection = useEditor((state) => state.selection);
   const addInteraction = useEditor((state) => state.addInteraction);
+  const addInteractionToSelection = useEditor((state) => state.addInteractionToSelection);
   const updateInteraction = useEditor((state) => state.updateInteraction);
   const removeInteraction = useEditor((state) => state.removeInteraction);
   const addFlow = useEditor((state) => state.addFlow);
@@ -2274,8 +2275,8 @@ function PrototypeSection({ node }: { node: SceneNode | null }) {
             className="icon-button"
             aria-label="Add interaction"
             data-tooltip="Add an interaction"
-            disabled={selection.length !== 1}
-            onClick={() => node && addInteraction(node.id, destinations[0]?.id)}
+            disabled={selection.length === 0}
+            onClick={() => addInteractionToSelection(destinations[0]?.id)}
           >
             <Icon name="plus" size={14} />
           </button>
