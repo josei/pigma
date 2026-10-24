@@ -2190,6 +2190,8 @@ export function PropertiesPanel() {
   const devMode = useEditor((state) => state.devMode);
   const page = useEditor((state) => state.file.document.children.find((child) => child.id === state.pageId));
   const node = nodes[0];
+  // The text section reads the first text layer, so it shows whenever any selected layer is text.
+  const textNode = nodes.find((entry): entry is TextNode => entry.type === 'TEXT');
 
   return (
     <aside
@@ -2262,7 +2264,7 @@ export function PropertiesPanel() {
             ) : null}
             <TransformSection node={node} nodes={nodes} />
             <AppearanceSection node={node} nodes={nodes} />
-            {node.type === 'TEXT' ? <TextSection node={node} nodes={nodes} /> : null}
+            {textNode ? <TextSection node={textNode} nodes={nodes} /> : null}
             <BooleanSection />
             <EffectsSection node={node} nodes={nodes} />
             <ConstraintsSection node={node} />
