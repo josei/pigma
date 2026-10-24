@@ -663,3 +663,59 @@ describe('a GRID style and its layout grids', () => {
     expect(back.styles?.[bound.styles!.grid!]?.name).toBe('Grid/12');
   });
 });
+
+describe('native round trip keeps colours', () => {
+  // Colours are float32 on the wire, so the channels are compared to five places, and the paint opacity is kept as written.
+  for (const schema of ['circle.fig', 'openfigs.fig']) {
+    it(`a solid fill and a solid stroke keep their colour and opacity through a binary round trip (${schema})`, async () => {
+      const { file } = scene((node) => {
+        node.fills = [{ type: 'SOLID', color: { r: 0.2, g: 0.6, b: 0.9 }, opacity: 0.5, visible: true, blendMode: 'NORMAL' }];
+        node.strokes = [{ type: 'SOLID', color: { r: 0.8, g: 0.1, b: 0.3 }, opacity: 0.25, visible: true, blendMode: 'NORMAL' }];
+        node.strokeWeight = 3;
+      });
+      const back = byName(await roundTrip(file, schema), 'Subject') as SceneNode & {
+        fills: Array<{ color: { r: number; g: number; b: number }; opacity?: number }>;
+        strokes: Array<{ color: { r: number; g: number; b: number }; opacity?: number }>;
+      };
+      const fill = back.fills[0]!;
+      expect(fill.color.r).toBeCloseTo(0.2, 5);
+      expect(fill.color.g).toBeCloseTo(0.6, 5);
+      expect(fill.color.b).toBeCloseTo(0.9, 5);
+      expect(fill.opacity).toBeCloseTo(0.5, 5);
+      const stroke = back.strokes[0]!;
+      expect(stroke.color.r).toBeCloseTo(0.8, 5);
+      expect(stroke.color.g).toBeCloseTo(0.1, 5);
+      expect(stroke.color.b).toBeCloseTo(0.3, 5);
+      expect(stroke.opacity).toBeCloseTo(0.25, 5);
+    });
+
+    it(`a linear gradient keeps each stop's colour and position through a binary round trip (${schema})`, async () => {
+      const { file } = scene((node) => {
+        node.fills = [
+          {
+            type: 'GRADIENT_LINEAR',
+            gradientStops: [
+              { position: 0, color: { r: 1, g: 0, b: 0, a: 1 } },
+              { position: 1, color: { r: 0, g: 0.5, b: 1, a: 0.5 } },
+            ],
+            gradientTransform: [[1, 0, 0], [0, 1, 0]],
+            opacity: 1,
+            visible: true,
+            blendMode: 'NORMAL',
+          },
+        ];
+      });
+      const back = byName(await roundTrip(file, schema), 'Subject') as SceneNode & {
+        fills: Array<{ gradientStops: Array<{ position: number; color: { r: number; g: number; b: number; a: number } }> }>;
+      };
+      const [first, last] = back.fills[0]!.gradientStops;
+      expect(first!.position).toBeCloseTo(0, 5);
+      expect(first!.color.r).toBeCloseTo(1, 5);
+      expect(first!.color.g).toBeCloseTo(0, 5);
+      expect(last!.position).toBeCloseTo(1, 5);
+      expect(last!.color.g).toBeCloseTo(0.5, 5);
+      expect(last!.color.b).toBeCloseTo(1, 5);
+      expect(last!.color.a).toBeCloseTo(0.5, 5);
+    });
+  }
+});

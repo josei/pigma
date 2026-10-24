@@ -326,8 +326,8 @@ Legend: **✅** survives · **≈** survives with a stated approximation ·
 | Instance (`INSTANCE`) | ✅ | ✅ | `componentId`, properties and overrides map | test-backed: `b12-components` |
 | `componentSnapshot` (materialised subtree) | — | — | **Pigma-only.** A convenience copy; not a wire concept | documented-from-code (Pigma-only, no wire counterpart) |
 | Node `raw` passthrough | — | — | **Pigma-only.** Preserves *Figma* fields Pigma does not model; not itself written to the wire | documented-from-code (Pigma-only, no wire counterpart) |
-| Solid fills | ✅ | ≈ | **float32 precision** (see below) | **partly test-backed**: `b43` `B43b` (message layer, alpha forced to 1); the float32 codec itself is documented-from-code |
-| Gradient fills (linear/radial/angular/diamond) | ✅ | ≈ | float32 precision on stops and transforms | documented-from-code: `src/figma/native/modelExport.ts` |
+| Solid fills | ✅ | ≈ | **float32 precision** (see below) | **test-backed**: `b43` `B43b` (message layer, alpha forced to 1), and `tests/figma/roundTripLoss.test.ts` (fill and stroke colour and paint opacity through the binary round trip, with the `circle.fig` and `openfigs.fig` schemas, to five places); the float32 codec itself is documented-from-code |
+| Gradient fills (linear/radial/angular/diamond) | ✅ | ≈ | float32 precision on stops and transforms | **partly test-backed**: a linear gradient's stop colours and positions through the binary round trip (`tests/figma/roundTripLoss.test.ts`); the other kinds and the transforms are documented-from-code: `src/figma/native/modelExport.ts` |
 | Image fills | ✅ | ≈ | Image bytes are carried; float32 precision on the transform | documented-from-code: image bytes keyed by `imageRef`, `modelExport.ts` |
 | Video / pattern paints | ❌ | ❌ | No model equivalent — reported as `paint:VIDEO` / `paint:PATTERN` | documented-from-code: the `paint:VIDEO` / `paint:PATTERN` report keys |
 | Blend modes | ✅ | ✅ | Full enum mapped in `modelExport.ts` | documented-from-code: the `BLEND` table in `modelExport.ts` |
