@@ -444,6 +444,16 @@ export interface EditorState {
   ) => void;
   /** The same relative step for one corner (0 top left, clockwise), each layer's own corner. */
   stepSelectedCorner: (index: number, delta: number, bounds: { min: number; max: number }, label?: string) => void;
+  /**
+   * The same relative step for one text style number on every selected text layer, each layer's own value. The key
+   * names the number the step moves; the typed edit (updateSelectedTextStyle) writes the same field.
+   */
+  stepSelectedTextStyle: (
+    key: 'fontSize' | 'fontWeight' | 'lineHeight' | 'letterSpacing',
+    delta: number,
+    bounds: { min: number; max: number },
+    label?: string,
+  ) => void;
   /** Drop an image into the document, or fill the selection with it. */
   placeImage: (dataUrl: string, options: { width: number; height: number; x?: number; y?: number }) => void;
   applyImageFill: (dataUrl: string, size?: { width: number; height: number }) => boolean;
@@ -1391,6 +1401,33 @@ export const useEditor = create<EditorState>((set, get) => ({
         next = applyNodePatch(next, id, { [key]: value } as NodePatch);
       }
       return next;
+    });
+  },
+
+  stepSelectedTextStyle: (key, delta, bounds, label = 'Change text style') => {
+    const state = get();
+    const ids = state.selection.filter((id) => findNode(state.file.document, id)?.type === 'TEXT');
+    if (ids.length === 0) return;
+    get().apply(label, (file) => {
+      let document = file.document;
+      for (const id of ids) {
+        document = updateNode(document, id, (node) => {
+          if (node.type !== 'TEXT') return node;
+          const style = node.style;
+          // Rounded to six places, as stepSelected rounds, so a stepped value equals the same value typed in.
+          const value = (current: number) => Math.round(Math.min(bounds.max, Math.max(bounds.min, current + delta)) * 1e6) / 1e6;
+          const patch: Partial<TextStyle> =
+            key === 'fontSize'
+              ? { fontSize: value(style.fontSize) }
+              : key === 'fontWeight'
+                ? { fontWeight: value(style.fontWeight ?? 400) }
+                : key === 'lineHeight'
+                  ? { lineHeight: { unit: 'PERCENT', value: value(style.lineHeight?.value ?? 120) } }
+                  : { letterSpacing: { unit: 'PERCENT', value: value(style.letterSpacing?.value ?? 0) } };
+          return { ...node, style: { ...style, ...patch } } as TextNode;
+        });
+      }
+      return settleDocument(syncTextSizesOp({ ...file, document }));
     });
   },
 

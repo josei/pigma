@@ -922,9 +922,14 @@ function OptionalNumberField({
   );
 }
 
-function TextSection({ node }: { node: TextNode }) {
+function TextSection({ node, nodes }: { node: TextNode; nodes: SceneNode[] }) {
   const updateStyle = useEditor((state) => state.updateSelectedTextStyle);
+  const stepStyle = useEditor((state) => state.stepSelectedTextStyle);
   const style = node.style;
+  // Only the text layers are compared: a rectangle in the selection has no text style to differ.
+  const textStyles = nodes.filter((entry): entry is TextNode => entry.type === 'TEXT').map((entry) => entry.style);
+  const mixedOf = (read: (entry: TextStyle) => unknown) => isMixedValue(textStyles.map(read));
+  const familyMixed = mixedOf((entry) => entry.fontFamily);
   return (
     <div className="section">
       <div className="section__header">
@@ -936,12 +941,14 @@ function TextSection({ node }: { node: TextNode }) {
           <select
             className="input"
             aria-label="Font family"
-            value={FONT_FAMILIES.some((font) => font.value === style.fontFamily) ? style.fontFamily : 'custom'}
+            value={familyMixed ? '' : FONT_FAMILIES.some((font) => font.value === style.fontFamily) ? style.fontFamily : 'custom'}
+            title={familyMixed ? 'Mixed' : undefined}
             onChange={(event) => {
               if (event.target.value === 'custom') return;
               updateStyle({ fontFamily: event.target.value });
             }}
           >
+            {familyMixed ? <option value="" disabled>Mixed</option> : null}
             {FONT_FAMILIES.map((font) => (
               <option key={font.value} value={font.value}>{font.label}</option>
             ))}
@@ -953,6 +960,7 @@ function TextSection({ node }: { node: TextNode }) {
         <Segmented
           label="Style"
           value={fontStyleOf(style)}
+          mixed={mixedOf(fontStyleOf)}
           options={[
             { value: 'REGULAR', label: 'Reg' },
             { value: 'ITALIC', label: 'Italic' },
@@ -965,12 +973,16 @@ function TextSection({ node }: { node: TextNode }) {
           <NumberField
             label="Size"
             value={style.fontSize}
+            mixed={mixedOf((entry) => entry.fontSize)}
+            onStep={(delta) => stepStyle('fontSize', delta, { min: 1, max: Number.POSITIVE_INFINITY })}
             min={1}
             onCommit={(value) => updateStyle({ fontSize: value })}
           />
           <NumberField
             label="Weight"
             value={style.fontWeight ?? 400}
+            mixed={mixedOf((entry) => entry.fontWeight ?? 400)}
+            onStep={(delta) => stepStyle('fontWeight', delta, { min: 100, max: 900 })}
             step={100}
             min={100}
             max={900}
@@ -981,6 +993,8 @@ function TextSection({ node }: { node: TextNode }) {
           <NumberField
             label="Line height"
             value={style.lineHeight?.value ?? 120}
+            mixed={mixedOf((entry) => entry.lineHeight?.value ?? 120)}
+            onStep={(delta) => stepStyle('lineHeight', delta, { min: 10, max: Number.POSITIVE_INFINITY })}
             suffix="%"
             min={10}
             onCommit={(value) => updateStyle({ lineHeight: { unit: 'PERCENT', value } })}
@@ -988,6 +1002,8 @@ function TextSection({ node }: { node: TextNode }) {
           <NumberField
             label="Letter"
             value={style.letterSpacing?.value ?? 0}
+            mixed={mixedOf((entry) => entry.letterSpacing?.value ?? 0)}
+            onStep={(delta) => stepStyle('letterSpacing', delta, { min: Number.NEGATIVE_INFINITY, max: Number.POSITIVE_INFINITY })}
             suffix="%"
             onCommit={(value) => updateStyle({ letterSpacing: { unit: 'PERCENT', value } })}
           />
@@ -995,6 +1011,7 @@ function TextSection({ node }: { node: TextNode }) {
         <Segmented
           label="Align"
           value={style.textAlignHorizontal ?? 'LEFT'}
+          mixed={mixedOf((entry) => entry.textAlignHorizontal ?? 'LEFT')}
           options={[
             { value: 'LEFT', label: 'L' },
             { value: 'CENTER', label: 'C' },
@@ -1006,6 +1023,7 @@ function TextSection({ node }: { node: TextNode }) {
         <Segmented
           label="Vertical"
           value={style.textAlignVertical ?? 'TOP'}
+          mixed={mixedOf((entry) => entry.textAlignVertical ?? 'TOP')}
           options={[
             { value: 'TOP', label: 'Top' },
             { value: 'CENTER', label: 'Mid' },
@@ -2244,7 +2262,7 @@ export function PropertiesPanel() {
             ) : null}
             <TransformSection node={node} nodes={nodes} />
             <AppearanceSection node={node} nodes={nodes} />
-            {node.type === 'TEXT' ? <TextSection node={node} /> : null}
+            {node.type === 'TEXT' ? <TextSection node={node} nodes={nodes} /> : null}
             <BooleanSection />
             <EffectsSection node={node} nodes={nodes} />
             <ConstraintsSection node={node} />
