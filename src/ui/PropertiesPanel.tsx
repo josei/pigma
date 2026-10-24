@@ -659,6 +659,7 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
               <Segmented
                 label="Align"
                 value={node.strokeAlign ?? 'CENTER'}
+                mixed={isMixedValue(nodes.map((entry) => entry.strokeAlign ?? 'CENTER'))}
                 options={[
                   { value: 'INSIDE', label: 'In' },
                   { value: 'CENTER', label: 'Mid' },
