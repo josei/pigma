@@ -195,6 +195,11 @@ function retypePaint(paint: Paint, kind: string): Paint {
   return paint;
 }
 
+/** The kind a type select offers. Any other gradient is shown as linear, as the select always has. */
+function paintKindOf(paint: Paint): PaintKind {
+  return paint.type === 'SOLID' ? 'SOLID' : paint.type === 'GRADIENT_RADIAL' ? 'RADIAL' : 'LINEAR';
+}
+
 function PaintRow({
   label,
   paint,
@@ -211,6 +216,10 @@ function PaintRow({
 }) {
   const color = paint?.type === 'SOLID' ? paint.color : { r: 0, g: 0, b: 0 };
   const alpha = paint?.type === 'SOLID' ? paint.opacity ?? 1 : 1;
+  // The type select compares paint types, not colours: two solids of different colours are one type. A layer with no
+  // paint is a type of its own, so it makes the type mixed even when the first layer has a paint.
+  const typeMixed = mixed ? isMixedValue(mixed.map((entry) => (entry ? entry.type : 'NONE'))) : false;
+  const typeBase = paint ?? mixed?.find((entry) => entry !== null) ?? null;
 
   return (
     <>
@@ -342,15 +351,17 @@ function PaintRow({
             </div>
           ))
         : null}
-      {paint && paint.type !== 'IMAGE' ? (
+      {typeBase && (typeMixed || typeBase.type !== 'IMAGE') ? (
         <div className="prop-row">
           <span className="prop-row__label">{label} type</span>
           <select
             className="input"
             aria-label={`${label} type`}
-            value={paint.type === 'SOLID' ? 'SOLID' : paint.type === 'GRADIENT_RADIAL' ? 'RADIAL' : 'LINEAR'}
-            onChange={(event) => onChange(retypePaint(paint, event.target.value as PaintKind))}
+            value={typeMixed ? '' : paintKindOf(typeBase)}
+            title={typeMixed ? 'Mixed' : undefined}
+            onChange={(event) => onChange(retypePaint(typeBase, event.target.value as PaintKind))}
           >
+            {typeMixed ? <option value="" disabled>Mixed</option> : null}
             <option value="SOLID">Solid</option>
             <option value="LINEAR">Linear</option>
             <option value="RADIAL">Radial</option>
