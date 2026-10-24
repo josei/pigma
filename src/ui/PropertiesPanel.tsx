@@ -452,22 +452,25 @@ function Segmented<T extends string>({
   options,
   onChange,
   label,
+  mixed,
 }: {
   value: T;
   options: Array<{ value: T; label: string; icon?: IconName }>;
   onChange: (value: T) => void;
   label: string;
+  /** Several layers differ: no option is highlighted and the group says Mixed; a click sets every layer. */
+  mixed?: boolean;
 }) {
   return (
     <div className="prop-row">
       <span className="prop-row__label">{label}</span>
-      <div className="segmented" role="group" aria-label={label}>
+      <div className="segmented" role="group" aria-label={label} title={mixed ? 'Mixed' : undefined} data-mixed={mixed ? 'true' : undefined}>
         {options.map((option) => (
           <button
             key={option.value}
             type="button"
-            className={`segmented__option${option.value === value ? ' segmented__option--active' : ''}`}
-            aria-pressed={option.value === value}
+            className={`segmented__option${!mixed && option.value === value ? ' segmented__option--active' : ''}`}
+            aria-pressed={!mixed && option.value === value}
             // Icon-only options carry no text: the label is the accessible name
             // and the tooltip, so nothing can wrap or overflow the button.
             {...(option.icon ? { 'aria-label': option.label, 'data-tooltip': option.label } : {})}
@@ -1570,6 +1573,19 @@ function AutoLayoutSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
     isMixedValue(containers.map((entry) => read(entry.autoLayout) ?? 0));
   const gapMixed = mixedLayout((entry) => entry?.itemSpacing);
   const lineGapMixed = mixedLayout((entry) => entry?.counterAxisSpacing);
+  // Alignment is compared as the control shows it; a sizing axis is compared on the field that holds it for each container,
+  // the same routing setAutoLayout uses (width is the primary axis of a row, the counter axis of a column).
+  const alignMixed = (read: (entry: AutoLayout | undefined) => string | undefined, fallback: string) =>
+    isMixedValue(containers.map((entry) => read(entry.autoLayout) ?? fallback));
+  const primaryAlignMixed = alignMixed((entry) => entry?.primaryAxisAlignItems, 'MIN');
+  const counterAlignMixed = alignMixed((entry) => entry?.counterAxisAlignItems, 'MIN');
+  const sizingOf = (entry: AutoLayout | undefined, which: 'width' | 'height') => {
+    const horizontal = entry?.layoutMode === 'HORIZONTAL';
+    const field = (which === 'width') === horizontal ? entry?.primaryAxisSizingMode : entry?.counterAxisSizingMode;
+    return field === 'FIXED' ? 'FIXED' : 'AUTO';
+  };
+  const widthMixed = isMixedValue(containers.map((entry) => sizingOf(entry.autoLayout, 'width')));
+  const heightMixed = isMixedValue(containers.map((entry) => sizingOf(entry.autoLayout, 'height')));
   const padMixed = {
     top: mixedLayout((entry) => entry?.paddingTop),
     right: mixedLayout((entry) => entry?.paddingRight),
@@ -1619,6 +1635,7 @@ function AutoLayoutSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
               <Segmented
                 label="Alignment"
                 value={layout.primaryAxisAlignItems ?? 'MIN'}
+                mixed={primaryAlignMixed}
                 options={ALIGN_OPTIONS}
                 onChange={(value) => setAutoLayout({ primaryAxisAlignItems: value })}
               />
@@ -1628,12 +1645,14 @@ function AutoLayoutSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
               <Segmented
                 label="Counter"
                 value={layout.counterAxisAlignItems ?? 'MIN'}
+                mixed={counterAlignMixed}
                 options={COUNTER_ALIGN_OPTIONS}
                 onChange={(value) => setAutoLayout({ counterAxisAlignItems: value })}
               />
               <Segmented
                 label="Width"
                 value={layout.primaryAxisSizingMode === 'FIXED' ? 'FIXED' : 'AUTO'}
+                mixed={widthMixed}
                 options={SIZING_OPTIONS}
                 onChange={(value) =>
                   setAutoLayout(
@@ -1648,6 +1667,7 @@ function AutoLayoutSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
               <Segmented
                 label="Height"
                 value={layout.counterAxisSizingMode === 'FIXED' ? 'FIXED' : 'AUTO'}
+                mixed={heightMixed}
                 options={SIZING_OPTIONS}
                 onChange={(value) =>
                   setAutoLayout(
