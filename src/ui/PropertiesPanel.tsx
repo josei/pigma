@@ -7,6 +7,7 @@ import type { BlendMode, ContainerNode, OverlayPosition, Paint, RGBA, SceneNode,
 import { OVERLAY_POSITIONS } from '../model/overlay';
 import { limitsOf } from '../model/sizing';
 import { cropOf, imageFillsOf } from '../model/image';
+import { isMixedValue } from '../model/selectionValue';
 import { decodeImageFile } from './imageInput';
 import { hasChildren } from '../model/types';
 import { defaultAutoLayout, gridRowCount } from '../model/autoLayout';
@@ -58,6 +59,7 @@ function NumberField({
   min,
   max,
   suffix,
+  mixed,
 }: {
   label: string;
   value: number;
@@ -67,13 +69,15 @@ function NumberField({
   min?: number;
   max?: number;
   suffix?: string;
+  /** Several layers differ: the field is empty and says "Mixed"; typing sets every layer. */
+  mixed?: boolean;
 }) {
   // `draft` is only set while the user is typing/scrubbing; otherwise the field
   // displays the store value directly, so it can never lag a render behind.
   const [draft, setDraft] = useState<string | null>(null);
   const scrubbing = useRef<{ x: number; start: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const display = draft ?? String(round(value));
+  const display = draft ?? (mixed ? '' : String(round(value)));
 
   const commit = (raw: string) => {
     const parsed = Number.parseFloat(raw);
@@ -122,6 +126,9 @@ function NumberField({
       <input
         ref={inputRef}
         value={display}
+        // A dash, because the word is clipped beside the label in a half-width field; the tooltip says Mixed.
+        placeholder={mixed ? '—' : undefined}
+        title={mixed ? 'Mixed' : undefined}
         inputMode="decimal"
         aria-label={label}
         // Figma selects the value on focus, so typing replaces instead of appending.
@@ -464,7 +471,7 @@ function Segmented<T extends string>({
   );
 }
 
-function TransformSection({ node }: { node: SceneNode }) {
+function TransformSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[] }) {
   const file = useEditor((state) => state.file);
   const updateSelected = useEditor((state) => state.updateSelected);
   const bounds = absoluteBounds(file.document, node.id);
@@ -514,6 +521,7 @@ function TransformSection({ node }: { node: SceneNode }) {
           <NumberField
             label="Opacity"
             value={Math.round(node.opacity * 100)}
+            mixed={isMixedValue(nodes.map((entry) => entry.opacity))}
             min={0}
             max={100}
             suffix="%"
@@ -2121,7 +2129,7 @@ export function PropertiesPanel() {
                 </div>
               </div>
             ) : null}
-            <TransformSection node={node} />
+            <TransformSection node={node} nodes={nodes} />
             <AppearanceSection node={node} nodes={nodes} />
             {node.type === 'TEXT' ? <TextSection node={node} /> : null}
             <BooleanSection />
