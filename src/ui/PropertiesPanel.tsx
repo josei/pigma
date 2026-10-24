@@ -1559,11 +1559,23 @@ function StrokeInLayoutRow({ layout, onChange }: { layout: { strokesIncludedInLa
   );
 }
 
-function AutoLayoutSection({ node }: { node: SceneNode }) {
+function AutoLayoutSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[] }) {
   const setAutoLayout = useEditor((state) => state.setAutoLayout);
   const clearAutoLayout = useEditor((state) => state.clearAutoLayout);
   if (!hasChildren(node)) return null;
   const layout = node.autoLayout ?? { layoutMode: 'NONE' as const };
+  // Each spacing and padding value is compared across the containers in the selection, since setAutoLayout writes all of them.
+  const containers = nodes.filter(hasChildren) as ContainerNode[];
+  const mixedLayout = (read: (entry: AutoLayout | undefined) => number | undefined) =>
+    isMixedValue(containers.map((entry) => read(entry.autoLayout) ?? 0));
+  const gapMixed = mixedLayout((entry) => entry?.itemSpacing);
+  const lineGapMixed = mixedLayout((entry) => entry?.counterAxisSpacing);
+  const padMixed = {
+    top: mixedLayout((entry) => entry?.paddingTop),
+    right: mixedLayout((entry) => entry?.paddingRight),
+    bottom: mixedLayout((entry) => entry?.paddingBottom),
+    left: mixedLayout((entry) => entry?.paddingLeft),
+  };
   const active = layout.layoutMode !== 'NONE';
 
   return (
@@ -1601,6 +1613,7 @@ function AutoLayoutSection({ node }: { node: SceneNode }) {
               <NumberField
                 label="Gap"
                 value={layout.itemSpacing ?? 0}
+                mixed={gapMixed}
                 onCommit={(value) => setAutoLayout({ itemSpacing: value })}
               />
               <Segmented
@@ -1659,16 +1672,17 @@ function AutoLayoutSection({ node }: { node: SceneNode }) {
                 <NumberField
                   label="Line gap"
                   value={layout.counterAxisSpacing ?? 0}
+                  mixed={lineGapMixed}
                   min={0}
                   onCommit={(value) => setAutoLayout({ counterAxisSpacing: value })}
                 />
               ) : null}
             </div>
             <div className="prop-grid prop-grid--4">
-              <NumberField label="Pad T" value={layout.paddingTop ?? 0} min={0} onCommit={(value) => setAutoLayout({ paddingTop: value })} />
-              <NumberField label="Pad R" value={layout.paddingRight ?? 0} min={0} onCommit={(value) => setAutoLayout({ paddingRight: value })} />
-              <NumberField label="Pad B" value={layout.paddingBottom ?? 0} min={0} onCommit={(value) => setAutoLayout({ paddingBottom: value })} />
-              <NumberField label="Pad L" value={layout.paddingLeft ?? 0} min={0} onCommit={(value) => setAutoLayout({ paddingLeft: value })} />
+              <NumberField label="Pad T" value={layout.paddingTop ?? 0} mixed={padMixed.top} min={0} onCommit={(value) => setAutoLayout({ paddingTop: value })} />
+              <NumberField label="Pad R" value={layout.paddingRight ?? 0} mixed={padMixed.right} min={0} onCommit={(value) => setAutoLayout({ paddingRight: value })} />
+              <NumberField label="Pad B" value={layout.paddingBottom ?? 0} mixed={padMixed.bottom} min={0} onCommit={(value) => setAutoLayout({ paddingBottom: value })} />
+              <NumberField label="Pad L" value={layout.paddingLeft ?? 0} mixed={padMixed.left} min={0} onCommit={(value) => setAutoLayout({ paddingLeft: value })} />
             </div>
           </>
         ) : null}
@@ -2201,7 +2215,7 @@ export function PropertiesPanel() {
             <BooleanSection />
             <EffectsSection node={node} nodes={nodes} />
             <ConstraintsSection node={node} />
-            <AutoLayoutSection node={node} />
+            <AutoLayoutSection node={node} nodes={nodes} />
             <SizeLimitsSection node={node} />
             <AlignmentSection />
             <LayoutSection node={node} />
