@@ -607,6 +607,8 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
   // Each corner is compared on its own, so a selection that agrees on the top corners can still mix the bottom ones.
   const cornersMixed = [0, 1, 2, 3].map((index) => isMixedValue(nodes.map((entry) => cornerRadii(entry)[index]!)));
   const blendMode: BlendMode = node.blendMode ?? 'NORMAL';
+  // Several layers with different blend modes: the select shows Mixed (a disabled option), and a pick sets every layer.
+  const blendMixed = isMixedValue(nodes.map((entry) => entry.blendMode ?? 'NORMAL'));
   const corners = cornerRadii(node);
   const [individualCorners, setIndividualCorners] = useState(!!node.rectangleCornerRadii);
   const imageFill = node.fills.some((paint) => paint.type === 'IMAGE');
@@ -765,9 +767,14 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
           <select
             className="input"
             aria-label="Blend mode"
-            value={blendMode}
+            value={blendMixed ? '' : blendMode}
             onChange={(event) => updateSelected({ blendMode: event.target.value as BlendMode }, 'Set blend mode')}
           >
+            {blendMixed ? (
+              <option value="" disabled>
+                Mixed
+              </option>
+            ) : null}
             {blendModeOptions(node).map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
