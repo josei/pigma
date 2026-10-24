@@ -66,6 +66,17 @@ describe('document entries in quick actions', () => {
     expect(opened).toEqual(['page-2']);
   });
 
+  it('lists a layer on another page after the current page, labelled with its page, and selects it on that page', () => {
+    const { file, page } = twoPageFile();
+    const second = file.document.children[1]!;
+    second.children = [{ ...createRectNode(null, 0, 0, 10, 10), id: 'far', name: 'Far' }] as typeof second.children;
+    const selected: Array<[string, string]> = [];
+    const items = documentQuickActions(file, page.id, { selectLayer: (id, onPage) => selected.push([id, onPage]), openPage: () => undefined });
+    expect(items.map((item) => item.label)).toEqual(['Layer: Hero', 'Layer: Badge', 'Layer: Far (Page 2)', 'Page: Page 1', 'Page: Page 2']);
+    items.find((item) => item.label === 'Layer: Far (Page 2)')!.run!();
+    expect(selected).toEqual([['far', 'page-2']]);
+  });
+
   it('matches a layer by its name, the same way as a command', () => {
     const { file, page } = twoPageFile();
     const items = documentQuickActions(file, page.id, { selectLayer: () => undefined, openPage: () => undefined });

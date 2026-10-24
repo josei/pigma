@@ -5,7 +5,7 @@ import { documentQuickActions, matchQuickActions } from './matchQuickActions';
 import { useEscapeToClose } from './useEscapeToClose';
 
 /**
- * Quick actions (Cmd/Ctrl+/): a search over the main menu's commands, the layers on the current page and the pages.
+ * Quick actions (Cmd/Ctrl+/): a search over the main menu's commands, the layers on every page, and the pages.
  * Type a word, move with the arrow keys, and Enter runs the highlighted entry. The commands are the menu's own
  * entries, so the palette cannot offer a command the menu does not have; a layer or page entry selects or opens it.
  */
@@ -31,7 +31,10 @@ export function QuickActions() {
   const entries = [
     ...MENU_ITEMS,
     ...documentQuickActions(file, pageId, {
-      selectLayer: (id) => useEditor.getState().select([id], 'replace'),
+      selectLayer: (id, onPage) => {
+        if (onPage !== useEditor.getState().pageId) useEditor.getState().setPage(onPage);
+        useEditor.getState().select([id], 'replace');
+      },
       openPage: (id) => useEditor.getState().setPage(id),
     }),
   ];
