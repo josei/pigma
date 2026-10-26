@@ -1,0 +1,79 @@
+# Build the Pigma desktop app on each platform.
+# A build runs when the desktop shell or this workflow changes on main, and on demand.
+# Each platform uploads its bundles as an artifact. Builds are unsigned for now.
+name: Desktop
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src-tauri/**'
+      - 'scripts/desktop-assets.mjs'
+      - 'scripts/build-servers.mjs'
+      - 'scripts/prepare-sidecar.mjs'
+      - 'scripts/sidecar-supervisor.mjs'
+      - 'scripts/check-desktop-servers.mjs'
+      - 'server/**'
+      - 'src/mcp/**'
+      - '.github/workflows/desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            name: linux
+          - os: macos-latest
+            name: macos
+          - os: windows-latest
+            name: windows
+    runs-on: ${{ matrix.os }}
+    # A hung runner is stopped after an hour, not GitHub's six-hour default. The macOS job of
+    # run 39480031196 stopped after 15 minutes with no steps recorded.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Linux system libraries
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf xvfb
+      - run: npm ci
+      - name: Build the desktop app
+        run: npx --yes @tauri-apps/cli@2 build
+      # The packaged app must start, serve MCP and rooms, and stop them when it quits.
+      - name: Check the packaged app's servers (Linux)
+        if: matrix.name == 'linux'
+        run: |
+          dpkg-deb -x src-tauri/target/release/bundle/deb/*.deb "$RUNNER_TEMP/pkg"
+          xvfb-run -a node scripts/check-desktop-servers.mjs "$RUNNER_TEMP/pkg/usr/bin/pigma-desktop"
+      - name: Check the packaged app's servers (macOS)
+        if: matrix.name == 'macos'
+        run: node scripts/check-desktop-servers.mjs src-tauri/target/release/bundle/macos/Pigma.app/Contents/MacOS/pigma-desktop
+      - name: Check the packaged app's servers (Windows)
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait
+          $app = Get-ChildItem -Path $env:LOCALAPPDATA, $env:ProgramFiles -Filter pigma-desktop.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          node scripts/check-desktop-servers.mjs $app.FullName
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pigma-desktop-${{ matrix.name }}
+          path: src-tauri/target/release/bundle/
+          if-no-files-found: error

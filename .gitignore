@@ -1,0 +1,28 @@
+node_modules/
+dist/
+dist-servers/
+test-results/
+playwright-report/
+data/
+
+# Desktop shell build output: binaries are never committed.
+src-tauri/target/
+src-tauri/gen/
+# The sidecar folder holds a Node runtime and the bundled servers; it is built, not committed.
+src-tauri/sidecar/
+
+# TypeScript incremental build artifacts
+*.tsbuildinfo
+
+# external .fig references used to OBSERVE the wire shape (not redistributed)
+.fig-refs/
+
+# Vite writes a config-timestamp file beside the config while it loads it.
+vite.config.ts.timestamp-*
+
+# Local screenshot output from browser tests and manual checks; not product assets.
+.critic-shots/
+
+# Local-only folders the tooling writes into the checkout, never committed.
+.preview/
+.pw-browsers/
