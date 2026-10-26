@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reflowTree, defaultAutoLayout, fillAxisOf, fixResizedAxes, setChildFill } from './autoLayout';
+import { canShareChild, reflowTree, defaultAutoLayout, fillAxisOf, fixResizedAxes, setChildFill, setChildPercent } from './autoLayout';
 import { createFrameNode, createRectNode } from './factory';
 import { emptyFile } from './validate';
 import { findNode, updateNode } from './tree';
@@ -465,5 +465,117 @@ describe('a manual resize of a filling child (fixResizedAxes)', () => {
     // A child that never filled is not changed by a width edit.
     const plain = { ...file, document: updateNode(file.document, middle, (node) => ({ ...node, width: 200 }) as AnyNode) };
     expect((findNode(fixResizedAxes(file, plain, [middle]).document, middle) as SceneNode).layoutGrow).toBeUndefined();
+  });
+});
+
+describe('child share (percent of the primary axis)', () => {
+  // A 600 x 400 row with a fixed width, 16 padding and 10 spacing: the inner width is 568, and the three children share 548
+  // once the two gaps are taken out.
+  const fixedRow = () =>
+    horizontalFrame({ primaryAxisSizingMode: 'FIXED', counterAxisSizingMode: 'FIXED', itemSpacing: 10 });
+
+  it('a child takes its percent of the inner primary size, less the spacing between children', () => {
+    const { file, childIds } = fixedRow();
+    const [first, second] = childIds as [string, string, string];
+    let shared = setChildPercent(file, [first], 25);
+    shared = setChildPercent(shared, [second], 75);
+    expect(childTransforms({ ...shared, document: reflowTree(shared.document) }, childIds)).toEqual([
+      { x: 16, y: 16, w: 137, h: 50 },
+      { x: 163, y: 16, w: 411, h: 50 },
+      // The third child has no share, so it keeps its own width.
+      { x: 584, y: 16, w: 100, h: 50 },
+    ]);
+  });
+
+  it('on a column the share is of the height, and the width is left alone', () => {
+    const { file, childIds } = horizontalFrame({
+      layoutMode: 'VERTICAL',
+      primaryAxisSizingMode: 'FIXED',
+      counterAxisSizingMode: 'FIXED',
+      paddingTop: 0,
+      paddingBottom: 0,
+      itemSpacing: 0,
+    });
+    const [first] = childIds as [string, string, string];
+    const shared = setChildPercent(file, [first], 50);
+    expect(childTransforms({ ...shared, document: reflowTree(shared.document) }, [first])).toEqual([{ x: 16, y: 0, w: 100, h: 200 }]);
+  });
+
+  it('a share is clamped to the child\'s own maximum', () => {
+    const { file, childIds } = fixedRow();
+    const [first] = childIds as [string, string, string];
+    const limited = { ...file, document: updateNode(file.document, first, (node) => ({ ...node, maxWidth: 300 }) as AnyNode) };
+    const shared = setChildPercent(limited, [first], 75);
+    expect((findNode(reflowTree(shared.document), first) as SceneNode).width).toBe(300);
+  });
+
+  it('a share replaces Fill on the main axis, and either choice clears the other', () => {
+    const { file, childIds } = fixedRow();
+    const [first] = childIds as [string, string, string];
+    const shared = setChildPercent(file, [first], 40);
+    expect(findNode(shared.document, first)).toMatchObject({ layoutPercent: 40, layoutGrow: 0 });
+    const filled = setChildFill(shared, [first], 'width', true);
+    expect(findNode(filled.document, first)).toMatchObject({ layoutGrow: 1 });
+    expect((findNode(filled.document, first) as SceneNode).layoutPercent).toBeUndefined();
+    const again = setChildPercent(filled, [first], 30);
+    expect((findNode(again.document, first) as SceneNode).layoutGrow).toBe(0);
+    const cleared = setChildPercent(again, [first], null);
+    expect((findNode(cleared.document, first) as SceneNode).layoutPercent).toBeUndefined();
+  });
+
+  it('a share outside 0 to 100 is clamped, and 0 clears it', () => {
+    const { file, childIds } = fixedRow();
+    const [first] = childIds as [string, string, string];
+    expect((findNode(setChildPercent(file, [first], 150).document, first) as SceneNode).layoutPercent).toBe(100);
+    expect((findNode(setChildPercent(file, [first], -5).document, first) as SceneNode).layoutPercent).toBeUndefined();
+    expect((findNode(setChildPercent(setChildPercent(file, [first], 20), [first], 0).document, first) as SceneNode).layoutPercent).toBeUndefined();
+  });
+
+  it('a hugging row turns Fixed on its main axis, so the share has a size to take', () => {
+    const { file, childIds, frameId } = horizontalFrame({ primaryAxisSizingMode: 'AUTO' });
+    const [first] = childIds as [string, string, string];
+    const shared = setChildPercent(file, [first], 50);
+    expect((findNode(shared.document, frameId) as AnyNode & { autoLayout: AutoLayout }).autoLayout.primaryAxisSizingMode).toBe('FIXED');
+  });
+
+  it('a wrapping row, a grid child and a layer with no parent cannot take a share', () => {
+    expect(canShareChild({ ...defaultAutoLayout('HORIZONTAL'), layoutWrap: 'WRAP' })).toBe(false);
+    expect(canShareChild(defaultAutoLayout('GRID'))).toBe(false);
+    expect(canShareChild(null)).toBe(false);
+    expect(canShareChild(defaultAutoLayout('VERTICAL'))).toBe(true);
+    const { file, childIds } = horizontalFrame({ layoutWrap: 'WRAP', primaryAxisSizingMode: 'FIXED' });
+    const [first] = childIds as [string, string, string];
+    expect((findNode(setChildPercent(file, [first], 50).document, first) as SceneNode).layoutPercent).toBeUndefined();
+  });
+
+  it('a layout that ignores a share (wrapping, or hugging) keeps every child at its own size', () => {
+    for (const layout of [{ layoutWrap: 'WRAP' as const, primaryAxisSizingMode: 'FIXED' as const }, { primaryAxisSizingMode: 'AUTO' as const }]) {
+      const { file, childIds } = horizontalFrame(layout);
+      // The setter refuses these parents, so the share is written directly, as a file from another tool could carry it.
+      const carried = childIds.reduce(
+        (doc, id) => ({ ...doc, document: updateNode(doc.document, id, (node) => ({ ...node, layoutPercent: 50 }) as AnyNode) }),
+        file,
+      );
+      expect(childTransforms({ ...carried, document: reflowTree(carried.document) }, childIds).map((box) => box.w)).toEqual([100, 100, 100]);
+    }
+  });
+
+  it('a manual resize of a shared child switches its main axis to Fixed, so the dragged width survives', () => {
+    const { file, childIds } = fixedRow();
+    const [first] = childIds as [string, string, string];
+    const shared = { ...file, document: reflowTree(setChildPercent(file, [first], 50).document) };
+    const dragged = { ...shared, document: updateNode(shared.document, first, (node) => ({ ...node, width: 200 }) as AnyNode) };
+    const fixed = fixResizedAxes(shared, dragged, [first]);
+    expect((findNode(fixed.document, first) as SceneNode).layoutPercent).toBeUndefined();
+    expect((findNode(reflowTree(fixed.document), first) as SceneNode).width).toBe(200);
+  });
+
+  it('keeps the share through a save and a load', () => {
+    const { file, childIds } = fixedRow();
+    const [first] = childIds as [string, string, string];
+    const shared = setChildPercent(file, [first], 35);
+    const restored = parseFile(serializeFile(shared));
+    expect(restored.ok).toBe(true);
+    expect((findNode(restored.file!.document, first) as SceneNode).layoutPercent).toBe(35);
   });
 });

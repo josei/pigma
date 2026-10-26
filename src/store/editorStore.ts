@@ -59,7 +59,7 @@ import { renderSvgDocument } from '../render/svgExport';
 import { defaultDocument } from '../model/starter';
 import { emptyFile } from '../model/validate';
 import { settleDocument } from '../model/settle';
-import { fixResizedAxes, setChildFill as setChildFillOp } from '../model/autoLayout';
+import { fixResizedAxes, setChildFill as setChildFillOp, setChildPercent as setChildPercentOp } from '../model/autoLayout';
 import { validatePigmaFile } from '../model/validate';
 import { defaultLayoutGrid } from '../model/constraints';
 import { flipNodes, type FlipAxis } from '../model/flip';
@@ -484,6 +484,7 @@ export interface EditorState {
   setAutoLayout: (patch: Partial<AutoLayout>) => void;
   /** Fill container (true) or Fixed (false) on one axis of each selected layer that an auto layout parent lays out. */
   setChildFill: (axis: 'width' | 'height', fill: boolean) => void;
+  setChildPercent: (percent: number | null) => void;
   clearAutoLayout: () => void;
   resetOverrides: (instanceId: string) => void;
   updateSelectedTextStyle: (patch: Partial<TextStyle>, label?: string) => void;
@@ -1663,6 +1664,12 @@ export const useEditor = create<EditorState>((set, get) => ({
     const ids = get().selection;
     if (ids.length === 0) return;
     get().apply(fill ? 'Fill container' : 'Fixed size', (file) => settleDocument(setChildFillOp(file, ids, axis, fill)));
+  },
+
+  setChildPercent: (percent) => {
+    const ids = get().selection;
+    if (ids.length === 0) return;
+    get().apply(percent ? 'Set share' : 'Clear share', (file) => settleDocument(setChildPercentOp(file, ids, percent)));
   },
 
   clearAutoLayout: () => {

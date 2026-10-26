@@ -10,7 +10,7 @@ import { cropOf, imageFillsOf } from '../model/image';
 import { canonicalKey, isMixedValue } from '../model/selectionValue';
 import { decodeImageFile } from './imageInput';
 import { hasChildren } from '../model/types';
-import { childFillsAxis, defaultAutoLayout, fillAxisOf, gridRowCount } from '../model/autoLayout';
+import { canShareChild, childFillsAxis, defaultAutoLayout, fillAxisOf, gridRowCount } from '../model/autoLayout';
 import { EFFECT_TYPES, effectLabel, isBlur, isShadow, type EffectKind } from '../model/effects';
 import { CONSTRAINT_TYPES, constraintLabel } from '../model/constraints';
 import { VariableBindInline, VariableBindRow } from './VariablesPanel';
@@ -1342,17 +1342,27 @@ const CONSTRAINT_OPTIONS_VERTICAL = CONSTRAINT_TYPES.map((type) => ({
  * Fill container for a child of an auto layout frame: the child stretches to the space its parent leaves it, on the width or
  * the height. Figma: "Fill container can be applied only to child objects of auto layout frames". Shown only when a selected
  * layer has such a parent; a grid parent is left out, since a grid child already fills its cell. The mixed state is taken
- * across the selection, as the rest of the panel does.
+ * across the selection, as the rest of the panel does. The share field takes a percent of a row's or column's primary axis,
+ * for the children of a parent that can share (see canShareChild).
  */
 function ChildFillSection({ nodes }: { nodes: SceneNode[] }) {
   const file = useEditor((state) => state.file);
   const setChildFill = useEditor((state) => state.setChildFill);
+  const setChildPercent = useEditor((state) => state.setChildPercent);
   const laid = nodes.flatMap((node) => {
     const parent = findParent(file.document, node.id);
     const layout = parent ? (parent as { autoLayout?: AutoLayout }).autoLayout ?? null : null;
     return fillAxisOf(layout, 'width') === null ? [] : [{ node, layout }];
   });
   if (laid.length === 0) return null;
+  // The share field is for children of a row or column that can share its primary axis; its label names the direction.
+  const shareable = laid.filter(({ layout }) => canShareChild(layout));
+  const shareLabel = shareable.every(({ layout }) => layout?.layoutMode === 'HORIZONTAL')
+    ? 'Share of row'
+    : shareable.every(({ layout }) => layout?.layoutMode === 'VERTICAL')
+      ? 'Share of column'
+      : 'Share';
+  const shares = shareable.map(({ node }) => node.layoutPercent ?? 0);
   const row = (axis: 'width' | 'height', label: string) => {
     const flags = laid.map(({ node, layout }) => childFillsAxis(node, layout, axis));
     return (
@@ -1376,6 +1386,17 @@ function ChildFillSection({ nodes }: { nodes: SceneNode[] }) {
       <div className="section__body">
         {row('width', 'Width')}
         {row('height', 'Height')}
+        {shareable.length > 0 ? (
+          <NumberField
+            label={shareLabel}
+            value={shares[0] ?? 0}
+            mixed={isMixedValue(shares)}
+            min={0}
+            max={100}
+            suffix="%"
+            onCommit={(value) => setChildPercent(value)}
+          />
+        ) : null}
       </div>
     </div>
   );

@@ -400,6 +400,11 @@ export interface BaseNode {
   layoutAlign?: 'INHERIT' | 'STRETCH';
   layoutGrow?: number;
   /**
+   * The share of the parent's inner primary size this child takes, 0 to 100, in a non-wrapping row or column whose primary
+   * axis is fixed. The spacing between children is taken out before the share is worked out. It replaces Fill on that axis.
+   */
+  layoutPercent?: number;
+  /**
    * Grid placement inside a `layoutMode: 'GRID'` parent, in Figma's terms. An
    * anchor index places the child at that 0-based track instead of letting
    * auto-placement choose; spans widen the cell. Absent means auto-placed.
