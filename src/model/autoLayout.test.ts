@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { canShareChild, reflowTree, defaultAutoLayout, fillAxisOf, fixResizedAxes, setChildFill, setChildPercent } from './autoLayout';
+import {
+  canShareChild,
+  reflowTree,
+  defaultAutoLayout,
+  fillAxisOf,
+  fixResizedAxes,
+  setChildCounterPercent,
+  setChildFill,
+  setChildPercent,
+} from './autoLayout';
 import { createFrameNode, createRectNode } from './factory';
 import { emptyFile } from './validate';
 import { findNode, updateNode } from './tree';
@@ -577,5 +586,99 @@ describe('child share (percent of the primary axis)', () => {
     const restored = parseFile(serializeFile(shared));
     expect(restored.ok).toBe(true);
     expect((findNode(restored.file!.document, first) as SceneNode).layoutPercent).toBe(35);
+  });
+});
+
+describe('child cross share (percent of the counter axis)', () => {
+  // A 600 x 400 row with fixed sizes and 16 padding: the inner height is 368 and the inner width of a column is 568.
+  const fixedRow = (layout: Partial<AutoLayout> = {}) =>
+    horizontalFrame({ primaryAxisSizingMode: 'FIXED', counterAxisSizingMode: 'FIXED', ...layout });
+
+  it('a child in a row takes its percent of the inner height, and keeps its width', () => {
+    const { file, childIds } = fixedRow();
+    const [first] = childIds as [string, string, string];
+    const shared = setChildCounterPercent(file, [first], 50);
+    expect(childTransforms({ ...shared, document: reflowTree(shared.document) }, [first])).toEqual([{ x: 16, y: 16, w: 100, h: 184 }]);
+  });
+
+  it('in a column the cross share is of the width', () => {
+    const { file, childIds } = fixedRow({ layoutMode: 'VERTICAL' });
+    const [first] = childIds as [string, string, string];
+    const shared = setChildCounterPercent(file, [first], 25);
+    expect(childTransforms({ ...shared, document: reflowTree(shared.document) }, [first])).toEqual([{ x: 16, y: 16, w: 142, h: 50 }]);
+  });
+
+  it('a cross share is clamped to the child\'s own maximum height', () => {
+    const { file, childIds } = fixedRow();
+    const [first] = childIds as [string, string, string];
+    const limited = { ...file, document: updateNode(file.document, first, (node) => ({ ...node, maxHeight: 100 }) as AnyNode) };
+    const shared = setChildCounterPercent(limited, [first], 75);
+    expect((findNode(reflowTree(shared.document), first) as SceneNode).height).toBe(100);
+  });
+
+  it('a cross share replaces stretch, and Fill on the cross axis clears it', () => {
+    const { file, childIds } = fixedRow();
+    const [first] = childIds as [string, string, string];
+    const stretched = setChildFill(file, [first], 'height', true);
+    expect(findNode(stretched.document, first)).toMatchObject({ layoutAlign: 'STRETCH' });
+    const shared = setChildCounterPercent(stretched, [first], 40);
+    expect(findNode(shared.document, first)).toMatchObject({ layoutCounterPercent: 40, layoutAlign: 'INHERIT' });
+    const filled = setChildFill(shared, [first], 'height', true);
+    expect(findNode(filled.document, first)).toMatchObject({ layoutAlign: 'STRETCH' });
+    expect((findNode(filled.document, first) as SceneNode).layoutCounterPercent).toBeUndefined();
+  });
+
+  it('Fill on the main axis leaves the cross share alone', () => {
+    const { file, childIds } = fixedRow();
+    const [first] = childIds as [string, string, string];
+    const shared = setChildCounterPercent(file, [first], 40);
+    const filledWidth = setChildFill(shared, [first], 'width', true);
+    expect((findNode(filledWidth.document, first) as SceneNode).layoutCounterPercent).toBe(40);
+  });
+
+  it('a hugging cross axis turns Fixed, so the share has a size to take', () => {
+    const { file, childIds, frameId } = fixedRow({ counterAxisSizingMode: 'AUTO' });
+    const [first] = childIds as [string, string, string];
+    const shared = setChildCounterPercent(file, [first], 50);
+    expect((findNode(shared.document, frameId) as AnyNode & { autoLayout: AutoLayout }).autoLayout.counterAxisSizingMode).toBe('FIXED');
+  });
+
+  it('a wrapping row, a grid child and a layer with no parent cannot take a cross share', () => {
+    const { file, childIds } = fixedRow({ layoutWrap: 'WRAP' });
+    const [first] = childIds as [string, string, string];
+    expect((findNode(setChildCounterPercent(file, [first], 50).document, first) as SceneNode).layoutCounterPercent).toBeUndefined();
+    const grid = fixedRow({ layoutMode: 'GRID' });
+    const [cell] = grid.childIds;
+    expect((findNode(setChildCounterPercent(grid.file, [cell!], 50).document, cell!) as SceneNode).layoutCounterPercent).toBeUndefined();
+  });
+
+  it('a layout that ignores a cross share (wrapping, or a hugging cross axis) keeps every child at its own height', () => {
+    for (const layout of [{ layoutWrap: 'WRAP' as const }, { counterAxisSizingMode: 'AUTO' as const }]) {
+      const { file, childIds } = horizontalFrame({ primaryAxisSizingMode: 'FIXED', ...layout });
+      // The setter refuses these layouts, so the share is written directly, as a file from another tool could carry it.
+      const carried = childIds.reduce(
+        (doc, id) => ({ ...doc, document: updateNode(doc.document, id, (node) => ({ ...node, layoutCounterPercent: 50 }) as AnyNode) }),
+        file,
+      );
+      expect(childTransforms({ ...carried, document: reflowTree(carried.document) }, childIds).map((box) => box.h)).toEqual([50, 50, 50]);
+    }
+  });
+
+  it('a manual resize of the cross axis switches it to Fixed, so the dragged height survives', () => {
+    const { file, childIds } = fixedRow();
+    const [first] = childIds as [string, string, string];
+    const shared = { ...file, document: reflowTree(setChildCounterPercent(file, [first], 50).document) };
+    const dragged = { ...shared, document: updateNode(shared.document, first, (node) => ({ ...node, height: 60 }) as AnyNode) };
+    const fixed = fixResizedAxes(shared, dragged, [first]);
+    expect((findNode(fixed.document, first) as SceneNode).layoutCounterPercent).toBeUndefined();
+    expect((findNode(reflowTree(fixed.document), first) as SceneNode).height).toBe(60);
+  });
+
+  it('keeps the cross share through a save and a load', () => {
+    const { file, childIds } = fixedRow();
+    const [first] = childIds as [string, string, string];
+    const restored = parseFile(serializeFile(setChildCounterPercent(file, [first], 35)));
+    expect(restored.ok).toBe(true);
+    expect((findNode(restored.file!.document, first) as SceneNode).layoutCounterPercent).toBe(35);
   });
 });

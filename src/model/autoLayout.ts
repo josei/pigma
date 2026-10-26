@@ -254,24 +254,26 @@ function boxInset(child: SceneNode, layout: AutoLayout): number {
 }
 
 /**
- * The box each percent child takes on the primary axis: its share of the inner primary size, less the spacing between
- * children, clamped to the child's own limits. The box includes the stroke reach, as `primaryOf` does.
+ * The box each share child takes along one axis: its percent of the inner size on that axis, less the spacing between
+ * children, clamped to the child's own limits. The box includes the stroke reach, as `primaryOf` and `counterOf` do.
  */
-function percentBoxes(
+function shareBoxes(
   children: SceneNode[],
-  horizontal: boolean,
-  innerPrimary: number,
+  key: 'layoutPercent' | 'layoutCounterPercent',
+  axis: 'width' | 'height',
+  inner: number,
   spacing: number,
   insetOf: (child: SceneNode) => number,
 ): Map<SceneNode, number> {
   const boxes = new Map<SceneNode, number>();
-  const shared = Math.max(0, innerPrimary - spacing * (children.length - 1));
+  const shared = Math.max(0, inner - spacing * (children.length - 1));
   for (const child of children) {
-    if (child.layoutPercent === undefined) continue;
+    const percent = child[key];
+    if (percent === undefined) continue;
     const inset = insetOf(child);
-    const share = (shared * child.layoutPercent) / 100 - 2 * inset;
-    const limited = clampSize(child, horizontal ? share : child.width, horizontal ? child.height : share);
-    boxes.set(child, (horizontal ? limited.width : limited.height) + 2 * inset);
+    const share = (shared * percent) / 100 - 2 * inset;
+    const limited = clampSize(child, axis === 'width' ? share : child.width, axis === 'height' ? share : child.height);
+    boxes.set(child, limited[axis] + 2 * inset);
   }
   return boxes;
 }
@@ -291,8 +293,6 @@ function layoutContainer<T extends AnyNode>(node: T, layout: AutoLayout): T {
 
   // With strokes in the layout, a child's box is its geometry plus its stroke on both sides; the geometry is placed inside.
   const insetOf = (child: SceneNode) => boxInset(child, layout);
-  const counterOf = (child: SceneNode) => (horizontal ? child.height : child.width) + 2 * insetOf(child);
-
   // Sizing modes are named after the axes, not the orientation.
   const primaryAuto = layout.primaryAxisSizingMode === 'AUTO';
   const counterAuto = layout.counterAxisSizingMode === 'AUTO';
@@ -301,11 +301,19 @@ function layoutContainer<T extends AnyNode>(node: T, layout: AutoLayout): T {
   // on the sizes the children already have, so in both cases every child keeps its own size.
   const fixed = clampSize(node, node.width, node.height);
   const innerPrimary = (horizontal ? fixed.width : fixed.height) - primaryPadding;
+  const innerCounter = (horizontal ? fixed.height : fixed.width) - counterPadding;
+  const wrapping = layout.layoutWrap === 'WRAP';
   const shares =
-    primaryAuto || layout.layoutWrap === 'WRAP'
+    primaryAuto || wrapping
       ? new Map<SceneNode, number>()
-      : percentBoxes(children, horizontal, innerPrimary, spacing, insetOf);
+      : shareBoxes(children, 'layoutPercent', horizontal ? 'width' : 'height', innerPrimary, spacing, insetOf);
+  // A child's cross share is no spacing, since spacing only separates children along the primary axis.
+  const counterShares =
+    counterAuto || wrapping
+      ? new Map<SceneNode, number>()
+      : shareBoxes(children, 'layoutCounterPercent', horizontal ? 'height' : 'width', innerCounter, 0, insetOf);
   const primaryOf = (child: SceneNode) => shares.get(child) ?? (horizontal ? child.width : child.height) + 2 * insetOf(child);
+  const counterOf = (child: SceneNode) => counterShares.get(child) ?? (horizontal ? child.height : child.width) + 2 * insetOf(child);
 
   const naturalPrimary = children.reduce((sum, child) => sum + primaryOf(child), 0) + spacing * (children.length - 1);
   const naturalCounter = Math.max(0, ...children.map(counterOf));
@@ -389,7 +397,7 @@ function layoutContainer<T extends AnyNode>(node: T, layout: AutoLayout): T {
       return base + growShare;
     };
     const counterSize = (child: SceneNode) => {
-      if (child.layoutAlign !== 'STRETCH') return counterOf(child);
+      if (counterShares.has(child) || child.layoutAlign !== 'STRETCH') return counterOf(child);
       // In a wrapped line a stretched child fills the line, not the whole frame.
       return wrap ? lineHeight : availableCounter;
     };
@@ -549,8 +557,10 @@ export function setChildFill(file: PigmaFile, nodeIds: readonly string[], axis: 
     if (!parent || !layout || !patch) return next;
     let document = updateNode(next.document, id, (node) => {
       const updated = { ...node, ...patch } as SceneNode;
-      // A share takes the place of Fill on the primary axis, so either choice there clears it.
-      if (fillAxisOf(layout, axis) === 'primary') delete updated.layoutPercent;
+      // A share takes the place of Fill on its axis, so either choice there clears that axis's share.
+      const kind = fillAxisOf(layout, axis);
+      if (kind === 'primary') delete updated.layoutPercent;
+      if (kind === 'counter') delete updated.layoutCounterPercent;
       return updated as AnyNode;
     });
     const sizing = fillAxisOf(layout, axis) === 'primary' ? 'primaryAxisSizingMode' : 'counterAxisSizingMode';
@@ -576,7 +586,21 @@ export function canShareChild(parent: AutoLayout | null | undefined): boolean {
  * a size to take. A node whose parent cannot share is left as it is. The caller settles the document.
  */
 export function setChildPercent(file: PigmaFile, nodeIds: readonly string[], percent: number | null): PigmaFile {
+  return setShareOp(file, nodeIds, 'primary', percent);
+}
+
+/**
+ * Set the share of the cross axis each node takes, 0 to 100, or clear it with null or 0. It replaces stretch on that axis,
+ * and a parent whose cross axis hugs becomes Fixed there. The same rules as `setChildPercent` otherwise.
+ */
+export function setChildCounterPercent(file: PigmaFile, nodeIds: readonly string[], percent: number | null): PigmaFile {
+  return setShareOp(file, nodeIds, 'counter', percent);
+}
+
+function setShareOp(file: PigmaFile, nodeIds: readonly string[], kind: 'primary' | 'counter', percent: number | null): PigmaFile {
   const share = percent === null ? 0 : Math.min(100, Math.max(0, percent));
+  const key = kind === 'primary' ? 'layoutPercent' : 'layoutCounterPercent';
+  const sizing = kind === 'primary' ? 'primaryAxisSizingMode' : 'counterAxisSizingMode';
   return nodeIds.reduce((next, id) => {
     const parent = findParent(next.document, id);
     const layout = parent ? autoLayoutOf(parent) : null;
@@ -584,15 +608,20 @@ export function setChildPercent(file: PigmaFile, nodeIds: readonly string[], per
     let document = updateNode(next.document, id, (node) => {
       const updated = { ...node } as SceneNode;
       if (share > 0) {
-        updated.layoutPercent = share;
-        updated.layoutGrow = 0;
+        if (kind === 'primary') {
+          updated.layoutPercent = share;
+          updated.layoutGrow = 0;
+        } else {
+          updated.layoutCounterPercent = share;
+          updated.layoutAlign = 'INHERIT';
+        }
       } else {
-        delete updated.layoutPercent;
+        delete updated[key];
       }
       return updated as AnyNode;
     });
-    if (share > 0 && layout.primaryAxisSizingMode === 'AUTO') {
-      document = updateNode(document, parent.id, (node) => ({ ...node, autoLayout: { ...layout, primaryAxisSizingMode: 'FIXED' } }) as AnyNode);
+    if (share > 0 && layout[sizing] === 'AUTO') {
+      document = updateNode(document, parent.id, (node) => ({ ...node, autoLayout: { ...layout, [sizing]: 'FIXED' } }) as AnyNode);
     }
     return { ...next, document };
   }, file);
@@ -616,7 +645,10 @@ export function fixResizedAxes(before: PigmaFile, after: PigmaFile, nodeIds: rea
       const parent = findParent(current.document, id);
       const layout = parent ? autoLayoutOf(parent) : null;
       const node = findNode(current.document, id);
-      const shares = fillAxisOf(layout, axis) === 'primary' && (node as SceneNode).layoutPercent !== undefined;
+      const kind = fillAxisOf(layout, axis);
+      const shares =
+        (kind === 'primary' && (node as SceneNode | undefined)?.layoutPercent !== undefined) ||
+        (kind === 'counter' && (node as SceneNode | undefined)?.layoutCounterPercent !== undefined);
       if (!node || node.type === 'DOCUMENT' || node.type === 'CANVAS' || (!childFillsAxis(node as SceneNode, layout, axis) && !shares)) {
         return current;
       }

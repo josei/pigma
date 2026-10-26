@@ -1349,6 +1349,7 @@ function ChildFillSection({ nodes }: { nodes: SceneNode[] }) {
   const file = useEditor((state) => state.file);
   const setChildFill = useEditor((state) => state.setChildFill);
   const setChildPercent = useEditor((state) => state.setChildPercent);
+  const setChildCounterPercent = useEditor((state) => state.setChildCounterPercent);
   const laid = nodes.flatMap((node) => {
     const parent = findParent(file.document, node.id);
     const layout = parent ? (parent as { autoLayout?: AutoLayout }).autoLayout ?? null : null;
@@ -1363,6 +1364,13 @@ function ChildFillSection({ nodes }: { nodes: SceneNode[] }) {
       ? 'Share of column'
       : 'Share';
   const shares = shareable.map(({ node }) => node.layoutPercent ?? 0);
+  // The cross-axis share is the other axis of the same parent: height in a row, width in a column.
+  const crossLabel = shareable.every(({ layout }) => layout?.layoutMode === 'HORIZONTAL')
+    ? 'Share of height'
+    : shareable.every(({ layout }) => layout?.layoutMode === 'VERTICAL')
+      ? 'Share of width'
+      : 'Share of cross axis';
+  const crossShares = shareable.map(({ node }) => node.layoutCounterPercent ?? 0);
   const row = (axis: 'width' | 'height', label: string) => {
     const flags = laid.map(({ node, layout }) => childFillsAxis(node, layout, axis));
     return (
@@ -1395,6 +1403,17 @@ function ChildFillSection({ nodes }: { nodes: SceneNode[] }) {
             max={100}
             suffix="%"
             onCommit={(value) => setChildPercent(value)}
+          />
+        ) : null}
+        {shareable.length > 0 ? (
+          <NumberField
+            label={crossLabel}
+            value={crossShares[0] ?? 0}
+            mixed={isMixedValue(crossShares)}
+            min={0}
+            max={100}
+            suffix="%"
+            onCommit={(value) => setChildCounterPercent(value)}
           />
         ) : null}
       </div>
