@@ -237,6 +237,12 @@ export function useKeyboardShortcuts(): void {
         state.duplicateSelection();
         return;
       }
+      // Duplicate without interactions is Cmd/Ctrl+Shift+D: the copies keep their layers but no prototype links.
+      if (meta && event.shiftKey && !event.altKey && event.code === 'KeyD') {
+        event.preventDefault();
+        state.duplicateSelection({ keepInteractions: false });
+        return;
+      }
       if (meta && event.code === 'BracketRight') {
         event.preventDefault();
         state.reorder(event.shiftKey ? 'front' : 'forward');

@@ -132,7 +132,7 @@ function nodeItems(point: { x: number; y: number } | null): ContextItem[] {
       ...(store().copiedProperties === null ? { disabledReason: 'no properties have been copied' } : {}),
     },
     { label: 'Duplicate', icon: 'duplicate', shortcut: '⌘D', run: () => store().duplicateSelection() },
-    { label: 'Duplicate without interactions', icon: 'duplicate', run: () => store().duplicateSelection({ keepInteractions: false }) },
+    { label: 'Duplicate without interactions', icon: 'duplicate', shortcut: '⇧⌘D', run: () => store().duplicateSelection({ keepInteractions: false }) },
     {
       label: 'Group selection',
       icon: 'frame',

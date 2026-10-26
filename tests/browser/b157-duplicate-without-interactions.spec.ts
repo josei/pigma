@@ -1,6 +1,6 @@
 /**
- * Duplicate without interactions (right-click menu, after Duplicate): the copy has no prototype links, and the original keeps
- * its own. Plain Duplicate keeps the links on the copy. The model is unit-tested (duplicateNodes in ops.test.ts); this drives
+ * Duplicate without interactions (right-click menu, after Duplicate, or Cmd/Ctrl+Shift+D): the copy has no prototype links,
+ * and the original keeps its own. Plain Duplicate keeps the links on the copy. The model is unit-tested (duplicateNodes in ops.test.ts); this drives
  * the live context menu and reads each layer's interactions from the store.
  */
 import { test, expect, type Page } from '@playwright/test';
@@ -14,7 +14,7 @@ async function interactionCounts(page: Page): Promise<number[]> {
   });
 }
 
-/** One rectangle with an interaction added through the Prototype tab, selected and right-clicked on the canvas. */
+/** One selected rectangle with an interaction added through the Prototype tab. */
 async function linkedRectangle(page: Page) {
   await boot(page, { blank: true });
   await drawShape(page, 'Rectangle', 120, 90, 0, 0);
@@ -25,21 +25,33 @@ async function linkedRectangle(page: Page) {
   expect(await interactionCounts(page)).toEqual([1]);
   await page.locator('.tab', { hasText: 'Design' }).click();
   await nextPaint(page);
+}
+
+/** The same rectangle, with the context menu opened on the canvas. */
+async function linkedRectangleWithMenu(page: Page) {
+  await linkedRectangle(page);
   const box = (await page.locator('.canvas').boundingBox())!;
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
   await nextPaint(page);
 }
 
 test('B157a Duplicate without interactions adds a copy with no links, and the original keeps its own', async ({ page }) => {
-  await linkedRectangle(page);
+  await linkedRectangleWithMenu(page);
   await page.getByText('Duplicate without interactions', { exact: true }).click();
   await nextPaint(page);
   expect(await interactionCounts(page)).toEqual([1, 0]);
 });
 
 test('B157b plain Duplicate still copies the links', async ({ page }) => {
-  await linkedRectangle(page);
+  await linkedRectangleWithMenu(page);
   await page.getByText('Duplicate', { exact: true }).click();
   await nextPaint(page);
   expect(await interactionCounts(page)).toEqual([1, 1]);
+});
+
+test('B157c Cmd/Ctrl+Shift+D duplicates without interactions, and the original keeps its own', async ({ page }) => {
+  await linkedRectangle(page);
+  await page.keyboard.press('Control+Shift+d');
+  await nextPaint(page);
+  expect(await interactionCounts(page)).toEqual([1, 0]);
 });

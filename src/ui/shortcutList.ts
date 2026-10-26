@@ -40,6 +40,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: '⇧⌘V', label: 'Paste over selection' },
       { keys: '⇧⌘R', label: 'Paste to replace' },
       { keys: '⌘D', label: 'Duplicate' },
+      { keys: '⇧⌘D', label: 'Duplicate without interactions' },
       { keys: '⌘A', label: 'Select all' },
       { keys: '⌘⌥C / ⌘⌥V', label: 'Copy / paste properties' },
       { keys: '⌘⌥K', label: 'Create component' },

@@ -25,8 +25,8 @@ test('B93a Ctrl+Alt+B detaches the selected instance and keeps its layers', asyn
   expect(after.kids, 'detaching lost the instance layers').toEqual(['RECTANGLE']);
 });
 
-/** Duplicate is Ctrl/Cmd+D alone; Ctrl+Shift+D and Ctrl+Alt+Shift+D duplicate nothing. */
-test('B93b Ctrl+D duplicates, and Ctrl+Shift+D does not', async ({ page }) => {
+/** Ctrl/Cmd+D duplicates, Ctrl/Cmd+Shift+D duplicates without interactions (B157c), and Ctrl+Alt+Shift+D duplicates nothing. */
+test('B93b Ctrl+D duplicates, Ctrl+Shift+D duplicates again, and Ctrl+Alt+Shift+D does not', async ({ page }) => {
   await boot(page, { blank: true });
   await drawShape(page, 'Rectangle', 80, 80, 0, 0);
   const count = () => page.evaluate(() => (window.__pigmaStore!.getState().file.document.children[0]!.children as any[]).length);
@@ -36,8 +36,8 @@ test('B93b Ctrl+D duplicates, and Ctrl+Shift+D does not', async ({ page }) => {
   expect(await count(), 'Ctrl+D did not duplicate').toBe(2);
   await page.keyboard.press('Control+Shift+d');
   await nextPaint(page);
-  expect(await count(), 'Ctrl+Shift+D duplicated').toBe(2);
+  expect(await count(), 'Ctrl+Shift+D did not duplicate').toBe(3);
   await page.keyboard.press('Control+Alt+Shift+d');
   await nextPaint(page);
-  expect(await count(), 'Ctrl+Alt+Shift+D duplicated').toBe(2);
+  expect(await count(), 'Ctrl+Alt+Shift+D duplicated').toBe(3);
 });
