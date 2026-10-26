@@ -30,6 +30,10 @@ const NUDGE: Record<string, [number, number]> = {
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
+  // A checkbox or radio takes no text, so shortcuts such as Ctrl+Z still reach the editor.
+  if (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio')) {
+    return false;
+  }
   return (
     target.tagName === 'INPUT' ||
     target.tagName === 'TEXTAREA' ||
