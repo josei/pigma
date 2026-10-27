@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { activeContainer, activePage, useEditor, type GradientHandle, type Viewport } from '../store/editorStore';
 import { SceneSvg } from '../render/SceneRenderer';
+import { animateFile } from '../model/keyframes';
 import { absoluteBounds, boundsOfNodes, findNode, findParent, findPath, hitTestBox, hitTestChild, innermostFrameAt, topmostFirstOf, worldTransform } from '../model/tree';
 import { autoLayoutOf } from '../model/autoLayout';
 import { backgroundBlurRadius, hasBackgroundBlur } from '../model/effects';
@@ -192,6 +193,14 @@ export function Canvas() {
   const compareVersionId = useEditor((state) => state.compareVersionId);
   // While previewing a version the canvas renders that content read-only.
   const file = previewFile ?? liveFile;
+  // With the animation preview on, the drawing shows the keys applied at the key time. Only the drawing: hit tests and edits keep
+  // the stored file, so nothing is changed by looking.
+  const animationPreview = useEditor((state) => state.animationPreview);
+  const keyframeTime = useEditor((state) => state.keyframeTime);
+  const drawnFile = useMemo(
+    () => (previewFile ? file : animationPreview ? animateFile(file, keyframeTime) : file),
+    [file, previewFile, animationPreview, keyframeTime],
+  );
   const pageId = useEditor((state) => state.pageId);
   const viewport = useEditor((state) => state.viewport);
   const tool = useEditor((state) => state.tool);
@@ -1213,8 +1222,8 @@ export function Canvas() {
       ) : null}
 
       <SceneSvg
-        file={file}
-        nodes={page.children}
+        file={drawnFile}
+        nodes={drawnFile === file ? page.children : (findNode(drawnFile.document, page.id) as ContainerNode | null)?.children ?? page.children}
         viewBox={{
           x: -viewport.x / viewport.zoom,
           y: -viewport.y / viewport.zoom,

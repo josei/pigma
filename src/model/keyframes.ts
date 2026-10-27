@@ -135,19 +135,40 @@ export function removeKeyframeOp(file: PigmaFile, id: string, property: Animatab
 export function applyKeysOp(file: PigmaFile, id: string, time: number): PigmaFile {
   const node = findNode(file.document, id);
   if (!node || node.type === 'DOCUMENT' || node.type === 'CANVAS') return file;
+  const next = animateNode(node, time);
+  if (next === node) return file;
+  return { ...file, document: updateNode(file.document, id, () => next) };
+}
+
+/**
+ * A layer with its keys applied at `time`: the same node when it has no keyed values there. The stored edit and the live preview
+ * both use this, so they cannot disagree.
+ */
+function animateNode(node: AnyNode, time: number): AnyNode {
   const values = valuesAt(node as { keyframes?: KeyframeTrack[] }, time);
-  if (values.opacity === undefined && values.rotation === undefined) return file;
-  return {
-    ...file,
-    document: updateNode(file.document, id, (current) => {
-      const patch: Partial<AnyNode> = {};
-      if (values.opacity !== undefined) patch.opacity = Math.min(1, Math.max(0, values.opacity));
-      if (values.rotation !== undefined && 'transform' in current) {
-        patch.transform = withRotation(current.transform, values.rotation);
-      }
-      return { ...current, ...patch } as AnyNode;
-    }),
+  if (values.opacity === undefined && values.rotation === undefined) return node;
+  const patch: Partial<AnyNode> = {};
+  if (values.opacity !== undefined) patch.opacity = Math.min(1, Math.max(0, values.opacity));
+  if (values.rotation !== undefined && 'transform' in node) {
+    patch.transform = withRotation(node.transform, values.rotation);
+  }
+  return { ...node, ...patch } as AnyNode;
+}
+
+/**
+ * The document as it looks at `time`: every layer with keys takes their values there, the others are unchanged. Returns the same
+ * file when nothing is keyed, so an unchanged document keeps its identity. Used to draw a live preview; nothing is stored.
+ */
+export function animateFile(file: PigmaFile, time: number): PigmaFile {
+  const animate = (node: AnyNode): AnyNode => {
+    const own = animateNode(node, time);
+    if (!('children' in node) || !Array.isArray(node.children)) return own;
+    const children = node.children.map((child) => animate(child as AnyNode));
+    const changed = children.some((child, index) => child !== node.children[index]);
+    return changed || own !== node ? ({ ...own, children } as AnyNode) : node;
   };
+  const document = animate(file.document as unknown as AnyNode);
+  return document === (file.document as unknown as AnyNode) ? file : ({ ...file, document } as unknown as PigmaFile);
 }
 
 /**

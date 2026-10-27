@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { addKeyframe, applyKeysOp, fractionAtTime, normalizeKeys, removeKeyframe, removeKeyframeOp, sampleTrack, setKeyEasingOp, setKeyframeOp, smoothstep, TIMELINE_SPAN_MS, timeAtFraction, valuesAt } from './keyframes';
-import { createRectNode } from './factory';
+import { addKeyframe, animateFile, applyKeysOp, fractionAtTime, normalizeKeys, removeKeyframe, removeKeyframeOp, sampleTrack, setKeyEasingOp, setKeyframeOp, smoothstep, TIMELINE_SPAN_MS, timeAtFraction, valuesAt } from './keyframes';
+import { createFrameNode, createRectNode } from './factory';
 import { parseFile, serializeFile } from './serialize';
 import { emptyFile } from './validate';
 import { findNode } from './tree';
@@ -221,5 +221,25 @@ describe('keyframe tracks', () => {
     expect(fractionAtTime(500)).toBe(0.25);
     expect(fractionAtTime(-5)).toBe(0);
     expect(fractionAtTime(TIMELINE_SPAN_MS * 2)).toBe(1);
+  });
+
+  it('animateFile shows keyed values in a layer inside a frame, and leaves the stored file as it was', () => {
+    const file = emptyFile('Preview');
+    const page = file.document.children[0]!;
+    const frame = createFrameNode(null, 0, 0, 300, 300);
+    const layer = createRectNode(null, 0, 0, 10, 10);
+    frame.children = [layer];
+    page.children = [frame];
+    const keyed = setKeyframeOp(setKeyframeOp(file, layer.id, 'opacity', 0, 1), layer.id, 'opacity', 1000, 0);
+    const shown = animateFile(keyed, 250);
+    const shownLayer = findNode(shown.document, layer.id) as { opacity?: number };
+    expect(shownLayer.opacity).toBeCloseTo(0.75, 9);
+    // The stored file is not changed by the preview: the layer keeps the opacity the factory gave it.
+    expect((findNode(keyed.document, layer.id) as { opacity?: number }).opacity).toBe(1);
+  });
+
+  it('animateFile returns the same file when nothing is keyed', () => {
+    const { file } = rectangle();
+    expect(animateFile(file, 500)).toBe(file);
   });
 });

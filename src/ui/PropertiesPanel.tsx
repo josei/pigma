@@ -1523,6 +1523,8 @@ function AnimationSection({ node }: { node: SceneNode }) {
   const removeKeySelected = useEditor((state) => state.removeKeySelected);
   const applyKeysAtTime = useEditor((state) => state.applyKeysAtTime);
   const toggleKeyEasing = useEditor((state) => state.toggleKeyEasing);
+  const animationPreview = useEditor((state) => state.animationPreview);
+  const setAnimationPreview = useEditor((state) => state.setAnimationPreview);
   // The key times of a property on the first selected layer, in time order: "none" when it has no keys.
   const keyTimes = (property: AnimatableProperty) => {
     const keys = (node.keyframes ?? []).find((track) => track.property === property)?.keys ?? [];
@@ -1544,6 +1546,9 @@ function AnimationSection({ node }: { node: SceneNode }) {
         </button>
         <button type="button" className="button" onClick={applyKeysAtTime}>
           Apply keys at time
+        </button>
+        <button type="button" className="button" aria-pressed={animationPreview} onClick={() => setAnimationPreview(!animationPreview)}>
+          {animationPreview ? 'Stop preview' : 'Preview keys'}
         </button>
         <button type="button" className="button" onClick={() => toggleKeyEasing('opacity')}>
           Toggle opacity easing

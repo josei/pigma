@@ -263,6 +263,8 @@ export interface EditorState {
   enteredContainerId: string | null;
   /** The time, in milliseconds, that keyframes are set at from the Animation section. */
   keyframeTime: number;
+  /** Draw the document with its keys applied at `keyframeTime`. Nothing is stored; the canvas only shows the values. */
+  animationPreview: boolean;
   editingTextId: string | null;
   clipboard: SceneNode[] | null;
   /** Appearance copied with Copy properties (Cmd/Ctrl+Alt+C), pasted onto other layers. */
@@ -405,6 +407,7 @@ export interface EditorState {
   clearSelection: () => void;
   setEnteredContainer: (id: string | null) => void;
   setKeyframeTime: (time: number) => void;
+  setAnimationPreview: (on: boolean) => void;
   /** Set a key on each selected layer's track for `property` at `keyframeTime`, holding the layer's current value. */
   keySelected: (property: AnimatableProperty) => void;
   /** Remove each selected layer's key for `property` at `keyframeTime`, if it has one. */
@@ -1002,6 +1005,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   selectedAnchor: null,
   enteredContainerId: null,
   keyframeTime: 0,
+  animationPreview: false,
   editingTextId: null,
   clipboard: null,
   copiedProperties: null,
@@ -1215,6 +1219,7 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   setEnteredContainer: (id) => set({ enteredContainerId: id }),
   setKeyframeTime: (time) => set({ keyframeTime: Number.isFinite(time) && time >= 0 ? time : 0 }),
+  setAnimationPreview: (on) => set({ animationPreview: on }),
   keySelected: (property) => {
     const state = get();
     if (state.selection.length === 0) return;
