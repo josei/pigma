@@ -78,6 +78,9 @@ function capturePointer(target: EventTarget | null, pointerId: number): void {
 
 const HANDLE_SIZE = 8;
 const ROTATE_OFFSET = 22;
+// Corner rotation zones: a square just outside each corner, clear of that corner's resize handle.
+const ROTATE_CORNER_SIZE = 14;
+const ROTATE_CORNER_GAP = 2;
 
 const HANDLE_POSITIONS: Array<{ handle: ResizeHandle; fx: number; fy: number }> = [
   { handle: 'nw', fx: 0, fy: 0 },
@@ -986,7 +989,8 @@ export function Canvas() {
     applyInteraction({ kind: 'resize', handle, id, base: state.file, startWorld: toWorld(event.clientX, event.clientY), keepRatio: false });
   };
 
-  const startRotate = (event: React.PointerEvent) => {
+  // `anchor` is the handle in the layer's own coordinates: a corner zone passes its own, and the default is the top-centre handle.
+  const startRotate = (event: React.PointerEvent, anchor?: Point) => {
     event.stopPropagation();
     const state = useEditor.getState();
     const id = state.selection[0];
@@ -996,6 +1000,7 @@ export function Canvas() {
     if (!bounds) return;
     const center = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
     const world = toWorld(event.clientX, event.clientY);
+    const local = anchor ?? { x: node.width / 2, y: -ROTATE_OFFSET / viewport.zoom };
     state.beginTransaction();
     applyInteraction({
       kind: 'rotate',
@@ -1007,7 +1012,7 @@ export function Canvas() {
       // The screen point the press started at, and the rotate handle in world space: a press that does not move selects the
       // layer behind the handle instead (see onPointerUp).
       pointer: { x: event.clientX, y: event.clientY },
-      handle: applyToPoint(worldTransform(state.file.document, id), node.width / 2, -ROTATE_OFFSET / viewport.zoom),
+      handle: applyToPoint(worldTransform(state.file.document, id), local.x, local.y),
     });
   };
 
@@ -1387,9 +1392,30 @@ export function Canvas() {
                 stroke="#0d99ff"
                 strokeWidth={1 / viewport.zoom}
                 style={{ pointerEvents: 'all', cursor: 'grab' }}
-                onPointerDown={startRotate}
+                onPointerDown={(event) => startRotate(event)}
               />
             </g>
+            {HANDLE_POSITIONS.filter((position) => position.fx !== 0.5 && position.fy !== 0.5).map((position) => {
+              // Centred just outside the corner: half the handle, the gap, then half the zone.
+              const reach = (HANDLE_SIZE / 2 + ROTATE_CORNER_GAP + ROTATE_CORNER_SIZE / 2) / viewport.zoom;
+              const anchor = {
+                x: position.fx * singleNode.width + (position.fx === 0 ? -reach : reach),
+                y: position.fy * singleNode.height + (position.fy === 0 ? -reach : reach),
+              };
+              const size = ROTATE_CORNER_SIZE / viewport.zoom;
+              return (
+                <rect
+                  key={`rotate-${position.handle}`}
+                  x={anchor.x - size / 2}
+                  y={anchor.y - size / 2}
+                  width={size}
+                  height={size}
+                  fill="transparent"
+                  style={{ pointerEvents: 'all', cursor: 'grab' }}
+                  onPointerDown={(event) => startRotate(event, anchor)}
+                />
+              );
+            })}
             {HANDLE_POSITIONS.map((position) => (
               <rect
                 key={position.handle}
