@@ -297,17 +297,18 @@ function layoutContainer<T extends AnyNode>(node: T, layout: AutoLayout): T {
   const primaryAuto = layout.primaryAxisSizingMode === 'AUTO';
   const counterAuto = layout.counterAxisSizingMode === 'AUTO';
 
-  // A percent child takes its share of a fixed primary axis. A hugging axis has no size to share, and wrapping breaks lines
-  // on the sizes the children already have, so in both cases every child keeps its own size.
+  // A percent child takes its share of a fixed primary axis. A hugging axis has no size to share, so every child keeps its own
+  // size there. A wrapping row takes its share of the full inner size with no spacing taken out, so two 50 percent children
+  // do not fit one line and wrap, and the lines are packed on the boxes the shares give.
   const fixed = clampSize(node, node.width, node.height);
   const innerPrimary = (horizontal ? fixed.width : fixed.height) - primaryPadding;
   const innerCounter = (horizontal ? fixed.height : fixed.width) - counterPadding;
   const wrapping = layout.layoutWrap === 'WRAP';
-  const shares =
-    primaryAuto || wrapping
-      ? new Map<SceneNode, number>()
-      : shareBoxes(children, 'layoutPercent', horizontal ? 'width' : 'height', innerPrimary, spacing, insetOf);
-  // A child's cross share is no spacing, since spacing only separates children along the primary axis.
+  const shares = primaryAuto
+    ? new Map<SceneNode, number>()
+    : shareBoxes(children, 'layoutPercent', horizontal ? 'width' : 'height', innerPrimary, wrapping ? 0 : spacing, insetOf);
+  // A child's cross share takes no spacing out, since spacing only separates children along the primary axis. A wrapped line
+  // is packed on the sizes its children already have, so a cross share is left out there.
   const counterShares =
     counterAuto || wrapping
       ? new Map<SceneNode, number>()
@@ -572,12 +573,14 @@ export function setChildFill(file: PigmaFile, nodeIds: readonly string[], axis: 
 }
 
 /**
- * Whether a child of this parent can take a share of the primary axis: a non-wrapping row or column. Grids keep their
- * own cell sizes, and a wrapped line is packed on the sizes its children already have.
+ * Whether a child of this parent can take a share on an axis: a row or column. The primary share also works in a wrapping
+ * row or column; the cross share does not, because a wrapped line is packed on the sizes its children already have. Grids
+ * keep their own cell sizes.
  */
-export function canShareChild(parent: AutoLayout | null | undefined): boolean {
+export function canShareChild(parent: AutoLayout | null | undefined, axis: 'primary' | 'counter' = 'primary'): boolean {
   if (!parent) return false;
-  return (parent.layoutMode === 'HORIZONTAL' || parent.layoutMode === 'VERTICAL') && parent.layoutWrap !== 'WRAP';
+  if (parent.layoutMode !== 'HORIZONTAL' && parent.layoutMode !== 'VERTICAL') return false;
+  return axis === 'primary' || parent.layoutWrap !== 'WRAP';
 }
 
 /**
@@ -604,7 +607,7 @@ function setShareOp(file: PigmaFile, nodeIds: readonly string[], kind: 'primary'
   return nodeIds.reduce((next, id) => {
     const parent = findParent(next.document, id);
     const layout = parent ? autoLayoutOf(parent) : null;
-    if (!parent || !layout || !canShareChild(layout)) return next;
+    if (!parent || !layout || !canShareChild(layout, kind)) return next;
     let document = updateNode(next.document, id, (node) => {
       const updated = { ...node } as SceneNode;
       if (share > 0) {

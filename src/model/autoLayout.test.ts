@@ -547,26 +547,37 @@ describe('child share (percent of the primary axis)', () => {
     expect((findNode(shared.document, frameId) as AnyNode & { autoLayout: AutoLayout }).autoLayout.primaryAxisSizingMode).toBe('FIXED');
   });
 
-  it('a wrapping row, a grid child and a layer with no parent cannot take a share', () => {
-    expect(canShareChild({ ...defaultAutoLayout('HORIZONTAL'), layoutWrap: 'WRAP' })).toBe(false);
+  it('a grid child and a layer with no parent cannot take a share, and a wrapping row can', () => {
+    expect(canShareChild({ ...defaultAutoLayout('HORIZONTAL'), layoutWrap: 'WRAP' })).toBe(true);
     expect(canShareChild(defaultAutoLayout('GRID'))).toBe(false);
     expect(canShareChild(null)).toBe(false);
     expect(canShareChild(defaultAutoLayout('VERTICAL'))).toBe(true);
     const { file, childIds } = horizontalFrame({ layoutWrap: 'WRAP', primaryAxisSizingMode: 'FIXED' });
     const [first] = childIds as [string, string, string];
-    expect((findNode(setChildPercent(file, [first], 50).document, first) as SceneNode).layoutPercent).toBeUndefined();
+    expect((findNode(setChildPercent(file, [first], 50).document, first) as SceneNode).layoutPercent).toBe(50);
   });
 
-  it('a layout that ignores a share (wrapping, or hugging) keeps every child at its own size', () => {
-    for (const layout of [{ layoutWrap: 'WRAP' as const, primaryAxisSizingMode: 'FIXED' as const }, { primaryAxisSizingMode: 'AUTO' as const }]) {
-      const { file, childIds } = horizontalFrame(layout);
-      // The setter refuses these parents, so the share is written directly, as a file from another tool could carry it.
-      const carried = childIds.reduce(
-        (doc, id) => ({ ...doc, document: updateNode(doc.document, id, (node) => ({ ...node, layoutPercent: 50 }) as AnyNode) }),
-        file,
-      );
-      expect(childTransforms({ ...carried, document: reflowTree(carried.document) }, childIds).map((box) => box.w)).toEqual([100, 100, 100]);
-    }
+  it('a share in a wrapping row takes the full inner width, so a share that fills the line pushes the next child down', () => {
+    // 600 wide with 16 padding: the inner width is 568. The first child takes 75 percent, 426, with no spacing taken out, so
+    // the second child (100) still fits the line (426 + 10 + 100) and the third does not (536 + 10 + 100 > 568).
+    const { file, childIds } = horizontalFrame({ layoutWrap: 'WRAP', primaryAxisSizingMode: 'FIXED', counterAxisSizingMode: 'FIXED', itemSpacing: 10 });
+    const [first] = childIds as [string, string, string];
+    const shared = setChildPercent(file, [first], 75);
+    expect(childTransforms({ ...shared, document: reflowTree(shared.document) }, childIds)).toEqual([
+      { x: 16, y: 16, w: 426, h: 50 },
+      { x: 452, y: 16, w: 100, h: 50 },
+      { x: 16, y: 66, w: 100, h: 50 },
+    ]);
+  });
+
+  it('a hugging row keeps every child at its own size', () => {
+    const { file, childIds } = horizontalFrame({ primaryAxisSizingMode: 'AUTO' });
+    // The setter refuses a hugging row, so the share is written directly, as a file from another tool could carry it.
+    const carried = childIds.reduce(
+      (doc, id) => ({ ...doc, document: updateNode(doc.document, id, (node) => ({ ...node, layoutPercent: 50 }) as AnyNode) }),
+      file,
+    );
+    expect(childTransforms({ ...carried, document: reflowTree(carried.document) }, childIds).map((box) => box.w)).toEqual([100, 100, 100]);
   });
 
   it('a manual resize of a shared child switches its main axis to Fixed, so the dragged width survives', () => {

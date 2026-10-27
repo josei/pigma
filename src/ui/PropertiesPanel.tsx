@@ -1364,13 +1364,15 @@ function ChildFillSection({ nodes }: { nodes: SceneNode[] }) {
       ? 'Share of column'
       : 'Share';
   const shares = shareable.map(({ node }) => node.layoutPercent ?? 0);
-  // The cross-axis share is the other axis of the same parent: height in a row, width in a column.
-  const crossLabel = shareable.every(({ layout }) => layout?.layoutMode === 'HORIZONTAL')
+  // The cross-axis share is the other axis of the same parent: height in a row, width in a column. A wrapped line is packed
+  // on its children's own cross sizes, so the field is shown only where the cross share applies.
+  const crossShareable = laid.filter(({ layout }) => canShareChild(layout, 'counter'));
+  const crossLabel = crossShareable.every(({ layout }) => layout?.layoutMode === 'HORIZONTAL')
     ? 'Share of height'
-    : shareable.every(({ layout }) => layout?.layoutMode === 'VERTICAL')
+    : crossShareable.every(({ layout }) => layout?.layoutMode === 'VERTICAL')
       ? 'Share of width'
       : 'Share of cross axis';
-  const crossShares = shareable.map(({ node }) => node.layoutCounterPercent ?? 0);
+  const crossShares = crossShareable.map(({ node }) => node.layoutCounterPercent ?? 0);
   const row = (axis: 'width' | 'height', label: string) => {
     const flags = laid.map(({ node, layout }) => childFillsAxis(node, layout, axis));
     return (
@@ -1405,7 +1407,7 @@ function ChildFillSection({ nodes }: { nodes: SceneNode[] }) {
             onCommit={(value) => setChildPercent(value)}
           />
         ) : null}
-        {shareable.length > 0 ? (
+        {crossShareable.length > 0 ? (
           <NumberField
             label={crossLabel}
             value={crossShares[0] ?? 0}
