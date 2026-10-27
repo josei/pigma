@@ -4,13 +4,13 @@ import { createEllipseNode, createFrameNode, createLineNode, createRectNode, cre
 import { solidPaint } from './paint';
 import { emptyFile } from './validate';
 import { updateNode } from './tree';
-import type { AnyNode, PigmaFile, SceneNode, StrokeAlign, StrokeCap } from './types';
+import type { AnyNode, PigmaFile, SceneNode, StrokeAlign, StrokeCap, StrokeJoin } from './types';
 
 const BLACK = solidPaint({ r: 0, g: 0, b: 0 });
 const RED = solidPaint({ r: 1, g: 0, b: 0 });
 
-/** A 100 x 50 rectangle with a red fill and a 10-wide black stroke on the given alignment. */
-function stroked(align: StrokeAlign = 'INSIDE'): { file: PigmaFile; id: string } {
+/** A 100 x 50 rectangle with a red fill and a 10-wide black stroke on the given alignment and join. */
+function stroked(align: StrokeAlign = 'INSIDE', join?: StrokeJoin): { file: PigmaFile; id: string } {
   const file = emptyFile('Outline');
   const page = file.document.children[0]!;
   const rect = createRectNode(null, 0, 0, 100, 50);
@@ -18,6 +18,7 @@ function stroked(align: StrokeAlign = 'INSIDE'): { file: PigmaFile; id: string }
   rect.strokes = [BLACK];
   rect.strokeWeight = 10;
   rect.strokeAlign = align;
+  if (join) rect.strokeJoin = join;
   page.children = [rect];
   return { file, id: rect.id };
 }
@@ -68,24 +69,43 @@ describe('outline stroke', () => {
     expect(band.area).toBeLessThan(2610);
   });
 
-  it('a centred stroke reaches half its width each side: 110 x 60, a band of about 2978 with round corners', () => {
+  it('a centred stroke with round joins reaches half its width each side: 110 x 60, a band of about 2978', () => {
     // The outer edge is the rectangle grown by 5 with round corners (about 6578 square units) and the inner edge the rectangle
     // shrunk by 5 (3600), so the band is a little under the 3000 that square corners would give.
+    const { file, id } = stroked('CENTER', 'ROUND');
+    const band = bandOf(file, id);
+    expect(band.width).toBeCloseTo(110, 6);
+    expect(band.height).toBeCloseTo(60, 6);
+    expect(band.area).toBeGreaterThan(2965);
+    expect(band.area).toBeLessThan(2990);
+  });
+
+  it('a centred stroke with miter joins, the default, fills the square corners: a band of 3000', () => {
+    // Sharp outer corners: the outer rectangle 110 x 60 (6600) less the inner 90 x 40 (3600).
     const { file, id } = stroked('CENTER');
     const band = bandOf(file, id);
     expect(band.width).toBeCloseTo(110, 6);
     expect(band.height).toBeCloseTo(60, 6);
-    expect(band.area).toBeGreaterThan(2950);
-    expect(band.area).toBeLessThan(3000);
+    expect(band.area).toBeGreaterThan(2990);
+    expect(band.area).toBeLessThan(3010);
   });
 
-  it('an outside stroke lies beyond the layer: 120 x 70, a band of about 3312', () => {
+  it('a centred stroke with bevel joins cuts each outer corner across: a band of about 2950', () => {
+    // Each corner loses a quarter of its square (25 square units, less the 12.5 of the bevel triangle), so 4 x 12.5 is cut from 3000.
+    const { file, id } = stroked('CENTER', 'BEVEL');
+    const band = bandOf(file, id);
+    expect(band.width).toBeCloseTo(110, 6);
+    expect(band.area).toBeGreaterThan(2940);
+    expect(band.area).toBeLessThan(2960);
+  });
+
+  it('an outside stroke lies beyond the layer: 120 x 70, a miter band of 3400', () => {
     const { file, id } = stroked('OUTSIDE');
     const band = bandOf(file, id);
     expect(band.width).toBeCloseTo(120, 6);
     expect(band.height).toBeCloseTo(70, 6);
-    expect(band.area).toBeGreaterThan(3290);
-    expect(band.area).toBeLessThan(3330);
+    expect(band.area).toBeGreaterThan(3390);
+    expect(band.area).toBeLessThan(3410);
   });
 
   it('refuses a layer with no visible solid stroke', () => {

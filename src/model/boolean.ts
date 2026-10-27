@@ -1,5 +1,5 @@
 import * as polygonClippingNamespace from 'polygon-clipping';
-import type { AnyNode, ContainerNode, PigmaFile, Rect, SceneNode, StrokeCap } from './types';
+import type { AnyNode, ContainerNode, PigmaFile, Rect, SceneNode, StrokeCap, StrokeJoin } from './types';
 import { createShapeNode } from './factory';
 import { findNode, insertChild, parentAndIndex, removeNode, updateNode, worldTransform } from './tree';
 import { applyToPoint, invert, multiply, translate } from './matrix';
@@ -586,30 +586,83 @@ function discRing(x: number, y: number, radius: number, phase: number): Ring {
  * The band of half-width `halfWidth` around closed rings: a quad along each edge, and a disc at each vertex, so every join is
  * round whatever the layer's join setting. The union of the pieces is the band.
  */
-function strokeBand(lines: StrokeLine[], halfWidth: number, phase: number): Ring[][] {
+function strokeBand(lines: StrokeLine[], halfWidth: number, phase: number, join: StrokeJoin): Ring[][] {
   const pieces: Ring[][][] = [];
   for (const { points: given, closed, cap } of lines) {
     // A square cap extends an open line's ends by the half width; a round cap rounds them off.
     const points = closed ? given : squareEnds(given, cap === 'SQUARE' ? halfWidth : 0);
-    const edges = closed ? points.length : points.length - 1;
+    const count = points.length;
+    const edges = closed ? count : count - 1;
     for (let index = 0; index < edges; index += 1) {
       const [x0, y0] = points[index]!;
-      const [x1, y1] = points[(index + 1) % points.length]!;
+      const [x1, y1] = points[(index + 1) % count]!;
       const length = Math.hypot(x1 - x0, y1 - y0);
       if (length === 0) continue;
       const nx = (-(y1 - y0) / length) * halfWidth;
       const ny = ((x1 - x0) / length) * halfWidth;
       pieces.push([[[[x0 + nx, y0 + ny], [x1 + nx, y1 + ny], [x1 - nx, y1 - ny], [x0 - nx, y0 - ny]]]]);
     }
-    // A closed line joins at every vertex; an open line joins inside itself, and its ends are square, round or butt by its cap.
-    points.forEach(([x, y], index) => {
-      const end = index === 0 || index === points.length - 1;
-      if (closed || !end || cap === 'ROUND') pieces.push([[discRing(x, y, halfWidth, phase)]]);
+    // A vertex where the line turns is joined on its outer side: a round join is a disc, a bevel or miter is a wedge. The ends
+    // of an open line are capped instead: a round cap is a disc.
+    points.forEach((vertex, index) => {
+      const joins = closed || (index > 0 && index < count - 1);
+      if (!joins) {
+        if (cap === 'ROUND') pieces.push([[discRing(vertex[0], vertex[1], halfWidth, phase)]]);
+        return;
+      }
+      const before = points[(index - 1 + count) % count]!;
+      const after = points[(index + 1) % count]!;
+      if (join === 'ROUND') {
+        pieces.push([[discRing(vertex[0], vertex[1], halfWidth, phase)]]);
+        return;
+      }
+      const wedge = joinOuter(before, vertex, after, halfWidth, join);
+      if (wedge) pieces.push([[wedge]]);
     });
   }
   const inputs = pieces as unknown as MultiPolygon[];
   const [first, ...rest] = inputs as [MultiPolygon, ...MultiPolygon[]];
   return polygonClipping.union(first, ...rest) as unknown as Ring[][];
+}
+
+/**
+ * The outer side of a turn at `vertex`, between the edges from `before` and to `after`, as a piece of the band: a bevel is the
+ * triangle across the corner; a miter is the quadrilateral out to the miter point. A miter longer than four times the half
+ * width is bevelled instead, as the SVG default limit has it. A round join is a disc, drawn by the caller, so it returns `null`
+ * here. A turn that does not bend, or an edge of no length, has no outer corner to fill.
+ */
+function joinOuter(before: [number, number], vertex: [number, number], after: [number, number], halfWidth: number, join: StrokeJoin): Ring | null {
+  if (join === 'ROUND') return null;
+  const ax = vertex[0] - before[0];
+  const ay = vertex[1] - before[1];
+  const bx = after[0] - vertex[0];
+  const by = after[1] - vertex[1];
+  const la = Math.hypot(ax, ay);
+  const lb = Math.hypot(bx, by);
+  if (la === 0 || lb === 0) return null;
+  const d1x = ax / la;
+  const d1y = ay / la;
+  const d2x = bx / lb;
+  const d2y = by / lb;
+  const cross = d1x * d2y - d1y * d2x;
+  const cos = d1x * d2x + d1y * d2y;
+  if (Math.abs(cross) < 1e-9 && cos > 0) return null;
+  // The outer side is opposite the way the line bends.
+  const side = cross > 0 ? -1 : 1;
+  const n1x = -d1y;
+  const n1y = d1x;
+  const n2x = -d2y;
+  const n2y = d2x;
+  const ax2 = vertex[0] + side * halfWidth * n1x;
+  const ay2 = vertex[1] + side * halfWidth * n1y;
+  const bx2 = vertex[0] + side * halfWidth * n2x;
+  const by2 = vertex[1] + side * halfWidth * n2y;
+  const bevel: Ring = [vertex, [ax2, ay2], [bx2, by2]];
+  const denominator = 1 + cos;
+  if (join === 'BEVEL' || denominator < 1e-9 || Math.sqrt(2 / denominator) > 4) return bevel;
+  const tipX = vertex[0] + (side * halfWidth * (n1x + n2x)) / denominator;
+  const tipY = vertex[1] + (side * halfWidth * (n1y + n2y)) / denominator;
+  return [vertex, [ax2, ay2], [tipX, tipY], [bx2, by2]];
 }
 
 /** An open polyline with its ends pushed out by `extend`, along the direction of its first and last edges. */
@@ -755,9 +808,10 @@ export function outlineStrokeOp(file: PigmaFile, id: string): OutlineResult {
   }
 
   let band: Ring[][] | null = null;
+  const join = node.strokeJoin ?? 'MITER';
   for (const phase of JOIN_PHASES) {
     try {
-      const full = strokeBand(lines, reach, phase) as unknown as MultiPolygon;
+      const full = strokeBand(lines, reach, phase, join) as unknown as MultiPolygon;
       if (!shape) band = full as unknown as Ring[][];
       else band = (align === 'INSIDE' ? polygonClipping.intersection(full, shape) : polygonClipping.difference(full, shape)) as unknown as Ring[][];
       break;
