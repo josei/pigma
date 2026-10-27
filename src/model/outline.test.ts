@@ -182,9 +182,11 @@ describe('outline stroke on a line and an open path', () => {
     expect(band.area).toBeLessThan(1085);
   });
 
-  it('an arrow-capped line is refused, since arrowheads are not outlined', () => {
+  it('an arrow-capped line is outlined with butt ends, as the canvas draws it: Pigma has no arrowheads', () => {
     const { file, id } = line('ARROW_LINES');
-    expect(outlineStrokeOp(file, id).reason).toBe('Arrowheads are not outlined');
+    const band = bandOf(file, id);
+    expect(band.width).toBeCloseTo(100, 6);
+    expect(band.area).toBeCloseTo(1000, 0);
   });
 
   it('an open path is outlined as a band along it, centred, with round joins at its corners', () => {

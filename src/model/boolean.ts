@@ -692,8 +692,8 @@ export interface OutlineResult {
  * edge, or along its line: for a centred stroke half the width each side, for an inside stroke the whole width inside the edge,
  * and for an outside stroke the whole width outside it. A layer with an open path, or a line, has no inside or outside, so it is
  * always outlined centred. Joins are round whatever the join setting; line ends follow the stroke cap (butt, round or square).
- * Dashes follow the dash pattern. Rectangles, ellipses, lines and vectors are outlined; arrowheads, locked layers and anything else
- * are refused with a reason.
+ * Dashes follow the dash pattern. Rectangles, ellipses, lines and vectors are outlined; locked layers and anything else are
+ * refused with a reason.
  */
 export function outlineStrokeOp(file: PigmaFile, id: string): OutlineResult {
   const refuse = (reason: string): OutlineResult => ({ file, nodeId: null, reason });
@@ -706,8 +706,9 @@ export function outlineStrokeOp(file: PigmaFile, id: string): OutlineResult {
   }
   const stroke = firstVisibleFill(node.strokes);
   if (!stroke || stroke.type !== 'SOLID') return refuse('The layer needs a visible solid stroke');
-  const cap = node.strokeCap ?? 'NONE';
-  if (cap === 'ARROW_LINES' || cap === 'ARROW_EQUILATERAL') return refuse('Arrowheads are not outlined');
+  // The canvas draws the arrow caps as butt ends (Pigma has no arrowheads), so the outline draws them the same way.
+  const rawCap = node.strokeCap ?? 'NONE';
+  const cap = rawCap === 'ARROW_LINES' || rawCap === 'ARROW_EQUILATERAL' ? 'NONE' : rawCap;
   const weight = node.strokeWeight ?? 1;
   if (!(weight > 0)) return refuse('The stroke has no width');
   const parentInfo = parentAndIndex(file.document, id);
