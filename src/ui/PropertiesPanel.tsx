@@ -1364,9 +1364,8 @@ function ChildFillSection({ nodes }: { nodes: SceneNode[] }) {
       ? 'Share of column'
       : 'Share';
   const shares = shareable.map(({ node }) => node.layoutPercent ?? 0);
-  // The cross-axis share is the other axis of the same parent: height in a row, width in a column. A wrapped line is packed
-  // on its children's own cross sizes, so the field is shown only where the cross share applies.
-  const crossShareable = laid.filter(({ layout }) => canShareChild(layout, 'counter'));
+  // The cross-axis share is the other axis of the same parent: height in a row, width in a column.
+  const crossShareable = shareable;
   const crossLabel = crossShareable.every(({ layout }) => layout?.layoutMode === 'HORIZONTAL')
     ? 'Share of height'
     : crossShareable.every(({ layout }) => layout?.layoutMode === 'VERTICAL')

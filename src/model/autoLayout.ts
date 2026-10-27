@@ -311,12 +311,11 @@ function layoutContainer<T extends AnyNode>(node: T, layout: AutoLayout): T {
   const shares = primaryAuto
     ? new Map<SceneNode, number>()
     : shareBoxes(children, 'layoutPercent', horizontal ? 'width' : 'height', innerPrimary, wrapping ? 0 : spacing, insetOf);
-  // A child's cross share takes no spacing out, since spacing only separates children along the primary axis. A wrapped line
-  // is packed on the sizes its children already have, so a cross share is left out there.
-  const counterShares =
-    counterAuto || wrapping
-      ? new Map<SceneNode, number>()
-      : shareBoxes(children, 'layoutCounterPercent', horizontal ? 'height' : 'width', innerCounter, 0, insetOf);
+  // A child's cross share takes its percent of the full inner cross size, with no spacing taken out, as the wrapping primary
+  // share does. A hugging cross axis has no size to share, so every child keeps its own size there.
+  const counterShares = counterAuto
+    ? new Map<SceneNode, number>()
+    : shareBoxes(children, 'layoutCounterPercent', horizontal ? 'height' : 'width', innerCounter, 0, insetOf);
   const primaryOf = (child: SceneNode) => shares.get(child) ?? (horizontal ? child.width : child.height) + 2 * insetOf(child);
   const counterOf = (child: SceneNode) => counterShares.get(child) ?? (horizontal ? child.height : child.width) + 2 * insetOf(child);
 
@@ -608,14 +607,12 @@ export function setGridShare(file: PigmaFile, nodeIds: readonly string[], axis: 
 }
 
 /**
- * Whether a child of this parent can take a share on an axis: a row or column. The primary share also works in a wrapping
- * row or column; the cross share does not, because a wrapped line is packed on the sizes its children already have. Grids
- * keep their own cell sizes.
+ * Whether a child of this parent can take a share, on either axis: a row or column, wrapping or not. Grids keep their own
+ * cell sizes, so they are left out.
  */
-export function canShareChild(parent: AutoLayout | null | undefined, axis: 'primary' | 'counter' = 'primary'): boolean {
+export function canShareChild(parent: AutoLayout | null | undefined): boolean {
   if (!parent) return false;
-  if (parent.layoutMode !== 'HORIZONTAL' && parent.layoutMode !== 'VERTICAL') return false;
-  return axis === 'primary' || parent.layoutWrap !== 'WRAP';
+  return parent.layoutMode === 'HORIZONTAL' || parent.layoutMode === 'VERTICAL';
 }
 
 /**
@@ -642,7 +639,7 @@ function setShareOp(file: PigmaFile, nodeIds: readonly string[], kind: 'primary'
   return nodeIds.reduce((next, id) => {
     const parent = findParent(next.document, id);
     const layout = parent ? autoLayoutOf(parent) : null;
-    if (!parent || !layout || !canShareChild(layout, kind)) return next;
+    if (!parent || !layout || !canShareChild(layout)) return next;
     let document = updateNode(next.document, id, (node) => {
       const updated = { ...node } as SceneNode;
       if (share > 0) {

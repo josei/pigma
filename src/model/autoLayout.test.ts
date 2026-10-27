@@ -654,25 +654,35 @@ describe('child cross share (percent of the counter axis)', () => {
     expect((findNode(shared.document, frameId) as AnyNode & { autoLayout: AutoLayout }).autoLayout.counterAxisSizingMode).toBe('FIXED');
   });
 
-  it('a wrapping row, a grid child and a layer with no parent cannot take a cross share', () => {
+  it('a grid child and a layer with no parent cannot take a cross share, and a wrapping row can', () => {
     const { file, childIds } = fixedRow({ layoutWrap: 'WRAP' });
     const [first] = childIds as [string, string, string];
-    expect((findNode(setChildCounterPercent(file, [first], 50).document, first) as SceneNode).layoutCounterPercent).toBeUndefined();
+    expect((findNode(setChildCounterPercent(file, [first], 50).document, first) as SceneNode).layoutCounterPercent).toBe(50);
     const grid = fixedRow({ layoutMode: 'GRID' });
     const [cell] = grid.childIds;
     expect((findNode(setChildCounterPercent(grid.file, [cell!], 50).document, cell!) as SceneNode).layoutCounterPercent).toBeUndefined();
   });
 
-  it('a layout that ignores a cross share (wrapping, or a hugging cross axis) keeps every child at its own height', () => {
-    for (const layout of [{ layoutWrap: 'WRAP' as const }, { counterAxisSizingMode: 'AUTO' as const }]) {
-      const { file, childIds } = horizontalFrame({ primaryAxisSizingMode: 'FIXED', ...layout });
-      // The setter refuses these layouts, so the share is written directly, as a file from another tool could carry it.
-      const carried = childIds.reduce(
-        (doc, id) => ({ ...doc, document: updateNode(doc.document, id, (node) => ({ ...node, layoutCounterPercent: 50 }) as AnyNode) }),
-        file,
-      );
-      expect(childTransforms({ ...carried, document: reflowTree(carried.document) }, childIds).map((box) => box.h)).toEqual([50, 50, 50]);
-    }
+  it('a hugging cross axis keeps every child at its own height', () => {
+    const { file, childIds } = horizontalFrame({ primaryAxisSizingMode: 'FIXED', counterAxisSizingMode: 'AUTO' });
+    // The setter turns a hugging cross axis Fixed, so the share is written directly, as a file from another tool could carry it.
+    const carried = childIds.reduce(
+      (doc, id) => ({ ...doc, document: updateNode(doc.document, id, (node) => ({ ...node, layoutCounterPercent: 50 }) as AnyNode) }),
+      file,
+    );
+    expect(childTransforms({ ...carried, document: reflowTree(carried.document) }, childIds).map((box) => box.h)).toEqual([50, 50, 50]);
+  });
+
+  it('a cross share in a wrapping row takes the full inner height, and the line is as tall as its tallest child', () => {
+    // 400 tall with 16 padding: the inner height is 368. The first child takes 50 percent, 184, and its line is that tall.
+    const { file, childIds } = fixedRow({ layoutWrap: 'WRAP' });
+    const [first] = childIds as [string, string, string];
+    const shared = setChildCounterPercent(file, [first], 50);
+    expect(childTransforms({ ...shared, document: reflowTree(shared.document) }, childIds)).toEqual([
+      { x: 16, y: 16, w: 100, h: 184 },
+      { x: 128, y: 16, w: 100, h: 50 },
+      { x: 240, y: 16, w: 100, h: 50 },
+    ]);
   });
 
   it('a manual resize of the cross axis switches it to Fixed, so the dragged height survives', () => {
