@@ -70,7 +70,7 @@ import { rotateCopies as rotateCopiesOp } from '../model/rotateCopies';
 import { validatePigmaFile } from '../model/validate';
 import { defaultLayoutGrid } from '../model/constraints';
 import { flipNodes, type FlipAxis } from '../model/flip';
-import { booleanLabel, booleanNodes, booleanOperandsOf, setBooleanMode as setBooleanModeOp, type BooleanMode } from '../model/boolean';
+import { booleanLabel, booleanNodes, booleanOperandsOf, divideNodes, setBooleanMode as setBooleanModeOp, type BooleanMode } from '../model/boolean';
 import type { PresenceCursor, PresencePeer } from './presence';
 import type { DocumentSummary } from './documentLibrary';
 import { clearRoomTouched, createDocument, markDirty, markRoomTouched, persistNow } from './persistence';
@@ -519,6 +519,8 @@ export interface EditorState {
   rotateSelection: (id: string, degrees: number, transient?: boolean) => void;
   flip: (axis: FlipAxis) => void;
   booleanOp: (mode: BooleanMode) => void;
+  /** Divide two overlapping shapes into their regions, each a flat vector layer. */
+  divideSelection: () => void;
   /** Flatten two or more shapes into one path: their union, as a single vector. */
   flattenSelection: () => void;
   /** Turn the selected boolean into a static vector: its outline no longer depends on its operands. */
@@ -2121,6 +2123,21 @@ export const useEditor = create<EditorState>((set, get) => ({
     } else if (skipped.length > 0) {
       get().pushToast(`${booleanLabel(mode)}: ${skipped.length} layer(s) skipped (no outline)`);
     }
+  },
+
+  divideSelection: () => {
+    const state = get();
+    if (state.selection.length !== 2) {
+      get().pushToast('Select two shapes to divide');
+      return;
+    }
+    const result = divideNodes(state.file, state.selection);
+    if (result.reason) {
+      get().pushToast(result.reason);
+      return;
+    }
+    get().apply('Divide', () => result.file);
+    set({ selection: result.nodeIds });
   },
 
   setBooleanMode: (mode) => {

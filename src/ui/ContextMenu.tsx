@@ -153,6 +153,7 @@ function nodeItems(point: { x: number; y: number } | null): ContextItem[] {
     { label: 'Subtract selection', icon: 'group', run: () => store().booleanOp('SUBTRACT') },
     { label: 'Intersect selection', icon: 'group', run: () => store().booleanOp('INTERSECT') },
     { label: 'Exclude selection', icon: 'group', run: () => store().booleanOp('EXCLUDE') },
+    { label: 'Divide selection', icon: 'group', run: () => store().divideSelection() },
     { label: 'Use as mask', icon: 'mask', shortcut: '⌘⌥M', run: () => store().toggleMask() },
     {
       label: 'Create component',

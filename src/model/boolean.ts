@@ -458,3 +458,83 @@ export function booleanOperandsOf(file: PigmaFile, ids: string[]): { usable: str
   }
   return { usable, skipped };
 }
+
+/** The result of a divide: the layers it made, and the reason when it made none. */
+export interface DivideResult {
+  file: PigmaFile;
+  nodeIds: string[];
+  reason?: string;
+}
+
+/**
+ * Divide two overlapping shapes into their regions: the part of the lower shape alone, the overlap, and the part of the upper
+ * shape alone. Each non-empty region becomes a flat vector layer, placed where the lower shape was, in that order. The overlap
+ * takes the upper shape's paint, and the other two keep their own. The layers are static: unlike a boolean, they keep no
+ * operands. The shapes must be two layers in the same parent that overlap; anything else is refused and the file is unchanged.
+ */
+export function divideNodes(file: PigmaFile, ids: string[]): DivideResult {
+  const refuse = (reason: string): DivideResult => ({ file, nodeIds: [], reason });
+  if (ids.length !== 2) return refuse('Divide needs exactly two shapes');
+  const { usable } = booleanOperandsOf(file, ids);
+  if (usable.length !== 2) return refuse('Divide needs two shapes with an outline');
+  const [first, second] = usable as [string, string];
+  const firstInfo = parentAndIndex(file.document, first);
+  const secondInfo = parentAndIndex(file.document, second);
+  if (!firstInfo || !secondInfo || firstInfo.parent.id !== secondInfo.parent.id) {
+    return refuse('Divide needs two shapes in the same frame or group');
+  }
+  const [lower, upper] = firstInfo.index < secondInfo.index ? [first, second] : [second, first];
+  const lowerPolygons = nodePolygons(file.document, lower);
+  const upperPolygons = nodePolygons(file.document, upper);
+  const lowerNode = findNode(file.document, lower) as SceneNode;
+  const upperNode = findNode(file.document, upper) as SceneNode;
+  if (!lowerPolygons || !upperPolygons) return refuse('Divide needs two shapes with an outline');
+
+  let regions: Array<{ polygons: Ring[][]; source: SceneNode }>;
+  try {
+    const low = lowerPolygons as unknown as MultiPolygon;
+    const up = upperPolygons as unknown as MultiPolygon;
+    const overlap = polygonClipping.intersection(low, up) as unknown as Ring[][];
+    if (overlap.length === 0) return refuse('The shapes do not overlap, so there is nothing to divide');
+    regions = [
+      { polygons: polygonClipping.difference(low, up) as unknown as Ring[][], source: lowerNode },
+      { polygons: overlap, source: upperNode },
+      { polygons: polygonClipping.difference(up, low) as unknown as Ring[][], source: upperNode },
+    ];
+  } catch {
+    return refuse('Divide could not be applied');
+  }
+
+  const parentId = firstInfo.parent.id;
+  const parentSpace = invert(worldTransform(file.document, parentId));
+  let document = file.document;
+  for (const id of [lower, upper]) document = removeNode(document, id).root;
+  const nodeIds: string[] = [];
+  let index = Math.min(firstInfo.index, secondInfo.index);
+  for (const region of regions) {
+    const bounds = boundsOfPolygons(region.polygons);
+    if (!bounds) continue;
+    const localised = region.polygons.map((polygon) =>
+      polygon.map((ring) => ring.map(([x, y]) => [x - bounds.x, y - bounds.y] as [number, number])),
+    );
+    const origin = applyToPoint(parentSpace, bounds.x, bounds.y);
+    const source = region.source as SceneNode & { fills?: unknown[]; strokes?: unknown[]; effects?: unknown[] };
+    const piece = {
+      ...createShapeNode(document, 'RECTANGLE', origin.x, origin.y, Math.max(1, bounds.width), Math.max(1, bounds.height)),
+      type: 'VECTOR',
+      name: source.name,
+      pathData: polygonsToPathData(localised),
+      windingRule: 'EVENODD',
+      fills: (source.fills ?? []).map((paint) => ({ ...(paint as object) })),
+      strokes: (source.strokes ?? []).map((paint) => ({ ...(paint as object) })),
+      strokeWeight: source.strokeWeight,
+      strokeAlign: source.strokeAlign,
+      effects: (source.effects ?? []).map((effect) => ({ ...(effect as object) })),
+      opacity: source.opacity,
+    } as unknown as SceneNode;
+    document = insertChild(document, parentId, piece, index);
+    nodeIds.push(piece.id);
+    index += 1;
+  }
+  return { file: { ...file, document, lastModified: Date.now() }, nodeIds };
+}
