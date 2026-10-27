@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { outlineStrokeOp } from './boolean';
-import { createEllipseNode, createFrameNode, createRectNode } from './factory';
+import { createEllipseNode, createFrameNode, createLineNode, createRectNode, createShapeNode } from './factory';
 import { solidPaint } from './paint';
 import { emptyFile } from './validate';
 import { updateNode } from './tree';
-import type { AnyNode, PigmaFile, SceneNode, StrokeAlign } from './types';
+import type { AnyNode, PigmaFile, SceneNode, StrokeAlign, StrokeCap } from './types';
 
 const BLACK = solidPaint({ r: 0, g: 0, b: 0 });
 const RED = solidPaint({ r: 1, g: 0, b: 0 });
@@ -113,7 +113,7 @@ describe('outline stroke', () => {
     const frame = createFrameNode(null, 0, 0, 100, 100);
     frame.strokes = [BLACK];
     file.document.children[0]!.children = [frame];
-    expect(outlineStrokeOp(file, frame.id).reason).toBe('Outline stroke works on rectangles, ellipses and vectors');
+    expect(outlineStrokeOp(file, frame.id).reason).toBe('Outline stroke works on rectangles, ellipses, lines and vectors');
   });
 
   it('refuses a locked layer, and returns the file as it was', () => {
@@ -141,5 +141,64 @@ describe('outline stroke on an ellipse', () => {
     // The ellipse is sampled at 64 points and the joins at 32, so the sizes are within a twentieth of a unit.
     expect(band.width).toBeCloseTo(110, 1);
     expect(band.height).toBeCloseTo(60, 1);
+  });
+});
+
+describe('outline stroke on a line and an open path', () => {
+  /** A horizontal line 100 long, with a 10-wide black stroke and the given cap. */
+  function line(cap: StrokeCap): { file: PigmaFile; id: string } {
+    const file = emptyFile('Outline');
+    const page = file.document.children[0]!;
+    const segment = createLineNode(null, 0, 0, 100);
+    segment.strokes = [BLACK];
+    segment.strokeWeight = 10;
+    segment.strokeCap = cap;
+    page.children = [segment];
+    return { file, id: segment.id };
+  }
+
+  it('a butt-capped line is a 100 x 10 band, with square ends', () => {
+    const { file, id } = line('NONE');
+    const band = bandOf(file, id);
+    expect(band.width).toBeCloseTo(100, 6);
+    expect(band.height).toBeCloseTo(10, 6);
+    expect(band.area).toBeCloseTo(1000, 0);
+  });
+
+  it('a square-capped line extends by half its width at each end: 110 x 10', () => {
+    const { file, id } = line('SQUARE');
+    const band = bandOf(file, id);
+    expect(band.width).toBeCloseTo(110, 6);
+    expect(band.area).toBeCloseTo(1100, 0);
+  });
+
+  it('a round-capped line adds a half disc at each end: 110 wide, and a little over 1078 square units', () => {
+    const { file, id } = line('ROUND');
+    const band = bandOf(file, id);
+    // The disc is a 32-gon turned off the axes, so its extreme points are within a few thousandths of 5.
+    expect(band.width).toBeCloseTo(110, 1);
+    expect(band.height).toBeCloseTo(10, 1);
+    expect(band.area).toBeGreaterThan(1070);
+    expect(band.area).toBeLessThan(1085);
+  });
+
+  it('an arrow-capped line is refused, since arrowheads are not outlined', () => {
+    const { file, id } = line('ARROW_LINES');
+    expect(outlineStrokeOp(file, id).reason).toBe('Arrowheads are not outlined');
+  });
+
+  it('an open path is outlined as a band along it, centred, with round joins at its corners', () => {
+    // An L of two edges, 100 along and 50 down. Its start and end are butt-capped, so the band reaches x 0 at the start and y 50 at
+    // the end; only the corner is round, reaching 5 beyond it. The band is therefore 105 wide (0 to 105) and 55 tall (-5 to 50).
+    const file = emptyFile('Outline');
+    const page = file.document.children[0]!;
+    const path = createShapeNode(null, 'RECTANGLE', 0, 0, 100, 50);
+    const vector = { ...path, type: 'VECTOR', pathData: 'M 0 0 L 100 0 L 100 50', windingRule: 'NONZERO', strokes: [BLACK], strokeWeight: 10, strokeCap: 'NONE', fills: [] } as unknown as SceneNode;
+    page.children = [vector];
+    const outlined = outlineStrokeOp(file, vector.id);
+    expect(outlined.reason).toBeUndefined();
+    const band = bandOf(file, vector.id);
+    expect(band.width).toBeCloseTo(105, 1);
+    expect(band.height).toBeCloseTo(55, 1);
   });
 });

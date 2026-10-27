@@ -4,7 +4,7 @@
  * layers from the store.
  */
 import { test, expect } from '@playwright/test';
-import { boot, drawShape, nextPaint } from './helpers';
+import { boot, drag, drawShape, nextPaint, tool } from './helpers';
 
 test('B172a Outline stroke moves a layer stroke onto a filled vector layer above it', async ({ page }) => {
   await boot(page, { blank: true });
@@ -69,4 +69,34 @@ test('B172b Outline stroke of a dashed stroke makes the dashes as a vector, and 
     { type: 'RECTANGLE', strokes: 0 },
     { type: 'VECTOR', strokes: 0 },
   ]);
+});
+
+test('B172c Outline stroke of a line makes its stroke a filled vector above it', async ({ page }) => {
+  await boot(page, { blank: true });
+  await tool(page, 'Line').click();
+  await drag(page, [-100, 0], [100, 0]);
+  await nextPaint(page);
+  await page.evaluate(() => {
+    const store = window.__pigmaStore!;
+    const id = (store.getState().file.document.children[0]!.children[0] as unknown as { id: string }).id;
+    store.getState().select([id], 'replace');
+    store.getState().updateSelected({ strokeWeight: 10 }, 'Stroke');
+  });
+  await nextPaint(page);
+
+  const box = (await page.locator('.canvas').boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2 - 40, { button: 'right' });
+  await nextPaint(page);
+  await page.getByText('Outline stroke', { exact: true }).click();
+  await nextPaint(page);
+
+  const layers = await page.evaluate(() =>
+    (window.__pigmaStore!.getState().file.document.children[0]!.children as unknown as Array<{ type: string; width: number; strokes: unknown[] }>).map(
+      (layer) => ({ type: layer.type, width: Math.round(layer.width), strokes: layer.strokes.length }),
+    ),
+  );
+  expect(layers.map((layer) => layer.type)).toEqual(['LINE', 'VECTOR']);
+  // The line keeps its 200 length, and its outline is the 10-wide band along it.
+  expect(layers[1]!.width).toBe(200);
+  expect(layers[0]!.strokes).toBe(0);
 });
