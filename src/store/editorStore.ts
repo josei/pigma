@@ -64,6 +64,7 @@ import {
   setChildCounterPercent as setChildCounterPercentOp,
   setChildFill as setChildFillOp,
   setChildPercent as setChildPercentOp,
+  setGridShare as setGridShareOp,
 } from '../model/autoLayout';
 import { validatePigmaFile } from '../model/validate';
 import { defaultLayoutGrid } from '../model/constraints';
@@ -491,6 +492,7 @@ export interface EditorState {
   setChildFill: (axis: 'width' | 'height', fill: boolean) => void;
   setChildPercent: (percent: number | null) => void;
   setChildCounterPercent: (percent: number | null) => void;
+  setGridShare: (axis: 'width' | 'height', percent: number | null) => void;
   clearAutoLayout: () => void;
   resetOverrides: (instanceId: string) => void;
   updateSelectedTextStyle: (patch: Partial<TextStyle>, label?: string) => void;
@@ -1682,6 +1684,12 @@ export const useEditor = create<EditorState>((set, get) => ({
     const ids = get().selection;
     if (ids.length === 0) return;
     get().apply(percent ? 'Set cross share' : 'Clear cross share', (file) => settleDocument(setChildCounterPercentOp(file, ids, percent)));
+  },
+
+  setGridShare: (axis, percent) => {
+    const ids = get().selection;
+    if (ids.length === 0) return;
+    get().apply(percent ? 'Set cell share' : 'Clear cell share', (file) => settleDocument(setGridShareOp(file, ids, axis, percent)));
   },
 
   clearAutoLayout: () => {

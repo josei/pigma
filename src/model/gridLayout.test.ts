@@ -10,9 +10,9 @@ import { describe, expect, it } from 'vitest';
 import { emptyFile } from './validate';
 import { parseFile, serializeFile } from './serialize';
 import { createFrameNode, createRectNode } from './factory';
-import { gridRowCount, reflowTree } from './autoLayout';
+import { gridRowCount, reflowTree, setGridShare } from './autoLayout';
 import { settleDocument } from './settle';
-import { findNode } from './tree';
+import { findNode, updateNode } from './tree';
 import type { AutoLayout, ContainerNode, GridTrackSize, PigmaFile, SceneNode } from './types';
 import { solidPaint } from './paint';
 
@@ -239,3 +239,54 @@ describe('grid auto layout', () => {
   });
 });
 
+
+describe('grid cell share', () => {
+  it('a child takes its percent of its cell, at the start of the cell', () => {
+    // 400 wide, one column of 200 and one of 200, 20px gaps: the first cell is 200 wide, and a 50 percent share is 100.
+    const { file, id } = grid(400, 200, 2, { gridColumns: [FIXED(200), FIXED(200)], gridColumnGap: 20, gridRowGap: 0, gridRows: [FIXED(100)] });
+    const [first] = childrenOf(file, id);
+    const shared = setGridShare(file, [first!.id], 'width', 50);
+    const cells = childrenOf({ ...shared, document: reflowTree(shared.document) }, id);
+    expect(cells[0]!.width).toBeCloseTo(100, 3);
+    expect(cells[0]!.transform.tx).toBeCloseTo(0, 3);
+    // The second child still fills its own cell.
+    expect(cells[1]!.width).toBeCloseTo(200, 3);
+  });
+
+  it('a height share takes its percent of the cell height', () => {
+    const { file, id } = grid(400, 200, 1, { gridColumns: [FIXED(200)], gridRows: [FIXED(100)] });
+    const [only] = childrenOf(file, id);
+    const shared = setGridShare(file, [only!.id], 'height', 40);
+    expect((childrenOf({ ...shared, document: reflowTree(shared.document) }, id)[0] as SceneNode).height).toBeCloseTo(40, 3);
+  });
+
+  it('a share is clamped to the child\'s own maximum, and 0 clears it', () => {
+    const { file, id } = grid(400, 200, 1, { gridColumns: [FIXED(200)], gridRows: [FIXED(100)] });
+    const [only] = childrenOf(file, id);
+    const limited = { ...file, document: updateNode(file.document, only!.id, (node) => ({ ...node, maxWidth: 30 }) as SceneNode) };
+    const shared = setGridShare(limited, [only!.id], 'width', 80);
+    expect((childrenOf({ ...shared, document: reflowTree(shared.document) }, id)[0] as SceneNode).width).toBe(30);
+    const cleared = setGridShare(shared, [only!.id], 'width', 0);
+    expect((findNode(cleared.document, only!.id) as SceneNode).gridWidthPercent).toBeUndefined();
+    expect((childrenOf({ ...cleared, document: reflowTree(cleared.document) }, id)[0] as SceneNode).width).toBe(200);
+  });
+
+  it('a hugging grid axis turns Fixed when a share is set, and a child of a row is left as it is', () => {
+    const { file, id } = grid(400, 200, 1, { gridColumns: [FIXED(200)], gridRows: [FIXED(100)], primaryAxisSizingMode: 'AUTO' });
+    const [only] = childrenOf(file, id);
+    const shared = setGridShare(file, [only!.id], 'width', 50);
+    expect((findNode(shared.document, id) as ContainerNode & { autoLayout: AutoLayout }).autoLayout.primaryAxisSizingMode).toBe('FIXED');
+    const row = grid(400, 200, 1, { gridColumns: [FIXED(200)] });
+    const [rowChild] = childrenOf(row.file, row.id);
+    const rowLayout = { ...row.file, document: updateNode(row.file.document, row.id, (node) => ({ ...node, autoLayout: { ...(node as ContainerNode & { autoLayout: AutoLayout }).autoLayout, layoutMode: 'HORIZONTAL' } }) as SceneNode) };
+    expect((findNode(setGridShare(rowLayout, [rowChild!.id], 'width', 50).document, rowChild!.id) as SceneNode).gridWidthPercent).toBeUndefined();
+  });
+
+  it('keeps the cell share through a save and a load', () => {
+    const { file, id } = grid(400, 200, 1, { gridColumns: [FIXED(200)], gridRows: [FIXED(100)] });
+    const [only] = childrenOf(file, id);
+    const restored = parseFile(serializeFile(setGridShare(file, [only!.id], 'height', 25)));
+    expect(restored.ok).toBe(true);
+    expect((findNode(restored.file!.document, only!.id) as SceneNode).gridHeightPercent).toBe(25);
+  });
+});

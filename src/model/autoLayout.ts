@@ -221,13 +221,17 @@ function layoutGridContainer<T extends AnyNode>(node: T, layout: AutoLayout): T 
     const inset = boxInset(child, layout);
     const tx = (columnOffsets[cell.column] ?? pad.left) + inset;
     const ty = (rowOffsets[cell.row] ?? pad.top) + inset;
-    const targetWidth = spanWidth - 2 * inset;
-    const targetHeight = spanHeight - 2 * inset;
+    // A grid child fills its cell, unless it has a share of the cell on an axis: then it takes that percent, at the start of
+    // the cell. The child's own min and max limit only the shared axes, so an unshared child keeps the size it always had.
+    const shareWidth = (spanWidth * (child.gridWidthPercent ?? 100)) / 100 - 2 * inset;
+    const shareHeight = (spanHeight * (child.gridHeightPercent ?? 100)) / 100 - 2 * inset;
+    const limited = clampSize(child, shareWidth, shareHeight);
+    const targetWidth = child.gridWidthPercent === undefined ? spanWidth - 2 * inset : limited.width;
+    const targetHeight = child.gridHeightPercent === undefined ? spanHeight - 2 * inset : limited.height;
     const moved = child.transform.tx !== tx || child.transform.ty !== ty;
     const resized = child.width !== targetWidth || child.height !== targetHeight;
     if (!moved && !resized) return child;
     changed = true;
-    // A grid child fills its cell, exactly as a stretched auto-layout child does.
     const placed = { ...child, width: targetWidth, height: targetHeight, transform: { ...child.transform, tx, ty } };
     return resized ? reflowTree(pinAxis(placed, child.width !== targetWidth, child.height !== targetHeight)) : placed;
   });
@@ -566,6 +570,37 @@ export function setChildFill(file: PigmaFile, nodeIds: readonly string[], axis: 
     });
     const sizing = fillAxisOf(layout, axis) === 'primary' ? 'primaryAxisSizingMode' : 'counterAxisSizingMode';
     if (fill && layout[sizing] === 'AUTO') {
+      document = updateNode(document, parent.id, (node) => ({ ...node, autoLayout: { ...layout, [sizing]: 'FIXED' } }) as AnyNode);
+    }
+    return { ...next, document };
+  }, file);
+}
+
+/**
+ * Set the share of the cell's width (or height) each grid child takes, 0 to 100, or clear it with null or 0. A parent that
+ * hugs that axis becomes Fixed there, as a share needs a size to take. A node whose parent is not a grid is left as it is.
+ * The caller settles the document.
+ */
+export function setGridShare(file: PigmaFile, nodeIds: readonly string[], axis: 'width' | 'height', percent: number | null): PigmaFile {
+  const share = percent === null ? 0 : Math.min(100, Math.max(0, percent));
+  const sizing = axis === 'width' ? 'primaryAxisSizingMode' : 'counterAxisSizingMode';
+  return nodeIds.reduce((next, id) => {
+    const parent = findParent(next.document, id);
+    const layout = parent ? autoLayoutOf(parent) : null;
+    if (!parent || !layout || layout.layoutMode !== 'GRID') return next;
+    let document = updateNode(next.document, id, (node) => {
+      const updated = { ...node } as SceneNode;
+      if (axis === 'width') {
+        if (share > 0) updated.gridWidthPercent = share;
+        else delete updated.gridWidthPercent;
+      } else if (share > 0) {
+        updated.gridHeightPercent = share;
+      } else {
+        delete updated.gridHeightPercent;
+      }
+      return updated as AnyNode;
+    });
+    if (share > 0 && layout[sizing] === 'AUTO') {
       document = updateNode(document, parent.id, (node) => ({ ...node, autoLayout: { ...layout, [sizing]: 'FIXED' } }) as AnyNode);
     }
     return { ...next, document };

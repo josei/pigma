@@ -1423,6 +1423,50 @@ function ChildFillSection({ nodes }: { nodes: SceneNode[] }) {
   );
 }
 
+/**
+ * Share of the grid cell for a child of a grid: the child takes a percent of its cell's width and height, from the cell's
+ * start. Shown only when a selected layer is a grid child. The mixed state is taken across the selection.
+ */
+function GridShareSection({ nodes }: { nodes: SceneNode[] }) {
+  const file = useEditor((state) => state.file);
+  const setGridShare = useEditor((state) => state.setGridShare);
+  const cells = nodes.filter((node) => {
+    const parent = findParent(file.document, node.id);
+    const layout = parent ? (parent as { autoLayout?: AutoLayout }).autoLayout ?? null : null;
+    return layout?.layoutMode === 'GRID';
+  });
+  if (cells.length === 0) return null;
+  const widths = cells.map((node) => node.gridWidthPercent ?? 0);
+  const heights = cells.map((node) => node.gridHeightPercent ?? 0);
+  return (
+    <div className="section">
+      <div className="section__header">
+        <span>Grid cell</span>
+      </div>
+      <div className="section__body">
+        <NumberField
+          label="Share of cell width"
+          value={widths[0] ?? 0}
+          mixed={isMixedValue(widths)}
+          min={0}
+          max={100}
+          suffix="%"
+          onCommit={(value) => setGridShare('width', value)}
+        />
+        <NumberField
+          label="Share of cell height"
+          value={heights[0] ?? 0}
+          mixed={isMixedValue(heights)}
+          min={0}
+          max={100}
+          suffix="%"
+          onCommit={(value) => setGridShare('height', value)}
+        />
+      </div>
+    </div>
+  );
+}
+
 function ConstraintsSection({ node }: { node: SceneNode }) {
   const updateSelected = useEditor((state) => state.updateSelected);
   const addLayoutGrid = useEditor((state) => state.addLayoutGrid);
@@ -2456,6 +2500,7 @@ export function PropertiesPanel() {
             <BooleanSection />
             <EffectsSection node={node} nodes={nodes} />
             <ChildFillSection nodes={nodes} />
+            <GridShareSection nodes={nodes} />
             <ConstraintsSection node={node} />
             <AutoLayoutSection node={node} nodes={nodes} />
             <SizeLimitsSection node={node} />

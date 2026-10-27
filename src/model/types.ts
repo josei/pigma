@@ -411,6 +411,12 @@ export interface BaseNode {
    */
   layoutCounterPercent?: number;
   /**
+   * The share of the grid cell's width this child takes, 0 to 100, in a grid parent. The child sits at the start of its cell;
+   * without a share it fills the cell. `gridHeightPercent` is the same on the cell's height.
+   */
+  gridWidthPercent?: number;
+  gridHeightPercent?: number;
+  /**
    * Grid placement inside a `layoutMode: 'GRID'` parent, in Figma's terms. An
    * anchor index places the child at that 0-based track instead of letting
    * auto-placement choose; spans widen the cell. Absent means auto-placed.

@@ -60,6 +60,8 @@ const BASE_KEYS = [
   'layoutGrow',
   'layoutPercent',
   'layoutCounterPercent',
+  'gridWidthPercent',
+  'gridHeightPercent',
   'gridColumnAnchorIndex',
   'gridRowAnchorIndex',
   'gridColumnAnchorGuid',
@@ -428,6 +430,12 @@ function normalizeNode(value: unknown, warnings: string[], path: string): SceneN
       : {}),
     ...(typeof value.layoutCounterPercent === 'number' && value.layoutCounterPercent > 0 && value.layoutCounterPercent <= 100
       ? { layoutCounterPercent: value.layoutCounterPercent }
+      : {}),
+    ...(typeof value.gridWidthPercent === 'number' && value.gridWidthPercent > 0 && value.gridWidthPercent <= 100
+      ? { gridWidthPercent: value.gridWidthPercent }
+      : {}),
+    ...(typeof value.gridHeightPercent === 'number' && value.gridHeightPercent > 0 && value.gridHeightPercent <= 100
+      ? { gridHeightPercent: value.gridHeightPercent }
       : {}),
     ...(normalizeInteractions(value.interactions) ? { interactions: normalizeInteractions(value.interactions) } : {}),
     ...(isRecord(value.styles) ? { styles: value.styles as never } : {}),
