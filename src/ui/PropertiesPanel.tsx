@@ -1502,6 +1502,9 @@ function AnimationSection({ node }: { node: SceneNode }) {
         <button type="button" className="button" onClick={() => toggleKeyEasing('opacity')}>
           Toggle opacity easing
         </button>
+        <button type="button" className="button" onClick={() => toggleKeyEasing('rotation')}>
+          Toggle rotation easing
+        </button>
         <button type="button" className="button" onClick={() => removeKeySelected('opacity')}>
           Remove opacity key
         </button>
