@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addKeyframe, applyKeysOp, normalizeKeys, removeKeyframe, removeKeyframeOp, sampleTrack, setKeyEasingOp, setKeyframeOp, smoothstep, valuesAt } from './keyframes';
+import { addKeyframe, applyKeysOp, fractionAtTime, normalizeKeys, removeKeyframe, removeKeyframeOp, sampleTrack, setKeyEasingOp, setKeyframeOp, smoothstep, TIMELINE_SPAN_MS, timeAtFraction, valuesAt } from './keyframes';
 import { createRectNode } from './factory';
 import { parseFile, serializeFile } from './serialize';
 import { emptyFile } from './validate';
@@ -209,5 +209,17 @@ describe('keyframe tracks', () => {
       { time: 0, value: 0 },
       { time: 200, value: 1, easing: 'EASE_IN_OUT' },
     ]);
+  });
+
+  it('maps a point on the timeline to a time in 10 ms steps, and back, clamped to the span', () => {
+    expect(timeAtFraction(0)).toBe(0);
+    expect(timeAtFraction(0.5)).toBe(TIMELINE_SPAN_MS / 2);
+    expect(timeAtFraction(0.3333)).toBe(670);
+    expect(timeAtFraction(-1)).toBe(0);
+    expect(timeAtFraction(3)).toBe(TIMELINE_SPAN_MS);
+    expect(timeAtFraction(Number.NaN)).toBe(0);
+    expect(fractionAtTime(500)).toBe(0.25);
+    expect(fractionAtTime(-5)).toBe(0);
+    expect(fractionAtTime(TIMELINE_SPAN_MS * 2)).toBe(1);
   });
 });

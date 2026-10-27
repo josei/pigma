@@ -167,3 +167,22 @@ export function setKeyEasingOp(file: PigmaFile, id: string, property: Animatable
     document: updateNode(file.document, id, (current) => ({ ...current, keyframes: next }) as AnyNode),
   };
 }
+
+/** The span of the Animation section's timeline, in milliseconds: the strip runs from 0 to this time. */
+export const TIMELINE_SPAN_MS = 2000;
+
+/**
+ * The time a point across the timeline strip stands for: `fraction` of the way along (0 to 1, clamped), in steps of 10 ms. A
+ * fraction that is not a number stands for 0.
+ */
+export function timeAtFraction(fraction: number): number {
+  if (!Number.isFinite(fraction)) return 0;
+  const clamped = Math.min(1, Math.max(0, fraction));
+  return Math.round((clamped * TIMELINE_SPAN_MS) / 10) * 10;
+}
+
+/** The position of a time along the timeline strip, from 0 to 1, clamped to the span. */
+export function fractionAtTime(time: number): number {
+  return Math.min(1, Math.max(0, time / TIMELINE_SPAN_MS));
+}
+

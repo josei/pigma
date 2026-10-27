@@ -12,6 +12,7 @@ import { decodeImageFile } from './imageInput';
 import { hasChildren } from '../model/types';
 import { canShareChild, childFillsAxis, defaultAutoLayout, fillAxisOf, gridRowCount } from '../model/autoLayout';
 import type { AnimatableProperty } from '../model/types';
+import { fractionAtTime, timeAtFraction } from '../model/keyframes';
 import { EFFECT_TYPES, effectLabel, isBlur, isShadow, type EffectKind } from '../model/effects';
 import { CONSTRAINT_TYPES, constraintLabel } from '../model/constraints';
 import { VariableBindInline, VariableBindRow } from './VariablesPanel';
@@ -1468,6 +1469,50 @@ function GridShareSection({ nodes }: { nodes: SceneNode[] }) {
 }
 
 /**
+ * The Animation timeline: a strip from 0 to the timeline span, with the first selected layer's keys as diamonds and the key time as
+ * a playhead. A click on the strip sets the key time there.
+ */
+function KeyTimeline({ node }: { node: SceneNode }) {
+  const keyframeTime = useEditor((state) => state.keyframeTime);
+  const setKeyframeTime = useEditor((state) => state.setKeyframeTime);
+  const keys = (node.keyframes ?? []).flatMap((track) => track.keys.map((key) => ({ property: track.property, time: key.time })));
+  return (
+    <div
+      aria-label="Keyframe timeline"
+      data-key-count={keys.length}
+      role="group"
+      onClick={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setKeyframeTime(timeAtFraction((event.clientX - rect.left) / rect.width));
+      }}
+      style={{ position: 'relative', height: 20, margin: '6px 0', background: 'var(--figma-bg-secondary, #e5e5e5)', borderRadius: 3, cursor: 'pointer' }}
+    >
+      {keys.map((key, index) => (
+        <span
+          key={`${key.property}-${key.time}-${index}`}
+          data-property={key.property}
+          data-time={key.time}
+          style={{
+            position: 'absolute',
+            left: `${fractionAtTime(key.time) * 100}%`,
+            top: 4,
+            width: 8,
+            height: 8,
+            marginLeft: -4,
+            background: key.property === 'opacity' ? '#0d99ff' : '#f24e1e',
+            transform: 'rotate(45deg)',
+          }}
+        />
+      ))}
+      <span
+        aria-hidden="true"
+        style={{ position: 'absolute', left: `${fractionAtTime(keyframeTime) * 100}%`, top: 0, bottom: 0, width: 1, background: 'var(--figma-text, #333)' }}
+      />
+    </div>
+  );
+}
+
+/**
  * Animation for the selection: the time keys are set at, a key on each selected layer's opacity or rotation at that time, and how
  * many keys of each the first selected layer has. Playback is not built yet, so a key shows in the file and in these counts only.
  */
@@ -1489,6 +1534,7 @@ function AnimationSection({ node }: { node: SceneNode }) {
         <span>Animation</span>
       </div>
       <div className="section__body">
+        <KeyTimeline node={node} />
         <NumberField label="Key time (ms)" value={keyframeTime} min={0} step={100} onCommit={setKeyframeTime} />
         <button type="button" className="button" onClick={() => keySelected('opacity')}>
           Key opacity
