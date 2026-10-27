@@ -1467,6 +1467,33 @@ function GridShareSection({ nodes }: { nodes: SceneNode[] }) {
 }
 
 /**
+ * Animation for the selection: the time keys are set at, a key on each selected layer's opacity at that time, and how many
+ * opacity keys the first selected layer has. Playback is not built yet, so a key shows in the file and in this count only.
+ */
+function AnimationSection({ node }: { node: SceneNode }) {
+  const keyframeTime = useEditor((state) => state.keyframeTime);
+  const setKeyframeTime = useEditor((state) => state.setKeyframeTime);
+  const keySelectedOpacity = useEditor((state) => state.keySelectedOpacity);
+  const opacityKeys = (node.keyframes ?? []).find((track) => track.property === 'opacity')?.keys.length ?? 0;
+  return (
+    <div className="section">
+      <div className="section__header">
+        <span>Animation</span>
+      </div>
+      <div className="section__body">
+        <NumberField label="Key time (ms)" value={keyframeTime} min={0} step={100} onCommit={setKeyframeTime} />
+        <button type="button" className="button" onClick={keySelectedOpacity}>
+          Key opacity
+        </button>
+        <p style={{ margin: '6px 0 0', color: 'var(--figma-text-secondary)' }}>
+          {opacityKeys === 0 ? 'No opacity keys.' : `${opacityKeys} opacity ${opacityKeys === 1 ? 'key' : 'keys'}.`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Rotate copies for the selection: each selected layer gets the given number of copies, turned by the given angle, around the
  * selection's bottom-centre (see rotateCopies in the model). Shown for any selected layer.
  */
@@ -2524,6 +2551,7 @@ export function PropertiesPanel() {
             <EffectsSection node={node} nodes={nodes} />
             <ChildFillSection nodes={nodes} />
             <GridShareSection nodes={nodes} />
+            <AnimationSection node={node} />
             <RotateCopiesSection />
             <ConstraintsSection node={node} />
             <AutoLayoutSection node={node} nodes={nodes} />

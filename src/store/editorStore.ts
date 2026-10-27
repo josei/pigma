@@ -71,6 +71,7 @@ import { validatePigmaFile } from '../model/validate';
 import { defaultLayoutGrid } from '../model/constraints';
 import { flipNodes, type FlipAxis } from '../model/flip';
 import { booleanLabel, booleanNodes, booleanOperandsOf, divideNodes, outlineStrokeOp, setBooleanMode as setBooleanModeOp, type BooleanMode } from '../model/boolean';
+import { setKeyframeOp } from '../model/keyframes';
 import type { PresenceCursor, PresencePeer } from './presence';
 import type { DocumentSummary } from './documentLibrary';
 import { clearRoomTouched, createDocument, markDirty, markRoomTouched, persistNow } from './persistence';
@@ -274,6 +275,8 @@ export interface EditorState {
   selectedAnchor: number | null;
   /** Container the user drilled into (double-click), or null for the page. */
   enteredContainerId: string | null;
+  /** The time, in milliseconds, that keyframes are set at from the Animation section. */
+  keyframeTime: number;
   editingTextId: string | null;
   clipboard: SceneNode[] | null;
   /** Appearance copied with Copy properties (Cmd/Ctrl+Alt+C), pasted onto other layers. */
@@ -415,6 +418,9 @@ export interface EditorState {
   setTextWeight: (nodeId: string, start: number, end: number, fontWeight: number | null) => void;
   clearSelection: () => void;
   setEnteredContainer: (id: string | null) => void;
+  setKeyframeTime: (time: number) => void;
+  /** Set a key on each selected layer's opacity track at `keyframeTime`, holding the layer's current opacity. */
+  keySelectedOpacity: () => void;
 
   beginTransaction: () => void;
   /** Abort the in-flight gesture, reverting to its starting state (no history). */
@@ -1003,6 +1009,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   pendingFit: true,
   selectedAnchor: null,
   enteredContainerId: null,
+  keyframeTime: 0,
   editingTextId: null,
   clipboard: null,
   copiedProperties: null,
@@ -1215,6 +1222,18 @@ export const useEditor = create<EditorState>((set, get) => ({
   },
 
   setEnteredContainer: (id) => set({ enteredContainerId: id }),
+  setKeyframeTime: (time) => set({ keyframeTime: Number.isFinite(time) && time >= 0 ? time : 0 }),
+  keySelectedOpacity: () => {
+    const state = get();
+    if (state.selection.length === 0) return;
+    const time = state.keyframeTime;
+    const file = state.selection.reduce((next, id) => {
+      const node = findNode(next.document, id);
+      if (!node || node.type === 'DOCUMENT' || node.type === 'CANVAS') return next;
+      return setKeyframeOp(next, id, 'opacity', time, node.opacity ?? 1);
+    }, state.file);
+    get().apply('Set opacity key', () => file);
+  },
 
   beginTransaction: () => {
     // A gesture is its own unit of history: nothing before it can coalesce into it.
