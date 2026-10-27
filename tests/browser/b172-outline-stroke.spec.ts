@@ -39,3 +39,34 @@ test('B172a Outline stroke moves a layer stroke onto a filled vector layer above
   // An inside stroke lies within the 100-wide rectangle.
   expect(layers[1]!.width).toBe(100);
 });
+
+test('B172b Outline stroke of a dashed stroke makes the dashes as a vector, and the layer loses its stroke', async ({ page }) => {
+  await boot(page, { blank: true });
+  await drawShape(page, 'Rectangle', 100, 50, 0, 0);
+  await page.evaluate(() => {
+    const store = window.__pigmaStore!;
+    const id = (store.getState().file.document.children[0]!.children[0] as unknown as { id: string }).id;
+    store.getState().select([id], 'replace');
+    store.getState().updateSelected(
+      { strokes: [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 }, opacity: 1 }], strokeWeight: 10, dashPattern: [10, 5] },
+      'Stroke',
+    );
+  });
+  await nextPaint(page);
+
+  const box = (await page.locator('.canvas').boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+  await nextPaint(page);
+  await page.getByText('Outline stroke', { exact: true }).click();
+  await nextPaint(page);
+
+  const layers = await page.evaluate(() =>
+    (window.__pigmaStore!.getState().file.document.children[0]!.children as unknown as Array<{ type: string; strokes: unknown[] }>).map(
+      (layer) => ({ type: layer.type, strokes: layer.strokes.length }),
+    ),
+  );
+  expect(layers).toEqual([
+    { type: 'RECTANGLE', strokes: 0 },
+    { type: 'VECTOR', strokes: 0 },
+  ]);
+});

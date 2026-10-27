@@ -586,22 +586,75 @@ function discRing(x: number, y: number, radius: number, phase: number): Ring {
  * The band of half-width `halfWidth` around closed rings: a quad along each edge, and a disc at each vertex, so every join is
  * round whatever the layer's join setting. The union of the pieces is the band.
  */
-function strokeBand(rings: Ring[], halfWidth: number, phase: number): Ring[][] {
+function strokeBand(lines: StrokeLine[], halfWidth: number, phase: number): Ring[][] {
   const pieces: Ring[][][] = [];
-  for (const ring of rings) {
-    ring.forEach(([x0, y0], index) => {
-      const [x1, y1] = ring[(index + 1) % ring.length]!;
+  for (const { points, closed } of lines) {
+    const edges = closed ? points.length : points.length - 1;
+    for (let index = 0; index < edges; index += 1) {
+      const [x0, y0] = points[index]!;
+      const [x1, y1] = points[(index + 1) % points.length]!;
       const length = Math.hypot(x1 - x0, y1 - y0);
-      if (length === 0) return;
+      if (length === 0) continue;
       const nx = (-(y1 - y0) / length) * halfWidth;
       const ny = ((x1 - x0) / length) * halfWidth;
       pieces.push([[[[x0 + nx, y0 + ny], [x1 + nx, y1 + ny], [x1 - nx, y1 - ny], [x0 - nx, y0 - ny]]]]);
+    }
+    // A closed line joins at every vertex; an open dash only inside itself, so its ends stay square.
+    points.forEach(([x, y], index) => {
+      if (closed || (index > 0 && index < points.length - 1)) pieces.push([[discRing(x, y, halfWidth, phase)]]);
     });
-    for (const [x, y] of ring) pieces.push([[discRing(x, y, halfWidth, phase)]]);
   }
   const inputs = pieces as unknown as MultiPolygon[];
   const [first, ...rest] = inputs as [MultiPolygon, ...MultiPolygon[]];
   return polygonClipping.union(first, ...rest) as unknown as Ring[][];
+}
+
+/** A polyline of the stroke's centre line: closed around a layer's edge, or open for one dash. */
+interface StrokeLine {
+  points: Ring;
+  closed: boolean;
+}
+
+/**
+ * The dashes of a closed ring, as open polylines: the stroke's dash pattern (on and off lengths, alternating, as the renderer's
+ * stroke-dasharray reads them) is laid along the perimeter from its first point. An odd pattern repeats to become even, as SVG
+ * does. A pattern with no length is no dashes at all, so the caller draws the solid ring instead.
+ */
+function dashesOf(ring: Ring, pattern: number[]): Ring[] {
+  const lengths = pattern.length % 2 === 1 ? [...pattern, ...pattern] : pattern;
+  const total = lengths.reduce((sum, value) => sum + value, 0);
+  if (!(total > 0)) return [];
+  const dashes: Ring[] = [];
+  let current: Ring | null = null;
+  let index = 0;
+  let remaining = lengths[0]!;
+  for (let edge = 0; edge < ring.length; edge += 1) {
+    const [x0, y0] = ring[edge]!;
+    const [x1, y1] = ring[(edge + 1) % ring.length]!;
+    const length = Math.hypot(x1 - x0, y1 - y0);
+    if (length === 0) continue;
+    let along = 0;
+    while (along < length) {
+      const step = Math.min(remaining, length - along);
+      const from = along / length;
+      const to = (along + step) / length;
+      const on = index % 2 === 0;
+      if (on) {
+        if (!current) current = [[x0 + (x1 - x0) * from, y0 + (y1 - y0) * from]];
+        current.push([x0 + (x1 - x0) * to, y0 + (y1 - y0) * to]);
+      }
+      along += step;
+      remaining -= step;
+      if (remaining <= 1e-9) {
+        if (on && current && current.length > 1) dashes.push(current);
+        current = null;
+        index = (index + 1) % lengths.length;
+        remaining = lengths[index]!;
+      }
+    }
+  }
+  if (current && current.length > 1) dashes.push(current);
+  return dashes;
 }
 
 /**
@@ -625,7 +678,6 @@ export function outlineStrokeOp(file: PigmaFile, id: string): OutlineResult {
   }
   const stroke = firstVisibleFill(node.strokes);
   if (!stroke || stroke.type !== 'SOLID') return refuse('The layer needs a visible solid stroke');
-  if (node.dashPattern && node.dashPattern.length > 0) return refuse('Dashed strokes are not outlined');
   const weight = node.strokeWeight ?? 1;
   if (!(weight > 0)) return refuse('The stroke has no width');
   const rings = localOutline(node);
@@ -636,10 +688,14 @@ export function outlineStrokeOp(file: PigmaFile, id: string): OutlineResult {
   // A centred band reaches half the width each side; an inside or outside band reaches the whole width, then is cut to the layer.
   const reach = align === 'CENTER' ? weight / 2 : weight;
   const shape = align === 'CENTER' ? null : (evenOddPolygons(rings) as unknown as MultiPolygon);
+  // A dashed stroke is the band of each dash; a pattern with no dashes falls back to the solid edge.
+  const pattern = node.dashPattern ?? [];
+  const dashes = pattern.length > 0 ? rings.flatMap((ring) => dashesOf(ring, pattern).map((points) => ({ points, closed: false }))) : [];
+  const lines: StrokeLine[] = dashes.length > 0 ? dashes : rings.map((points) => ({ points, closed: true }));
   let band: Ring[][] | null = null;
   for (const phase of JOIN_PHASES) {
     try {
-      const full = strokeBand(rings, reach, phase) as unknown as MultiPolygon;
+      const full = strokeBand(lines, reach, phase) as unknown as MultiPolygon;
       if (!shape) band = full as unknown as Ring[][];
       else band = (align === 'INSIDE' ? polygonClipping.intersection(full, shape) : polygonClipping.difference(full, shape)) as unknown as Ring[][];
       break;

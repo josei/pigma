@@ -94,10 +94,22 @@ describe('outline stroke', () => {
     expect(outlineStrokeOp({ ...file, document: bare }, id).reason).toBe('The layer needs a visible solid stroke');
   });
 
-  it('refuses a dashed stroke, and a layer that is not a rectangle, ellipse or vector', () => {
-    const { file, id } = stroked();
-    const dashed = updateNode(file.document, id, (node) => ({ ...node, dashPattern: [4, 2] }) as AnyNode);
-    expect(outlineStrokeOp({ ...file, document: dashed }, id).reason).toBe('Dashed strokes are not outlined');
+  it('a dashed stroke is outlined as its dashes: less area than the solid band, in several pieces', () => {
+    // Dashes of 10 with gaps of 5 cover two thirds of the edge, so the band is well under the solid 2600 and is made of many pieces.
+    const { file, id } = stroked('INSIDE');
+    const solid = bandOf(file, id);
+    const dashed = updateNode(file.document, id, (node) => ({ ...node, dashPattern: [10, 5] }) as AnyNode);
+    const outlined = outlineStrokeOp({ ...file, document: dashed }, id);
+    expect(outlined.reason).toBeUndefined();
+    const outline = layers(outlined.file)[1]! as AnyNode & { pathData: string };
+    const area = areaOf(outline.pathData);
+    expect(area).toBeLessThan(solid.area * 0.85);
+    expect(area).toBeGreaterThan(solid.area * 0.4);
+    expect(outline.pathData.split('M').length - 1).toBeGreaterThan(4);
+  });
+
+  it('refuses a layer that is not a rectangle, ellipse or vector', () => {
+    const { file } = stroked();
     const frame = createFrameNode(null, 0, 0, 100, 100);
     frame.strokes = [BLACK];
     file.document.children[0]!.children = [frame];
