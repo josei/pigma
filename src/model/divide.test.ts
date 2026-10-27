@@ -62,10 +62,35 @@ describe('divide', () => {
     expect(divided.file).toBe(file);
   });
 
-  it('refuses anything but two shapes', () => {
+  it('refuses fewer than two shapes, or more than four', () => {
     const { file, ids } = pair([50, 50]);
-    expect(divideNodes(file, [ids[0]]).reason).toBe('Divide needs exactly two shapes');
-    expect(divideNodes(file, [...ids, ids[0]]).reason).toBe('Divide needs exactly two shapes');
+    expect(divideNodes(file, [ids[0]!]).reason).toBe('Divide takes two to 4 shapes');
+    const page = file.document.children[0]!;
+    const extra = [0, 1, 2].map((i) => createRectNode(null, 10 + i * 5, 10, 20, 20));
+    page.children = [...page.children, ...extra];
+    expect(divideNodes(file, [...ids, ...extra.map((rect) => rect.id)]).reason).toBe('Divide takes two to 4 shapes');
+  });
+
+  it('divides three overlapping shapes into the five regions they make, painted by the top-most shape that covers each', () => {
+    // A spans x 0..100, B spans 50..150 and C spans 25..125, all 100 tall. The regions are, from the left: A alone (25 wide),
+    // A and C (25), all three (50), B and C (25), and B alone (25).
+    const file = emptyFile('Divide');
+    const page = file.document.children[0]!;
+    const colours = [RED, BLUE, solidPaint({ r: 0, g: 1, b: 0 })];
+    const shapes = [0, 50, 25].map((x, i) => {
+      const rect = createRectNode(null, x, 0, 100, 100);
+      rect.fills = [colours[i]!];
+      return rect;
+    });
+    page.children = shapes;
+    const divided = divideNodes(file, shapes.map((rect) => rect.id));
+    expect(divided.reason).toBeUndefined();
+    const pieces = layers(divided.file);
+    expect(pieces.map((piece) => piece.width)).toEqual([25, 25, 50, 25, 25]);
+    // The all-three region sits at x 50 and takes C's paint, the top-most shape.
+    const allThree = pieces.find((piece) => piece.width === 50)!;
+    expect(allThree.transform).toMatchObject({ tx: 50 });
+    expect(allThree.fills).toEqual([colours[2]]);
   });
 
   it('refuses two shapes in different parents', () => {
@@ -76,6 +101,6 @@ describe('divide', () => {
     const frame = createFrameNode(null, 0, 0, 200, 200);
     frame.children = [upper];
     page.children = [lower, frame];
-    expect(divideNodes(file, [lower.id, upper.id]).reason).toBe('Divide needs two shapes in the same frame or group');
+    expect(divideNodes(file, [lower.id, upper.id]).reason).toBe('Divide needs shapes in the same frame or group');
   });
 });

@@ -519,7 +519,7 @@ export interface EditorState {
   rotateSelection: (id: string, degrees: number, transient?: boolean) => void;
   flip: (axis: FlipAxis) => void;
   booleanOp: (mode: BooleanMode) => void;
-  /** Divide two overlapping shapes into their regions, each a flat vector layer. */
+  /** Divide two to four overlapping shapes into their regions, each a flat vector layer. */
   divideSelection: () => void;
   /** Flatten two or more shapes into one path: their union, as a single vector. */
   flattenSelection: () => void;
@@ -2127,10 +2127,6 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   divideSelection: () => {
     const state = get();
-    if (state.selection.length !== 2) {
-      get().pushToast('Select two shapes to divide');
-      return;
-    }
     const result = divideNodes(state.file, state.selection);
     if (result.reason) {
       get().pushToast(result.reason);

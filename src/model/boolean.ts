@@ -466,51 +466,68 @@ export interface DivideResult {
   reason?: string;
 }
 
+/** The most shapes a divide takes: 15 regions at most, one per non-empty subset of them. */
+export const DIVIDE_MAX_SHAPES = 4;
+
 /**
- * Divide two overlapping shapes into their regions: the part of the lower shape alone, the overlap, and the part of the upper
- * shape alone. Each non-empty region becomes a flat vector layer, placed where the lower shape was, in that order. The overlap
- * takes the upper shape's paint, and the other two keep their own. The layers are static: unlike a boolean, they keep no
- * operands. The shapes must be two layers in the same parent that overlap; anything else is refused and the file is unchanged.
+ * Divide overlapping shapes into their regions. A region is the part covered by one set of shapes and by no others, so for
+ * two shapes there are three: the lower shape alone, the overlap, and the upper shape alone. Each non-empty region becomes a
+ * flat vector layer, placed where the lowest of the shapes was, ordered by its lowest shape and then by how many shapes it
+ * covers. A region takes the paint of the top-most shape that covers it. The layers are static: unlike a boolean, they keep
+ * no operands. The shapes must be two to four layers in the same parent that overlap; anything else is refused and the file
+ * is unchanged.
  */
 export function divideNodes(file: PigmaFile, ids: string[]): DivideResult {
   const refuse = (reason: string): DivideResult => ({ file, nodeIds: [], reason });
-  if (ids.length !== 2) return refuse('Divide needs exactly two shapes');
+  if (ids.length < 2 || ids.length > DIVIDE_MAX_SHAPES) return refuse(`Divide takes two to ${DIVIDE_MAX_SHAPES} shapes`);
   const { usable } = booleanOperandsOf(file, ids);
-  if (usable.length !== 2) return refuse('Divide needs two shapes with an outline');
-  const [first, second] = usable as [string, string];
-  const firstInfo = parentAndIndex(file.document, first);
-  const secondInfo = parentAndIndex(file.document, second);
-  if (!firstInfo || !secondInfo || firstInfo.parent.id !== secondInfo.parent.id) {
-    return refuse('Divide needs two shapes in the same frame or group');
+  if (usable.length !== ids.length) return refuse('Divide needs shapes with an outline');
+  const infos = usable.map((id) => ({ id, info: parentAndIndex(file.document, id) }));
+  const parentId = infos[0]!.info?.parent.id;
+  if (infos.some((entry) => !entry.info || entry.info.parent.id !== parentId)) {
+    return refuse('Divide needs shapes in the same frame or group');
   }
-  const [lower, upper] = firstInfo.index < secondInfo.index ? [first, second] : [second, first];
-  const lowerPolygons = nodePolygons(file.document, lower);
-  const upperPolygons = nodePolygons(file.document, upper);
-  const lowerNode = findNode(file.document, lower) as SceneNode;
-  const upperNode = findNode(file.document, upper) as SceneNode;
-  if (!lowerPolygons || !upperPolygons) return refuse('Divide needs two shapes with an outline');
+  // Z order: a higher index is further up, so the top-most shape is the last one in the sorted list.
+  const ordered = infos
+    .map((entry) => ({ id: entry.id, index: entry.info!.index }))
+    .sort((a, b) => a.index - b.index);
+  const polygons: Ring[][][] = [];
+  for (const shape of ordered) {
+    const shapePolygons = nodePolygons(file.document, shape.id);
+    if (!shapePolygons) return refuse('Divide needs shapes with an outline');
+    polygons.push(shapePolygons);
+  }
 
-  let regions: Array<{ polygons: Ring[][]; source: SceneNode }>;
+  // Each non-empty subset of the shapes is a candidate region: the subset's overlap, minus every shape outside it.
+  const count = ordered.length;
+  const regions: Array<{ polygons: Ring[][]; source: SceneNode; lowest: number; covers: number }> = [];
   try {
-    const low = lowerPolygons as unknown as MultiPolygon;
-    const up = upperPolygons as unknown as MultiPolygon;
-    const overlap = polygonClipping.intersection(low, up) as unknown as Ring[][];
-    if (overlap.length === 0) return refuse('The shapes do not overlap, so there is nothing to divide');
-    regions = [
-      { polygons: polygonClipping.difference(low, up) as unknown as Ring[][], source: lowerNode },
-      { polygons: overlap, source: upperNode },
-      { polygons: polygonClipping.difference(up, low) as unknown as Ring[][], source: upperNode },
-    ];
+    for (let mask = 1; mask < 1 << count; mask += 1) {
+      const members = ordered.map((_, index) => index).filter((index) => mask & (1 << index));
+      const others = ordered.map((_, index) => index).filter((index) => !(mask & (1 << index)));
+      const [firstMember, ...restMembers] = members.map((index) => polygons[index] as unknown as MultiPolygon);
+      let region: MultiPolygon = restMembers.length > 0 ? polygonClipping.intersection(firstMember!, ...restMembers) : firstMember!;
+      if (others.length > 0) {
+        region = polygonClipping.difference(region, ...others.map((index) => polygons[index] as unknown as MultiPolygon));
+      }
+      const pieces = region as unknown as Ring[][];
+      if (pieces.length === 0) continue;
+      const top = ordered[members[members.length - 1]!]!;
+      const source = findNode(file.document, top.id) as SceneNode;
+      regions.push({ polygons: pieces, source, lowest: members[0]!, covers: members.length });
+    }
   } catch {
     return refuse('Divide could not be applied');
   }
+  // The shapes overlap only if some region is covered by more than one of them.
+  if (!regions.some((region) => region.covers > 1)) return refuse('The shapes do not overlap, so there is nothing to divide');
+  regions.sort((a, b) => a.lowest - b.lowest || a.covers - b.covers);
 
-  const parentId = firstInfo.parent.id;
-  const parentSpace = invert(worldTransform(file.document, parentId));
+  const parentSpace = invert(worldTransform(file.document, parentId!));
   let document = file.document;
-  for (const id of [lower, upper]) document = removeNode(document, id).root;
+  for (const shape of ordered) document = removeNode(document, shape.id).root;
   const nodeIds: string[] = [];
-  let index = Math.min(firstInfo.index, secondInfo.index);
+  let index = ordered[0]!.index;
   for (const region of regions) {
     const bounds = boundsOfPolygons(region.polygons);
     if (!bounds) continue;
@@ -532,7 +549,7 @@ export function divideNodes(file: PigmaFile, ids: string[]): DivideResult {
       effects: (source.effects ?? []).map((effect) => ({ ...(effect as object) })),
       opacity: source.opacity,
     } as unknown as SceneNode;
-    document = insertChild(document, parentId, piece, index);
+    document = insertChild(document, parentId!, piece, index);
     nodeIds.push(piece.id);
     index += 1;
   }
