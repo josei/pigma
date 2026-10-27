@@ -94,3 +94,25 @@ export function setKeyframeOp(file: PigmaFile, id: string, property: AnimatableP
     }),
   };
 }
+
+/**
+ * Remove a layer's key for `property` at `time`. A track left with no keys is removed, and a layer left with no tracks loses its
+ * `keyframes` field. A layer with no key at that time, or a layer that does not exist, leaves the file unchanged.
+ */
+export function removeKeyframeOp(file: PigmaFile, id: string, property: AnimatableProperty, time: number): PigmaFile {
+  const node = findNode(file.document, id);
+  if (!node || node.type === 'DOCUMENT' || node.type === 'CANVAS') return file;
+  const tracks = (node as AnyNode & { keyframes?: KeyframeTrack[] }).keyframes ?? [];
+  const track = tracks.find((entry) => entry.property === property);
+  if (!track || !track.keys.some((key) => key.time === time)) return file;
+  const kept = removeKeyframe(track, time);
+  const others = tracks.filter((entry) => entry.property !== property);
+  const next = kept.keys.length > 0 ? [...others, kept] : others;
+  return {
+    ...file,
+    document: updateNode(file.document, id, (current) => {
+      const { keyframes: _dropped, ...rest } = current as AnyNode & { keyframes?: KeyframeTrack[] };
+      return (next.length > 0 ? { ...rest, keyframes: next } : rest) as AnyNode;
+    }),
+  };
+}

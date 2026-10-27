@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addKeyframe, normalizeKeys, removeKeyframe, sampleTrack, setKeyframeOp, valuesAt } from './keyframes';
+import { addKeyframe, normalizeKeys, removeKeyframe, removeKeyframeOp, sampleTrack, setKeyframeOp, valuesAt } from './keyframes';
 import { createRectNode } from './factory';
 import { parseFile, serializeFile } from './serialize';
 import { emptyFile } from './validate';
@@ -138,5 +138,18 @@ describe('keyframe tracks', () => {
       { time: 800, value: 0 },
     ]);
     expect(tracks.find((track) => track.property === 'rotation')!.keys).toEqual([{ time: 40, value: 60 }]);
+  });
+
+  it('removeKeyframeOp removes one key, drops a track left with no keys, and leaves a missing key alone', () => {
+    const { file, id } = rectangle();
+    const keyed = setKeyframeOp(setKeyframeOp(file, id, 'opacity', 0, 1), id, 'opacity', 500, 0);
+    const oneLeft = removeKeyframeOp(keyed, id, 'opacity', 0);
+    expect((findNode(oneLeft.document, id) as { keyframes?: KeyframeTrack[] }).keyframes).toEqual([
+      { property: 'opacity', keys: [{ time: 500, value: 0 }] },
+    ]);
+    const empty = removeKeyframeOp(oneLeft, id, 'opacity', 500);
+    expect((findNode(empty.document, id) as { keyframes?: KeyframeTrack[] }).keyframes).toBeUndefined();
+    expect(removeKeyframeOp(keyed, id, 'rotation', 0)).toBe(keyed);
+    expect(removeKeyframeOp(keyed, id, 'opacity', 123)).toBe(keyed);
   });
 });

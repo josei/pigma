@@ -1475,10 +1475,11 @@ function AnimationSection({ node }: { node: SceneNode }) {
   const keyframeTime = useEditor((state) => state.keyframeTime);
   const setKeyframeTime = useEditor((state) => state.setKeyframeTime);
   const keySelected = useEditor((state) => state.keySelected);
-  const keysOf = (property: AnimatableProperty) => (node.keyframes ?? []).find((track) => track.property === property)?.keys.length ?? 0;
-  const count = (property: AnimatableProperty, label: string) => {
-    const keys = keysOf(property);
-    return keys === 0 ? `No ${label} keys.` : `${keys} ${label} ${keys === 1 ? 'key' : 'keys'}.`;
+  const removeKeySelected = useEditor((state) => state.removeKeySelected);
+  // The key times of a property on the first selected layer, in time order: "none" when it has no keys.
+  const keyTimes = (property: AnimatableProperty) => {
+    const keys = (node.keyframes ?? []).find((track) => track.property === property)?.keys ?? [];
+    return keys.length === 0 ? 'none' : keys.map((key) => `${key.time} ms`).join(', ');
   };
   return (
     <div className="section">
@@ -1493,8 +1494,14 @@ function AnimationSection({ node }: { node: SceneNode }) {
         <button type="button" className="button" onClick={() => keySelected('rotation')}>
           Key rotation
         </button>
+        <button type="button" className="button" onClick={() => removeKeySelected('opacity')}>
+          Remove opacity key
+        </button>
+        <button type="button" className="button" onClick={() => removeKeySelected('rotation')}>
+          Remove rotation key
+        </button>
         <p style={{ margin: '6px 0 0', color: 'var(--figma-text-secondary)' }}>
-          {count('opacity', 'opacity')} {count('rotation', 'rotation')}
+          Opacity keys: {keyTimes('opacity')}. Rotation keys: {keyTimes('rotation')}.
         </p>
       </div>
     </div>

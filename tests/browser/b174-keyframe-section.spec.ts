@@ -23,7 +23,7 @@ test('B174a the Animation section keys the selected layer\'s opacity at the key 
 
   const section = page.locator('.section', { has: page.locator('.section__header', { hasText: 'Animation' }) });
   await expect(section).toHaveCount(1);
-  await expect(section.locator('p')).toHaveText('No opacity keys. No rotation keys.');
+  await expect(section.locator('p')).toHaveText('Opacity keys: none. Rotation keys: none.');
 
   const time = section.getByLabel('Key time (ms)', { exact: true });
   await time.fill('500');
@@ -32,7 +32,7 @@ test('B174a the Animation section keys the selected layer\'s opacity at the key 
   await nextPaint(page);
 
   expect(await keysOf(page, 'opacity')).toEqual([{ time: 500, value: 1 }]);
-  await expect(section.locator('p')).toHaveText('1 opacity key. No rotation keys.');
+  await expect(section.locator('p')).toHaveText('Opacity keys: 500 ms. Rotation keys: none.');
 });
 
 test('B174b Key rotation holds the layer\'s angle at the key time, and counts its keys beside the opacity keys', async ({ page }) => {
@@ -49,5 +49,5 @@ test('B174b Key rotation holds the layer\'s angle at the key time, and counts it
 
   // The layer is unturned, so its rotation key holds zero degrees.
   expect(await keysOf(page, 'rotation')).toEqual([{ time: 250, value: 0 }]);
-  await expect(section.locator('p')).toHaveText('No opacity keys. 1 rotation key.');
+  await expect(section.locator('p')).toHaveText('Opacity keys: none. Rotation keys: 250 ms.');
 });
