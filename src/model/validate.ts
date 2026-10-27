@@ -1,4 +1,5 @@
 import { normalizeTextRanges } from './textRanges';
+import { isAnimatableProperty, normalizeKeys } from './keyframes';
 import type {
   AutoLayout,
   LayoutGrid,
@@ -20,6 +21,7 @@ import type {
   TextNode,
   TextStyle,
   Transform,
+  KeyframeTrack,
   Node,
   NodeType,
 } from './types';
@@ -69,6 +71,7 @@ const BASE_KEYS = [
   'gridColumnSpan',
   'gridRowSpan',
   'interactions',
+  'keyframes',
   'styles',
   'boundVariables',
   'raw',
@@ -334,6 +337,19 @@ function normalizeAutoLayout(value: unknown): AutoLayout | undefined {
   return layout;
 }
 
+/** Keyframe tracks as saved: a track is kept only for an animatable property, and only its usable keys survive, sorted. */
+function normalizeKeyframes(value: unknown): KeyframeTrack[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const tracks = value.filter(isRecord).flatMap((item) => {
+    if (!isAnimatableProperty(item.property)) return [];
+    const keys = Array.isArray(item.keys)
+      ? item.keys.filter(isRecord).map((key) => ({ time: key.time as number, value: key.value as number }))
+      : [];
+    return [{ property: item.property, keys: normalizeKeys(keys) }];
+  });
+  return tracks.length > 0 ? tracks : undefined;
+}
+
 function normalizeInteractions(value: unknown): Node['interactions'] {
   if (!Array.isArray(value)) return undefined;
   const out = value.filter(isRecord).map((item) => {
@@ -438,6 +454,7 @@ function normalizeNode(value: unknown, warnings: string[], path: string): SceneN
       ? { gridHeightPercent: value.gridHeightPercent }
       : {}),
     ...(normalizeInteractions(value.interactions) ? { interactions: normalizeInteractions(value.interactions) } : {}),
+    ...(normalizeKeyframes(value.keyframes) ? { keyframes: normalizeKeyframes(value.keyframes) } : {}),
     ...(isRecord(value.styles) ? { styles: value.styles as never } : {}),
     ...(isRecord(value.boundVariables) ? { boundVariables: value.boundVariables as never } : {}),
     // Component property values and their bindings are generic node fields: an

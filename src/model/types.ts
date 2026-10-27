@@ -152,6 +152,21 @@ export interface UnsupportedPaint {
 
 export type Paint = SolidPaint | GradientPaint | ImagePaint | UnsupportedPaint;
 
+/** A numeric property a keyframe track can animate. Rotation is in degrees. */
+export type AnimatableProperty = 'opacity' | 'rotation';
+
+/** A value at a time, in milliseconds from the start of the animation. */
+export interface Keyframe {
+  time: number;
+  value: number;
+}
+
+/** The keys of one property, sorted by time with no two at the same time. */
+export interface KeyframeTrack {
+  property: AnimatableProperty;
+  keys: Keyframe[];
+}
+
 export interface ShadowEffect {
   type: 'DROP_SHADOW' | 'INNER_SHADOW';
   color: RGBA;
@@ -448,6 +463,8 @@ export interface BaseNode {
   boundVariables?: Record<string, string>;
   /** Prototype links. */
   interactions?: PrototypeInteraction[];
+  /** Keyframe tracks: one per animated property, with its keys at times in milliseconds (see keyframes.ts). */
+  keyframes?: KeyframeTrack[];
   /**
    * Figma's "Use as mask": this node's geometry clips the siblings **above** it
    * (the ones later in the parent's child order) without hiding itself.
