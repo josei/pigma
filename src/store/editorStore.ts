@@ -1,19 +1,5 @@
 import { create } from 'zustand';
-import type {
-  AutoLayout,
-  CanvasNode,
-  ComponentNode,
-  Node,
-  ParentNode,
-  PigmaFile,
-  PrototypeInteraction,
-  Rect,
-  MaskType,
-  SceneNode,
-  StrokeSideWeights,
-  TextNode,
-  TextStyle,
-} from '../model/types';
+import type { AutoLayout, CanvasNode, ComponentNode, Node, ParentNode, PigmaFile, PrototypeInteraction, Rect, MaskType, SceneNode, StrokeSideWeights, TextNode, TextStyle, AnimatableProperty } from '../model/types';
 import { hasChildren, isComponentNode } from '../model/types';
 import { layersInRect } from '../model/keyboardSelect';
 import { moveGridTrack } from '../model/gridTracks';
@@ -419,8 +405,8 @@ export interface EditorState {
   clearSelection: () => void;
   setEnteredContainer: (id: string | null) => void;
   setKeyframeTime: (time: number) => void;
-  /** Set a key on each selected layer's opacity track at `keyframeTime`, holding the layer's current opacity. */
-  keySelectedOpacity: () => void;
+  /** Set a key on each selected layer's track for `property` at `keyframeTime`, holding the layer's current value. */
+  keySelected: (property: AnimatableProperty) => void;
 
   beginTransaction: () => void;
   /** Abort the in-flight gesture, reverting to its starting state (no history). */
@@ -1223,16 +1209,18 @@ export const useEditor = create<EditorState>((set, get) => ({
 
   setEnteredContainer: (id) => set({ enteredContainerId: id }),
   setKeyframeTime: (time) => set({ keyframeTime: Number.isFinite(time) && time >= 0 ? time : 0 }),
-  keySelectedOpacity: () => {
+  keySelected: (property) => {
     const state = get();
     if (state.selection.length === 0) return;
     const time = state.keyframeTime;
     const file = state.selection.reduce((next, id) => {
       const node = findNode(next.document, id);
       if (!node || node.type === 'DOCUMENT' || node.type === 'CANVAS') return next;
-      return setKeyframeOp(next, id, 'opacity', time, node.opacity ?? 1);
+      // Opacity is read as stored; rotation is the angle of the layer's own transform, in degrees.
+      const value = property === 'opacity' ? (node.opacity ?? 1) : (Math.atan2(node.transform.b, node.transform.a) * 180) / Math.PI;
+      return setKeyframeOp(next, id, property, time, value);
     }, state.file);
-    get().apply('Set opacity key', () => file);
+    get().apply(`Set ${property} key`, () => file);
   },
 
   beginTransaction: () => {

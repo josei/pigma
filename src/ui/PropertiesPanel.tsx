@@ -11,6 +11,7 @@ import { canonicalKey, isMixedValue } from '../model/selectionValue';
 import { decodeImageFile } from './imageInput';
 import { hasChildren } from '../model/types';
 import { canShareChild, childFillsAxis, defaultAutoLayout, fillAxisOf, gridRowCount } from '../model/autoLayout';
+import type { AnimatableProperty } from '../model/types';
 import { EFFECT_TYPES, effectLabel, isBlur, isShadow, type EffectKind } from '../model/effects';
 import { CONSTRAINT_TYPES, constraintLabel } from '../model/constraints';
 import { VariableBindInline, VariableBindRow } from './VariablesPanel';
@@ -1467,14 +1468,18 @@ function GridShareSection({ nodes }: { nodes: SceneNode[] }) {
 }
 
 /**
- * Animation for the selection: the time keys are set at, a key on each selected layer's opacity at that time, and how many
- * opacity keys the first selected layer has. Playback is not built yet, so a key shows in the file and in this count only.
+ * Animation for the selection: the time keys are set at, a key on each selected layer's opacity or rotation at that time, and how
+ * many keys of each the first selected layer has. Playback is not built yet, so a key shows in the file and in these counts only.
  */
 function AnimationSection({ node }: { node: SceneNode }) {
   const keyframeTime = useEditor((state) => state.keyframeTime);
   const setKeyframeTime = useEditor((state) => state.setKeyframeTime);
-  const keySelectedOpacity = useEditor((state) => state.keySelectedOpacity);
-  const opacityKeys = (node.keyframes ?? []).find((track) => track.property === 'opacity')?.keys.length ?? 0;
+  const keySelected = useEditor((state) => state.keySelected);
+  const keysOf = (property: AnimatableProperty) => (node.keyframes ?? []).find((track) => track.property === property)?.keys.length ?? 0;
+  const count = (property: AnimatableProperty, label: string) => {
+    const keys = keysOf(property);
+    return keys === 0 ? `No ${label} keys.` : `${keys} ${label} ${keys === 1 ? 'key' : 'keys'}.`;
+  };
   return (
     <div className="section">
       <div className="section__header">
@@ -1482,11 +1487,14 @@ function AnimationSection({ node }: { node: SceneNode }) {
       </div>
       <div className="section__body">
         <NumberField label="Key time (ms)" value={keyframeTime} min={0} step={100} onCommit={setKeyframeTime} />
-        <button type="button" className="button" onClick={keySelectedOpacity}>
+        <button type="button" className="button" onClick={() => keySelected('opacity')}>
           Key opacity
         </button>
+        <button type="button" className="button" onClick={() => keySelected('rotation')}>
+          Key rotation
+        </button>
         <p style={{ margin: '6px 0 0', color: 'var(--figma-text-secondary)' }}>
-          {opacityKeys === 0 ? 'No opacity keys.' : `${opacityKeys} opacity ${opacityKeys === 1 ? 'key' : 'keys'}.`}
+          {count('opacity', 'opacity')} {count('rotation', 'rotation')}
         </p>
       </div>
     </div>
