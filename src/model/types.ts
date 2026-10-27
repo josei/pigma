@@ -156,9 +156,14 @@ export type Paint = SolidPaint | GradientPaint | ImagePaint | UnsupportedPaint;
 export type AnimatableProperty = 'opacity' | 'rotation';
 
 /** A value at a time, in milliseconds from the start of the animation. */
+/** How a value moves from its key to the next: a straight line, or a smoothstep that eases in and out. */
+export type KeyEasing = 'LINEAR' | 'EASE_IN_OUT';
+
 export interface Keyframe {
   time: number;
   value: number;
+  /** The easing of the segment that leaves this key. Absent means linear. */
+  easing?: KeyEasing;
 }
 
 /** The keys of one property, sorted by time with no two at the same time. */

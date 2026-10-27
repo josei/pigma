@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AutoLayout, CanvasNode, ComponentNode, Node, ParentNode, PigmaFile, PrototypeInteraction, Rect, MaskType, SceneNode, StrokeSideWeights, TextNode, TextStyle, AnimatableProperty } from '../model/types';
+import type { AutoLayout, CanvasNode, ComponentNode, Node, ParentNode, PigmaFile, PrototypeInteraction, Rect, MaskType, SceneNode, StrokeSideWeights, TextNode, TextStyle, AnimatableProperty, KeyframeTrack } from '../model/types';
 import { hasChildren, isComponentNode } from '../model/types';
 import { layersInRect } from '../model/keyboardSelect';
 import { moveGridTrack } from '../model/gridTracks';
@@ -57,7 +57,7 @@ import { validatePigmaFile } from '../model/validate';
 import { defaultLayoutGrid } from '../model/constraints';
 import { flipNodes, type FlipAxis } from '../model/flip';
 import { booleanLabel, booleanNodes, booleanOperandsOf, divideNodes, outlineStrokeOp, setBooleanMode as setBooleanModeOp, type BooleanMode } from '../model/boolean';
-import { applyKeysOp, removeKeyframeOp, setKeyframeOp } from '../model/keyframes';
+import { applyKeysOp, removeKeyframeOp, setKeyEasingOp, setKeyframeOp } from '../model/keyframes';
 import type { PresenceCursor, PresencePeer } from './presence';
 import type { DocumentSummary } from './documentLibrary';
 import { clearRoomTouched, createDocument, markDirty, markRoomTouched, persistNow } from './persistence';
@@ -411,6 +411,8 @@ export interface EditorState {
   removeKeySelected: (property: AnimatableProperty) => void;
   /** Set each selected layer's opacity and rotation to its keys' values at `keyframeTime`. */
   applyKeysAtTime: () => void;
+  /** Toggle the easing of each selected layer's `property` key at `keyframeTime`, between linear and ease-in-out. */
+  toggleKeyEasing: (property: AnimatableProperty) => void;
 
   beginTransaction: () => void;
   /** Abort the in-flight gesture, reverting to its starting state (no history). */
@@ -1225,6 +1227,21 @@ export const useEditor = create<EditorState>((set, get) => ({
       return setKeyframeOp(next, id, property, time, value);
     }, state.file);
     get().apply(`Set ${property} key`, () => file);
+  },
+
+  toggleKeyEasing: (property) => {
+    const state = get();
+    if (state.selection.length === 0) return;
+    const time = state.keyframeTime;
+    const file = state.selection.reduce((next, id) => {
+      const node = findNode(next.document, id);
+      if (!node || node.type === 'DOCUMENT' || node.type === 'CANVAS') return next;
+      const key = (node as { keyframes?: KeyframeTrack[] }).keyframes?.find((track) => track.property === property)?.keys.find((entry) => entry.time === time);
+      if (!key) return next;
+      return setKeyEasingOp(next, id, property, time, key.easing === 'EASE_IN_OUT' ? 'LINEAR' : 'EASE_IN_OUT');
+    }, state.file);
+    if (file === state.file) return;
+    get().apply(`Set ${property} easing`, () => file);
   },
 
   applyKeysAtTime: () => {
