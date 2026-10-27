@@ -228,6 +228,9 @@ export function useKeyboardShortcuts(): void {
         return;
       }
       if (meta && !event.shiftKey && event.key.toLowerCase() === 'v') {
+        // A layer copied in Pigma is what this pastes. Cancelling the key stops the browser's paste event, which would also place
+        // an image from the system clipboard; with nothing copied in Pigma the key is left to the browser, so an image still pastes.
+        if (state.clipboard && state.clipboard.length > 0) event.preventDefault();
         state.pasteClipboard();
         return;
       }
