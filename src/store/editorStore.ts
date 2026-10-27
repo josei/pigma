@@ -70,7 +70,7 @@ import { rotateCopies as rotateCopiesOp } from '../model/rotateCopies';
 import { validatePigmaFile } from '../model/validate';
 import { defaultLayoutGrid } from '../model/constraints';
 import { flipNodes, type FlipAxis } from '../model/flip';
-import { booleanLabel, booleanNodes, booleanOperandsOf, divideNodes, setBooleanMode as setBooleanModeOp, type BooleanMode } from '../model/boolean';
+import { booleanLabel, booleanNodes, booleanOperandsOf, divideNodes, outlineStrokeOp, setBooleanMode as setBooleanModeOp, type BooleanMode } from '../model/boolean';
 import type { PresenceCursor, PresencePeer } from './presence';
 import type { DocumentSummary } from './documentLibrary';
 import { clearRoomTouched, createDocument, markDirty, markRoomTouched, persistNow } from './persistence';
@@ -521,6 +521,8 @@ export interface EditorState {
   booleanOp: (mode: BooleanMode) => void;
   /** Divide two to four overlapping shapes into their regions, each a flat vector layer. */
   divideSelection: () => void;
+  /** Turn each selected layer's stroke into a filled vector layer above it, and remove the stroke from the layer. */
+  outlineStrokeSelection: () => void;
   /** Flatten two or more shapes into one path: their union, as a single vector. */
   flattenSelection: () => void;
   /** Turn the selected boolean into a static vector: its outline no longer depends on its operands. */
@@ -2123,6 +2125,28 @@ export const useEditor = create<EditorState>((set, get) => ({
     } else if (skipped.length > 0) {
       get().pushToast(`${booleanLabel(mode)}: ${skipped.length} layer(s) skipped (no outline)`);
     }
+  },
+
+  outlineStrokeSelection: () => {
+    const state = get();
+    let file = state.file;
+    const made: string[] = [];
+    let reason: string | undefined;
+    for (const id of state.selection) {
+      const result = outlineStrokeOp(file, id);
+      if (result.nodeId) {
+        file = result.file;
+        made.push(result.nodeId);
+      } else {
+        reason ??= result.reason;
+      }
+    }
+    if (made.length === 0) {
+      get().pushToast(reason ?? 'Nothing to outline');
+      return;
+    }
+    get().apply('Outline stroke', () => file);
+    set({ selection: made });
   },
 
   divideSelection: () => {

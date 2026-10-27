@@ -2,7 +2,8 @@ import * as polygonClippingNamespace from 'polygon-clipping';
 import type { AnyNode, ContainerNode, PigmaFile, Rect, SceneNode } from './types';
 import { createShapeNode } from './factory';
 import { findNode, insertChild, parentAndIndex, removeNode, updateNode, worldTransform } from './tree';
-import { applyToPoint, invert } from './matrix';
+import { applyToPoint, invert, multiply, translate } from './matrix';
+import { firstVisibleFill } from './paint';
 import { hasChildren } from './types';
 import { subpathsFromPathData, type VectorAnchor, type VectorPath } from './vector';
 
@@ -554,4 +555,117 @@ export function divideNodes(file: PigmaFile, ids: string[]): DivideResult {
     index += 1;
   }
   return { file: { ...file, document, lastModified: Date.now() }, nodeIds };
+}
+
+/** The result of outlining a stroke: the outline layer made, or why there is none. */
+export interface OutlineResult {
+  file: PigmaFile;
+  nodeId: string | null;
+  reason?: string;
+}
+
+/**
+ * Points around a disc: the round join at a vertex of the stroke. The samples are turned off the axes by half a step, plus a
+ * small offset: a sample on an axis lands exactly on the tangent of an axis-aligned edge, and coincident edges make the polygon
+ * boolean fail.
+ */
+const JOIN_SAMPLES = 32;
+/** Phases to try, in turn, if the union of a band fails: a different phase moves every sample off the edges it had met. */
+const JOIN_PHASES = [Math.PI / JOIN_SAMPLES + 0.0137, Math.PI / JOIN_SAMPLES + 0.1123, Math.PI / JOIN_SAMPLES + 0.2719];
+
+function discRing(x: number, y: number, radius: number, phase: number): Ring {
+  const ring: Ring = [];
+  for (let step = 0; step < JOIN_SAMPLES; step += 1) {
+    const angle = (step / JOIN_SAMPLES) * Math.PI * 2 + phase;
+    ring.push([x + Math.cos(angle) * radius, y + Math.sin(angle) * radius]);
+  }
+  return ring;
+}
+
+/**
+ * The band of half-width `halfWidth` around closed rings: a quad along each edge, and a disc at each vertex, so every join is
+ * round whatever the layer's join setting. The union of the pieces is the band.
+ */
+function strokeBand(rings: Ring[], halfWidth: number, phase: number): Ring[][] {
+  const pieces: Ring[][][] = [];
+  for (const ring of rings) {
+    ring.forEach(([x0, y0], index) => {
+      const [x1, y1] = ring[(index + 1) % ring.length]!;
+      const length = Math.hypot(x1 - x0, y1 - y0);
+      if (length === 0) return;
+      const nx = (-(y1 - y0) / length) * halfWidth;
+      const ny = ((x1 - x0) / length) * halfWidth;
+      pieces.push([[[[x0 + nx, y0 + ny], [x1 + nx, y1 + ny], [x1 - nx, y1 - ny], [x0 - nx, y0 - ny]]]]);
+    });
+    for (const [x, y] of ring) pieces.push([[discRing(x, y, halfWidth, phase)]]);
+  }
+  const inputs = pieces as unknown as MultiPolygon[];
+  const [first, ...rest] = inputs as [MultiPolygon, ...MultiPolygon[]];
+  return polygonClipping.union(first, ...rest) as unknown as Ring[][];
+}
+
+/**
+ * Outline stroke: the stroke of a closed layer becomes a flat vector layer, filled with the stroke's paint and placed above the
+ * layer, and the layer loses its stroke. The layer keeps its fill. The band is the stroke's width around the layer's edge: for
+ * a centred stroke half the width each side, for an inside stroke the whole width inside the edge, and for an outside stroke
+ * the whole width outside it. The band has round joins whatever the join setting. Only rectangles, ellipses and closed vectors
+ * with a visible solid stroke that is not dashed are outlined; anything else is refused with a reason.
+ */
+export function outlineStrokeOp(file: PigmaFile, id: string): OutlineResult {
+  const refuse = (reason: string): OutlineResult => ({ file, nodeId: null, reason });
+  const found = findNode(file.document, id);
+  if (!found || found.type === 'DOCUMENT' || found.type === 'CANVAS') return refuse('Select a layer to outline');
+  const node = found as SceneNode;
+  if (node.locked) return refuse('The layer is locked');
+  if (node.type !== 'RECTANGLE' && node.type !== 'ELLIPSE' && node.type !== 'VECTOR') {
+    return refuse('Outline stroke works on rectangles, ellipses and vectors');
+  }
+  if (node.type === 'VECTOR' && (subpathsFromPathData(node.pathData ?? '') ?? []).some((path) => !path.closed)) {
+    return refuse('An open path has no outline to stroke');
+  }
+  const stroke = firstVisibleFill(node.strokes);
+  if (!stroke || stroke.type !== 'SOLID') return refuse('The layer needs a visible solid stroke');
+  if (node.dashPattern && node.dashPattern.length > 0) return refuse('Dashed strokes are not outlined');
+  const weight = node.strokeWeight ?? 1;
+  if (!(weight > 0)) return refuse('The stroke has no width');
+  const rings = localOutline(node);
+  const parentInfo = parentAndIndex(file.document, id);
+  if (!rings || !parentInfo) return refuse('The layer has no outline');
+
+  const align = node.strokeAlign ?? 'CENTER';
+  // A centred band reaches half the width each side; an inside or outside band reaches the whole width, then is cut to the layer.
+  const reach = align === 'CENTER' ? weight / 2 : weight;
+  const shape = align === 'CENTER' ? null : (evenOddPolygons(rings) as unknown as MultiPolygon);
+  let band: Ring[][] | null = null;
+  for (const phase of JOIN_PHASES) {
+    try {
+      const full = strokeBand(rings, reach, phase) as unknown as MultiPolygon;
+      if (!shape) band = full as unknown as Ring[][];
+      else band = (align === 'INSIDE' ? polygonClipping.intersection(full, shape) : polygonClipping.difference(full, shape)) as unknown as Ring[][];
+      break;
+    } catch {
+      // A degenerate union at this phase: try the next one.
+    }
+  }
+  if (!band) return refuse('Outline stroke could not be applied');
+  const bounds = boundsOfPolygons(band);
+  if (!bounds) return refuse('Outline stroke could not be applied');
+  const localised = band.map((polygon) => polygon.map((ring) => ring.map(([x, y]) => [x - bounds.x, y - bounds.y] as [number, number])));
+  const outline = {
+    ...createShapeNode(file.document, 'RECTANGLE', 0, 0, Math.max(1, bounds.width), Math.max(1, bounds.height)),
+    type: 'VECTOR',
+    name: `${node.name} outline`,
+    pathData: polygonsToPathData(localised),
+    windingRule: 'EVENODD',
+    fills: [{ ...stroke }],
+    strokes: [],
+    effects: [],
+    opacity: node.opacity,
+    // The outline sits where the layer is: its bounds offset by the layer's own transform.
+    transform: multiply(node.transform, translate(bounds.x, bounds.y)),
+  } as unknown as SceneNode;
+
+  let document = updateNode(file.document, id, (current) => ({ ...current, strokes: [] }) as AnyNode);
+  document = insertChild(document, parentInfo.parent.id, outline, parentInfo.index + 1);
+  return { file: { ...file, document, lastModified: Date.now() }, nodeId: outline.id };
 }

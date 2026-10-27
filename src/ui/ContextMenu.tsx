@@ -149,6 +149,7 @@ function nodeItems(point: { x: number; y: number } | null): ContextItem[] {
       ...(anyContainer ? {} : { disabledReason: 'nothing in the selection is a group or frame' }),
     },
     { label: 'Flatten selection', icon: 'group', shortcut: '⌘E', run: () => store().flattenSelection() },
+    { label: 'Outline stroke', icon: 'group', run: () => store().outlineStrokeSelection() },
     { label: 'Union selection', icon: 'group', run: () => store().booleanOp('UNION') },
     { label: 'Subtract selection', icon: 'group', run: () => store().booleanOp('SUBTRACT') },
     { label: 'Intersect selection', icon: 'group', run: () => store().booleanOp('INTERSECT') },
