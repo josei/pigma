@@ -6,6 +6,8 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests/browser',
+  // Builds `dist/` when it is missing or older than the sources, for the offline specs (see build-setup.ts).
+  globalSetup: './tests/browser/build-setup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   // A retry is what makes `trace: 'on-first-retry'` produce a trace at all, so

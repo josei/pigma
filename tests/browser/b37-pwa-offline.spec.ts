@@ -42,8 +42,9 @@ async function waitForHttp(url: string, timeoutMs = 40000): Promise<boolean> {
 export const test = base.extend<{ previewUrl: string }>({
   previewUrl: async ({}, use) => {
     const { existsSync, readFileSync } = await import('node:fs');
+    // The global setup builds dist/ before any test runs, so a missing build is a failure, not a skip.
     if (!existsSync('dist/app/index.html')) {
-      test.skip(true, 'dist/ has not been built: run `npm run build` first');
+      throw new Error('dist/app/index.html is missing after the global build step');
     }
     // `npm run build` and `npm run build:pages` (base /pigma/) both leave dist/; serve it
     // at the base it was built with, read from the editor's own asset URLs.
