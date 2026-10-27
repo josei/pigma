@@ -66,6 +66,7 @@ import {
   setChildPercent as setChildPercentOp,
   setGridShare as setGridShareOp,
 } from '../model/autoLayout';
+import { rotateCopies as rotateCopiesOp } from '../model/rotateCopies';
 import { validatePigmaFile } from '../model/validate';
 import { defaultLayoutGrid } from '../model/constraints';
 import { flipNodes, type FlipAxis } from '../model/flip';
@@ -493,6 +494,7 @@ export interface EditorState {
   setChildPercent: (percent: number | null) => void;
   setChildCounterPercent: (percent: number | null) => void;
   setGridShare: (axis: 'width' | 'height', percent: number | null) => void;
+  rotateCopies: (count: number, angle: number) => void;
   clearAutoLayout: () => void;
   resetOverrides: (instanceId: string) => void;
   updateSelectedTextStyle: (patch: Partial<TextStyle>, label?: string) => void;
@@ -1690,6 +1692,12 @@ export const useEditor = create<EditorState>((set, get) => ({
     const ids = get().selection;
     if (ids.length === 0) return;
     get().apply(percent ? 'Set cell share' : 'Clear cell share', (file) => settleDocument(setGridShareOp(file, ids, axis, percent)));
+  },
+
+  rotateCopies: (count, angle) => {
+    const ids = get().selection;
+    if (ids.length === 0) return;
+    get().apply('Rotate copies', (file) => settleDocument(rotateCopiesOp(file, ids, { count, angle })));
   },
 
   clearAutoLayout: () => {

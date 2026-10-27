@@ -1466,6 +1466,30 @@ function GridShareSection({ nodes }: { nodes: SceneNode[] }) {
   );
 }
 
+/**
+ * Rotate copies for the selection: each selected layer gets the given number of copies, turned by the given angle, around the
+ * selection's bottom-centre (see rotateCopies in the model). Shown for any selected layer.
+ */
+function RotateCopiesSection() {
+  const rotateCopies = useEditor((state) => state.rotateCopies);
+  const [copies, setCopies] = useState(3);
+  const [angle, setAngle] = useState(30);
+  return (
+    <div className="section">
+      <div className="section__header">
+        <span>Rotate copies</span>
+      </div>
+      <div className="section__body">
+        <NumberField label="Copies" value={copies} min={1} max={99} step={1} onCommit={(value) => setCopies(Math.round(value))} />
+        <NumberField label="Turn per copy" value={angle} suffix="°" onCommit={setAngle} />
+        <button type="button" className="button" onClick={() => rotateCopies(copies, angle)}>
+          Rotate copies
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ConstraintsSection({ node }: { node: SceneNode }) {
   const updateSelected = useEditor((state) => state.updateSelected);
   const addLayoutGrid = useEditor((state) => state.addLayoutGrid);
@@ -2500,6 +2524,7 @@ export function PropertiesPanel() {
             <EffectsSection node={node} nodes={nodes} />
             <ChildFillSection nodes={nodes} />
             <GridShareSection nodes={nodes} />
+            <RotateCopiesSection />
             <ConstraintsSection node={node} />
             <AutoLayoutSection node={node} nodes={nodes} />
             <SizeLimitsSection node={node} />
