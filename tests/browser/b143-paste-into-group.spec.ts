@@ -6,6 +6,21 @@
 import { test, expect, type Page } from '@playwright/test';
 import { boot, drawShape, nextPaint, tool } from './helpers';
 
+/** The entered group's children and the clipboard's nodes, by type and name: the state a paste is checked against. */
+async function snapshot(page: Page) {
+  return page.evaluate(() => {
+    const state = window.__pigmaStore!.getState();
+    const group = state.file.document.children[0]!.children.find((child) => child.type === 'GROUP') as unknown as
+      | { children: Array<{ type: string; name: string }> }
+      | undefined;
+    const describe = (node: { type: string; name: string }) => ({ type: node.type, name: node.name });
+    return {
+      group: (group?.children ?? []).map(describe),
+      clipboard: (state.clipboard ?? []).map(describe),
+    };
+  });
+}
+
 /** Two rectangles grouped, with a small rectangle far away copied to the clipboard. */
 async function groupedWithCopy(page: Page) {
   await boot(page, { blank: true });
@@ -42,16 +57,23 @@ test('B143a pasting into an entered group centres the copy on the group content'
     const group = state.file.document.children[0]!.children.find((child) => child.type === 'GROUP')!;
     state.setEnteredContainer(group.id);
   });
+  // Before the paste: what the group holds and what the clipboard holds. A group that already has an extra child, or a clipboard
+  // that is not the one rectangle copied, shows here rather than as a bare count after the paste.
+  const before = await snapshot(page);
+  expect(before.group.map((child) => child.type), `the group before the paste: ${JSON.stringify(before)}`).toEqual(['RECTANGLE', 'RECTANGLE']);
+  expect(before.clipboard.map((node) => node.type), `the clipboard before the paste: ${JSON.stringify(before)}`).toEqual(['RECTANGLE']);
+
   await page.keyboard.press('ControlOrMeta+v');
   await nextPaint(page);
   // The paste must have added a copy to the group. If it did not, the copy check below reads the source rectangle, which is
-  // the first-attempt failure seen under full-suite load; this makes that case name itself.
-  await expect.poll(() =>
-    page.evaluate(() => {
-      const kids = window.__pigmaStore!.getState().file.document.children[0]!.children as Array<{ type: string; children?: unknown[] }>;
-      return kids.find((node) => node.type === 'GROUP')!.children!.length;
-    }),
-  ).toBe(3);
+  // the first-attempt failure seen under full-suite load. The message carries both snapshots, so a wrong count names its cause.
+  let after = await snapshot(page);
+  const deadline = Date.now() + 5000;
+  while (after.group.length !== 3 && Date.now() < deadline) {
+    await page.waitForTimeout(100);
+    after = await snapshot(page);
+  }
+  expect(after.group.length, `the group after the paste, before ${JSON.stringify(before)}, after ${JSON.stringify(after)}`).toBe(3);
 
   // The copy is the selection after the paste. Poll until it has settled at the group's centre.
   await expect.poll(() =>
