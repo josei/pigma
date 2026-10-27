@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addKeyframe, animateFile, applyKeysOp, fractionAtTime, normalizeKeys, removeKeyframe, removeKeyframeOp, sampleTrack, setKeyEasingOp, setKeyframeOp, smoothstep, TIMELINE_SPAN_MS, timeAtFraction, valuesAt } from './keyframes';
+import { addKeyframe, advanceTime, animateFile, applyKeysOp, fractionAtTime, normalizeKeys, removeKeyframe, removeKeyframeOp, sampleTrack, setKeyEasingOp, setKeyframeOp, smoothstep, TIMELINE_SPAN_MS, timeAtFraction, valuesAt } from './keyframes';
 import { createFrameNode, createRectNode } from './factory';
 import { parseFile, serializeFile } from './serialize';
 import { emptyFile } from './validate';
@@ -241,5 +241,12 @@ describe('keyframe tracks', () => {
   it('animateFile returns the same file when nothing is keyed', () => {
     const { file } = rectangle();
     expect(animateFile(file, 500)).toBe(file);
+  });
+
+  it('advances playback time, wrapping at the span, and leaves it where it is for a bad step', () => {
+    expect(advanceTime(0, 16)).toBe(16);
+    expect(advanceTime(1990, 20)).toBeCloseTo(10, 9);
+    expect(advanceTime(500, -5)).toBe(500);
+    expect(advanceTime(500, Number.NaN)).toBe(500);
   });
 });

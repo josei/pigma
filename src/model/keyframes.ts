@@ -207,3 +207,12 @@ export function fractionAtTime(time: number): number {
   return Math.min(1, Math.max(0, time / TIMELINE_SPAN_MS));
 }
 
+/**
+ * The key time after `elapsed` milliseconds of playback from `time`: it runs on through the timeline span and starts again at 0.
+ * A negative or non-finite step leaves the time where it is.
+ */
+export function advanceTime(time: number, elapsed: number): number {
+  if (!Number.isFinite(elapsed) || elapsed < 0) return time;
+  return (time + elapsed) % TIMELINE_SPAN_MS;
+}
+

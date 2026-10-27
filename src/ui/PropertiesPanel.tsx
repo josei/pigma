@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './icons';
 import { selectedNodes, useEditor } from '../store/editorStore';
 import type { AlignMode, ReorderMode } from '../model/ops';
@@ -12,7 +12,7 @@ import { decodeImageFile } from './imageInput';
 import { hasChildren } from '../model/types';
 import { canShareChild, childFillsAxis, defaultAutoLayout, fillAxisOf, gridRowCount } from '../model/autoLayout';
 import type { AnimatableProperty } from '../model/types';
-import { fractionAtTime, timeAtFraction } from '../model/keyframes';
+import { advanceTime, fractionAtTime, timeAtFraction } from '../model/keyframes';
 import { EFFECT_TYPES, effectLabel, isBlur, isShadow, type EffectKind } from '../model/effects';
 import { CONSTRAINT_TYPES, constraintLabel } from '../model/constraints';
 import { VariableBindInline, VariableBindRow } from './VariablesPanel';
@@ -1519,6 +1519,22 @@ function KeyTimeline({ node }: { node: SceneNode }) {
 function AnimationSection({ node }: { node: SceneNode }) {
   const keyframeTime = useEditor((state) => state.keyframeTime);
   const setKeyframeTime = useEditor((state) => state.setKeyframeTime);
+  const playing = useEditor((state) => state.playing);
+  const setPlaying = useEditor((state) => state.setPlaying);
+  // While playing, the key time moves on each frame and wraps at the end of the timeline; the preview follows it.
+  useEffect(() => {
+    if (!playing) return undefined;
+    let frame = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const state = useEditor.getState();
+      state.setKeyframeTime(advanceTime(state.keyframeTime, now - last));
+      last = now;
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [playing, setKeyframeTime]);
   const keySelected = useEditor((state) => state.keySelected);
   const removeKeySelected = useEditor((state) => state.removeKeySelected);
   const applyKeysAtTime = useEditor((state) => state.applyKeysAtTime);
@@ -1537,6 +1553,17 @@ function AnimationSection({ node }: { node: SceneNode }) {
       </div>
       <div className="section__body">
         <KeyTimeline node={node} />
+        <button
+          type="button"
+          className="button"
+          onClick={() => {
+            // Playing shows the keys on the canvas, so the preview goes on with it.
+            if (!playing) setAnimationPreview(true);
+            setPlaying(!playing);
+          }}
+        >
+          {playing ? 'Pause' : 'Play'}
+        </button>
         <NumberField label="Key time (ms)" value={keyframeTime} min={0} step={100} onCommit={setKeyframeTime} />
         <button type="button" className="button" onClick={() => keySelected('opacity')}>
           Key opacity
