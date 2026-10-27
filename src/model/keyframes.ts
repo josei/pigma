@@ -1,4 +1,5 @@
 import type { AnimatableProperty, AnyNode, Keyframe, KeyframeTrack, PigmaFile } from './types';
+import { withRotation } from './matrix';
 import { findNode, updateNode } from './tree';
 
 /**
@@ -113,6 +114,30 @@ export function removeKeyframeOp(file: PigmaFile, id: string, property: Animatab
     document: updateNode(file.document, id, (current) => {
       const { keyframes: _dropped, ...rest } = current as AnyNode & { keyframes?: KeyframeTrack[] };
       return (next.length > 0 ? { ...rest, keyframes: next } : rest) as AnyNode;
+    }),
+  };
+}
+
+/**
+ * Apply a layer's keys at `time`: its opacity becomes the opacity track's value at that time (clamped to 0 to 1), and its rotation
+ * the rotation track's, keeping its position and scale. A property with no track keeps its value. This is an ordinary edit, so
+ * the layer reads the animated values until something else changes them. A layer with no tracks, or that does not exist, is left
+ * unchanged.
+ */
+export function applyKeysOp(file: PigmaFile, id: string, time: number): PigmaFile {
+  const node = findNode(file.document, id);
+  if (!node || node.type === 'DOCUMENT' || node.type === 'CANVAS') return file;
+  const values = valuesAt(node as { keyframes?: KeyframeTrack[] }, time);
+  if (values.opacity === undefined && values.rotation === undefined) return file;
+  return {
+    ...file,
+    document: updateNode(file.document, id, (current) => {
+      const patch: Partial<AnyNode> = {};
+      if (values.opacity !== undefined) patch.opacity = Math.min(1, Math.max(0, values.opacity));
+      if (values.rotation !== undefined && 'transform' in current) {
+        patch.transform = withRotation(current.transform, values.rotation);
+      }
+      return { ...current, ...patch } as AnyNode;
     }),
   };
 }

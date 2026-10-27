@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addKeyframe, normalizeKeys, removeKeyframe, removeKeyframeOp, sampleTrack, setKeyframeOp, valuesAt } from './keyframes';
+import { addKeyframe, applyKeysOp, normalizeKeys, removeKeyframe, removeKeyframeOp, sampleTrack, setKeyframeOp, valuesAt } from './keyframes';
 import { createRectNode } from './factory';
 import { parseFile, serializeFile } from './serialize';
 import { emptyFile } from './validate';
@@ -151,5 +151,24 @@ describe('keyframe tracks', () => {
     expect((findNode(empty.document, id) as { keyframes?: KeyframeTrack[] }).keyframes).toBeUndefined();
     expect(removeKeyframeOp(keyed, id, 'rotation', 0)).toBe(keyed);
     expect(removeKeyframeOp(keyed, id, 'opacity', 123)).toBe(keyed);
+  });
+
+  it('applyKeysOp sets opacity and rotation to their values at the time, and leaves a property with no track alone', () => {
+    const { file, id } = rectangle();
+    let keyed = setKeyframeOp(file, id, 'opacity', 500, 1);
+    keyed = setKeyframeOp(keyed, id, 'opacity', 900, 0.4);
+    keyed = setKeyframeOp(keyed, id, 'rotation', 0, 0);
+    keyed = setKeyframeOp(keyed, id, 'rotation', 1000, 90);
+    const applied = applyKeysOp(keyed, id, 700);
+    const node = findNode(applied.document, id) as { opacity?: number; transform: { a: number; b: number } };
+    // Opacity between 1 at 500 and 0.4 at 900 is 0.7 at 700; rotation between 0 and 90 over 0..1000 is 63 degrees.
+    expect(node.opacity).toBeCloseTo(0.7, 9);
+    expect(Math.atan2(node.transform.b, node.transform.a) * 180 / Math.PI).toBeCloseTo(63, 6);
+  });
+
+  it('applyKeysOp leaves a layer with no tracks, or a missing one, as it was', () => {
+    const { file, id } = rectangle();
+    expect(applyKeysOp(file, id, 500)).toBe(file);
+    expect(applyKeysOp(file, 'missing', 500)).toBe(file);
   });
 });

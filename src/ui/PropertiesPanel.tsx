@@ -1476,6 +1476,7 @@ function AnimationSection({ node }: { node: SceneNode }) {
   const setKeyframeTime = useEditor((state) => state.setKeyframeTime);
   const keySelected = useEditor((state) => state.keySelected);
   const removeKeySelected = useEditor((state) => state.removeKeySelected);
+  const applyKeysAtTime = useEditor((state) => state.applyKeysAtTime);
   // The key times of a property on the first selected layer, in time order: "none" when it has no keys.
   const keyTimes = (property: AnimatableProperty) => {
     const keys = (node.keyframes ?? []).find((track) => track.property === property)?.keys ?? [];
@@ -1493,6 +1494,9 @@ function AnimationSection({ node }: { node: SceneNode }) {
         </button>
         <button type="button" className="button" onClick={() => keySelected('rotation')}>
           Key rotation
+        </button>
+        <button type="button" className="button" onClick={applyKeysAtTime}>
+          Apply keys at time
         </button>
         <button type="button" className="button" onClick={() => removeKeySelected('opacity')}>
           Remove opacity key

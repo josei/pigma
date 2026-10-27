@@ -57,7 +57,7 @@ import { validatePigmaFile } from '../model/validate';
 import { defaultLayoutGrid } from '../model/constraints';
 import { flipNodes, type FlipAxis } from '../model/flip';
 import { booleanLabel, booleanNodes, booleanOperandsOf, divideNodes, outlineStrokeOp, setBooleanMode as setBooleanModeOp, type BooleanMode } from '../model/boolean';
-import { removeKeyframeOp, setKeyframeOp } from '../model/keyframes';
+import { applyKeysOp, removeKeyframeOp, setKeyframeOp } from '../model/keyframes';
 import type { PresenceCursor, PresencePeer } from './presence';
 import type { DocumentSummary } from './documentLibrary';
 import { clearRoomTouched, createDocument, markDirty, markRoomTouched, persistNow } from './persistence';
@@ -409,6 +409,8 @@ export interface EditorState {
   keySelected: (property: AnimatableProperty) => void;
   /** Remove each selected layer's key for `property` at `keyframeTime`, if it has one. */
   removeKeySelected: (property: AnimatableProperty) => void;
+  /** Set each selected layer's opacity and rotation to its keys' values at `keyframeTime`. */
+  applyKeysAtTime: () => void;
 
   beginTransaction: () => void;
   /** Abort the in-flight gesture, reverting to its starting state (no history). */
@@ -1223,6 +1225,15 @@ export const useEditor = create<EditorState>((set, get) => ({
       return setKeyframeOp(next, id, property, time, value);
     }, state.file);
     get().apply(`Set ${property} key`, () => file);
+  },
+
+  applyKeysAtTime: () => {
+    const state = get();
+    if (state.selection.length === 0) return;
+    const time = state.keyframeTime;
+    const file = state.selection.reduce((next, id) => applyKeysOp(next, id, time), state.file);
+    if (file === state.file) return;
+    get().apply('Apply keys at time', () => file);
   },
 
   removeKeySelected: (property) => {
