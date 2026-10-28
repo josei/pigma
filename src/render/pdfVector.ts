@@ -237,28 +237,48 @@ function paintShape(
  * The arrowheads of an arrow cap, painted after the stroke: the arms as a stroke of the layer's weight, and the heads as a fill. Both
  * use the stroke paint's flat colour, which is the mid stop for a gradient, the same as the gradient fallback.
  */
-function paintArrowheads(builder: PdfBuilder, node: SceneNode, paint: Paint): void {
+function paintArrowheads(builder: PdfBuilder, node: SceneNode, paint: Paint, matrix: Transform): void {
   if (!isArrowCap(node.strokeCap)) return;
-  let colour: [number, number, number] | null = null;
-  if (paint.type === 'SOLID') colour = colorOf(paint);
-  else if (paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL' || paint.type === 'GRADIENT_ANGULAR' || paint.type === 'GRADIENT_DIAMOND') {
-    colour = midStop(paint as Parameters<typeof midStop>[0]);
-  }
+  const colour = arrowheadColour(builder, node, paint, matrix);
   if (!colour) return;
-  const [r, g, b] = colour;
   const alpha = paint.opacity ?? 1;
   if (alpha < 1) builder.content.push(`/${alphaName(builder, alpha)} gs`);
   const { arms, heads } = arrowheadPaths(openPolylinesOf(node), node.strokeCap, node.strokeWeight ?? 1);
   if (arms) {
-    builder.content.push(`${num(r)} ${num(g)} ${num(b)} RG`);
+    builder.content.push(colour.stroke);
     builder.content.push(pathToPdf(arms));
     builder.content.push('S');
   }
   if (heads) {
-    builder.content.push(`${num(r)} ${num(g)} ${num(b)} rg`);
+    builder.content.push(colour.fill);
     builder.content.push(pathToPdf(heads));
     builder.content.push('f');
   }
+}
+
+/**
+ * The operators that colour an arrowhead's arms (stroke) and heads (fill). A solid stroke uses its colour; a linear or radial gradient
+ * uses the same shading pattern as the stroke. Other gradients, and a gradient that cannot be shaded, use the mid stop.
+ */
+function arrowheadColour(builder: PdfBuilder, node: SceneNode, paint: Paint, matrix: Transform): { stroke: string; fill: string } | null {
+  if (paint.type === 'SOLID') {
+    const [r, g, b] = colorOf(paint);
+    const rgb = `${num(r)} ${num(g)} ${num(b)}`;
+    return { stroke: `${rgb} RG`, fill: `${rgb} rg` };
+  }
+  if (paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL') {
+    const shading = shadingName(builder, paint, node, 0, 'stroke');
+    if (shading) {
+      const pattern = strokePatternName(builder, shading, matrix, paint);
+      return { stroke: `/Pattern CS /${pattern} SCN`, fill: `/Pattern cs /${pattern} scn` };
+    }
+  }
+  if (paint.type.startsWith('GRADIENT')) {
+    const [r, g, b] = midStop(paint as Parameters<typeof midStop>[0]);
+    const rgb = `${num(r)} ${num(g)} ${num(b)}`;
+    return { stroke: `${rgb} RG`, fill: `${rgb} rg` };
+  }
+  return null;
 }
 
 /** Register an axial (2) or radial (3) shading with its stops as a function. */
@@ -484,7 +504,7 @@ function paintNode(builder: PdfBuilder, file: PigmaFile, node: SceneNode, parent
       if (stroke && (target.strokeWeight ?? 1) > 0) {
         strokeExtras(builder, target);
         paintShape(builder, target, stroke, 0, 'stroke', matrix);
-        paintArrowheads(builder, target, stroke);
+        paintArrowheads(builder, target, stroke, matrix);
       }
     }
     builder.content.push('Q');

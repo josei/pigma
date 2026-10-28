@@ -188,6 +188,23 @@ describe('vector PDF', () => {
     expect(body).toContain('/Matrix [1 0 0 1 140 40]');
   });
 
+  it('fills the heads and strokes the arms of a gradient-stroked arrow with the stroke\'s shading pattern', () => {
+    const stops = [
+      { position: 0, color: { r: 1, g: 0, b: 0, a: 1 } },
+      { position: 1, color: { r: 0, g: 0, b: 1, a: 1 } },
+    ];
+    const line = createLineNode(null, 0, 0, 100);
+    line.fills = [];
+    line.strokes = [{ type: 'GRADIENT_LINEAR', gradientStops: stops, opacity: 1 } as never];
+    line.strokeWeight = 4;
+    line.strokeCap = 'ARROW_EQUILATERAL';
+    const { file, nodes } = page([line]);
+    const body = decode(renderVectorPdf(file, nodes, { width: 100, height: 40 }).bytes);
+    // The heads are filled with a pattern, not a flat colour: the fill colour space is set to the pattern.
+    expect(body).toMatch(/\/Pattern cs \/P\d+ scn/);
+    expect(body).not.toMatch(/ rg\n/);
+  });
+
   it('sets the PDF miter limit: the SVG default of 4 unless the layer sets its own', () => {
     const rect = createRectNode(null, 0, 0, 40, 40);
     rect.fills = [];
