@@ -17,11 +17,13 @@ import { useIsMobile } from './ui/useIsMobile';
 import { Presentation } from './ui/Presentation';
 import { useFileActionEvents } from './ui/FileActions';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { usePlayback } from './hooks/usePlayback';
 import { useEditor } from './store/editorStore';
 import { whenFontsReady } from './render/textMetrics';
 
 export function App() {
   useKeyboardShortcuts();
+  usePlayback();
   useFileActionEvents();
   const presentation = useEditor((state) => state.presentation);
   const mobileDrawer = useEditor((state) => state.mobileDrawer);
