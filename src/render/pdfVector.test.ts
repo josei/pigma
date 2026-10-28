@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { isPdf, renderVectorPdf } from './pdfVector';
 import { parsePathData, pathToPdf } from './pdfPath';
 import { emptyFile } from '../model/validate';
-import { createEllipseNode, createFrameNode, createRectNode, createStarNode, createTextNode } from '../model/factory';
+import { createEllipseNode, createFrameNode, createLineNode, createRectNode, createStarNode, createTextNode } from '../model/factory';
 import { booleanNodes } from '../model/boolean';
 import { syncTextSizes } from '../model/textSync';
 import type { Paint, SceneNode } from '../model/types';
@@ -119,6 +119,25 @@ describe('vector PDF', () => {
     expect(capped('SQUARE')).toContain('2 J');
     expect(capped('NONE')).toContain('0 J');
     expect(capped('ARROW_LINES')).toContain('0 J');
+  });
+
+  it('paints the heads of an equilateral arrow as one fill, and an arrow line as one more stroke than a butt end', () => {
+    const operators = (cap: 'NONE' | 'ARROW_LINES' | 'ARROW_EQUILATERAL') => {
+      const line = createLineNode(null, 0, 0, 100);
+      line.fills = [];
+      line.strokes = [solid(0, 0, 1)];
+      line.strokeWeight = 4;
+      line.strokeCap = cap;
+      const { file, nodes } = page([line]);
+      const lines = decode(renderVectorPdf(file, nodes, { width: 100, height: 40 }).bytes).split('\n');
+      return {
+        fills: lines.filter((text) => text.trim() === 'f').length,
+        strokes: lines.filter((text) => text.trim() === 'S').length,
+      };
+    };
+    expect(operators('NONE')).toEqual({ fills: 0, strokes: 1 });
+    expect(operators('ARROW_EQUILATERAL')).toEqual({ fills: 1, strokes: 1 });
+    expect(operators('ARROW_LINES')).toEqual({ fills: 0, strokes: 2 });
   });
 
   it('sets the PDF miter limit: the SVG default of 4 unless the layer sets its own', () => {

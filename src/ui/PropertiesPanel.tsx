@@ -716,17 +716,14 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
               <select
                 className="input"
                 aria-label="Stroke cap"
-                // Pigma has no arrowheads, so an arrow cap is drawn as a butt end; the tooltip says so.
-                title={node.strokeCap === 'ARROW_LINES' || node.strokeCap === 'ARROW_EQUILATERAL' ? 'Arrow caps are drawn as butt ends' : undefined}
                 value={node.strokeCap ?? 'NONE'}
                 onChange={(event) => updateSelected({ strokeCap: event.target.value as StrokeCap }, 'Set stroke cap')}
               >
                 <option value="NONE">None</option>
                 <option value="ROUND">Round</option>
                 <option value="SQUARE">Square</option>
-                {node.strokeCap === 'ARROW_LINES' || node.strokeCap === 'ARROW_EQUILATERAL' ? (
-                  <option value={node.strokeCap}>{node.strokeCap === 'ARROW_LINES' ? 'Arrow lines' : 'Arrow equilateral'}</option>
-                ) : null}
+                <option value="ARROW_LINES">Arrow lines</option>
+                <option value="ARROW_EQUILATERAL">Arrow equilateral</option>
               </select>
             </div>
             <div className="prop-row">

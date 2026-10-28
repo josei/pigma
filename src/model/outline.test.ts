@@ -243,11 +243,23 @@ describe('outline stroke on a line and an open path', () => {
     expect(band.area).toBeLessThan(1085);
   });
 
-  it('an arrow-capped line is outlined with butt ends, as the canvas draws it: Pigma has no arrowheads', () => {
-    const { file, id } = line('ARROW_LINES');
+  it('an equilateral arrow on a line adds a triangle at each end, as wide as 5 weights over root 3 at its base', () => {
+    // At a weight of 10 each head is 50 long, so its base is 2 x 50 / root 3 = 57.7 across: the band is that tall. The two heads add
+    // to the 1000 of the butt band, less the parts of each head that the band already covers.
+    const { file, id } = line('ARROW_EQUILATERAL');
     const band = bandOf(file, id);
     expect(band.width).toBeCloseTo(100, 6);
-    expect(band.area).toBeCloseTo(1000, 0);
+    expect(band.height).toBeCloseTo((2 * 50) / Math.sqrt(3), 1);
+    expect(band.area).toBeGreaterThan(2900);
+    expect(band.area).toBeLessThan(3050);
+  });
+
+  it('an arrow-lines cap on a line adds two chevron arms at each end, taller than the butt band', () => {
+    const { file, id } = line('ARROW_LINES');
+    const band = bandOf(file, id);
+    expect(band.width).toBeGreaterThan(100);
+    expect(band.height).toBeGreaterThan(50);
+    expect(band.area).toBeGreaterThan(1000);
   });
 
   it('an open path is outlined as a band along it, centred, with round joins at its corners', () => {

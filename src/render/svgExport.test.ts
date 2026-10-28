@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderSvgDocument } from './svgExport';
-import { createFrameNode, createRectNode, createTextNode } from '../model/factory';
+import { createFrameNode, createLineNode, createRectNode, createTextNode } from '../model/factory';
 import { emptyFile } from '../model/validate';
 import { syncTextSizes } from '../model/textSync';
 import type { PigmaFile, SceneNode, StrokeCap } from '../model/types';
@@ -179,6 +179,22 @@ describe('stroke and corner polish', () => {
     expect(styled({ cap: 'SQUARE' })).toContain('stroke-linecap="square"');
     expect(styled({ cap: 'ARROW_LINES' })).toContain('stroke-linecap="butt"');
     expect(styled({})).toContain('stroke-linecap="butt"');
+  });
+
+  it('draws an equilateral arrow as a filled triangle at each end of a line, and an arrow line as arms', () => {
+    const lineWith = (cap: StrokeCap): string => {
+      const file = emptyFile('Arrow');
+      const line = createLineNode(null, 0, 0, 100);
+      line.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+      line.strokeWeight = 4;
+      line.strokeCap = cap;
+      file.document.children[0]!.children = [line];
+      return renderSvgDocument(file, [line]);
+    };
+    // The heads are one path, painted with no stroke, so the one element is the only mark with stroke="none".
+    expect(lineWith('ARROW_EQUILATERAL').split('stroke="none"')).toHaveLength(2);
+    expect(lineWith('NONE')).not.toContain('stroke="none"');
+    expect(lineWith('ARROW_LINES')).not.toContain('stroke="none"');
   });
 
   it('exports a miter limit as stroke-miterlimit, only when the layer sets one', () => {

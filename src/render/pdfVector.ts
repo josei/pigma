@@ -4,6 +4,8 @@ import { fromMatrix, multiply, roundTo } from '../model/matrix';
 
 import { cornerRadii, shapePath } from './SceneRenderer';
 import { pathToPdf } from './pdfPath';
+import { arrowheadPaths, isArrowCap } from '../model/arrowheads';
+import { openPolylinesOf } from '../model/boolean';
 import { layoutText, measureLine, measureParts } from './textMetrics';
 import { letterSpacingOf, textLinesOf } from './textMetrics';
 import { lineSegments, weightRunsOf } from '../model/textRanges';
@@ -220,6 +222,34 @@ function paintShape(
   warnOnce(builder, `unsupported:${paint.type}`, `${paint.type} fills are not exported to the vector PDF`);
 }
 
+/**
+ * The arrowheads of an arrow cap, painted after the stroke: the arms as a stroke of the layer's weight, and the heads as a fill. Both
+ * use the stroke paint's flat colour, which is the mid stop for a gradient, the same as the gradient fallback.
+ */
+function paintArrowheads(builder: PdfBuilder, node: SceneNode, paint: Paint): void {
+  if (!isArrowCap(node.strokeCap)) return;
+  let colour: [number, number, number] | null = null;
+  if (paint.type === 'SOLID') colour = colorOf(paint);
+  else if (paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL' || paint.type === 'GRADIENT_ANGULAR' || paint.type === 'GRADIENT_DIAMOND') {
+    colour = midStop(paint as Parameters<typeof midStop>[0]);
+  }
+  if (!colour) return;
+  const [r, g, b] = colour;
+  const alpha = paint.opacity ?? 1;
+  if (alpha < 1) builder.content.push(`/${alphaName(builder, alpha)} gs`);
+  const { arms, heads } = arrowheadPaths(openPolylinesOf(node), node.strokeCap, node.strokeWeight ?? 1);
+  if (arms) {
+    builder.content.push(`${num(r)} ${num(g)} ${num(b)} RG`);
+    builder.content.push(pathToPdf(arms));
+    builder.content.push('S');
+  }
+  if (heads) {
+    builder.content.push(`${num(r)} ${num(g)} ${num(b)} rg`);
+    builder.content.push(pathToPdf(heads));
+    builder.content.push('f');
+  }
+}
+
 /** Register an axial (2) or radial (3) shading with its stops as a function. */
 function shadingName(
   builder: PdfBuilder,
@@ -431,6 +461,7 @@ function paintNode(builder: PdfBuilder, file: PigmaFile, node: SceneNode, parent
       if (stroke && (target.strokeWeight ?? 1) > 0) {
         strokeExtras(builder, target);
         paintShape(builder, target, stroke, 0, 'stroke');
+        paintArrowheads(builder, target, stroke);
       }
     }
     builder.content.push('Q');

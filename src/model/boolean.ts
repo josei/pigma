@@ -5,6 +5,7 @@ import { findNode, insertChild, parentAndIndex, removeNode, updateNode, worldTra
 import { applyToPoint, invert, multiply, translate } from './matrix';
 import { firstVisibleFill } from './paint';
 import { DEFAULT_MITER_LIMIT, hasChildren } from './types';
+import { arrowheadsOf, isArrowCap } from './arrowheads';
 import { subpathsFromPathData, type VectorAnchor, type VectorPath } from './vector';
 
 /**
@@ -122,6 +123,20 @@ function localOutline(node: SceneNode): Ring[] | null {
       // Text and anything without an outline cannot be boolean-ed.
       return null;
   }
+}
+
+/**
+ * The open polylines of a line or a vector layer, in the layer's own coordinates: a line's one segment, and a vector's open
+ * subpaths. Closed subpaths are left out; they have no ends for an arrowhead.
+ */
+export function openPolylinesOf(node: SceneNode): Ring[] {
+  if (node.type === 'LINE') return [[[0, 0], [node.width, 0]]];
+  if (node.type !== 'VECTOR') return [];
+  const paths = subpathsFromPathData(node.pathData ?? '') ?? [];
+  return paths
+    .filter((path) => !path.closed)
+    .map((path) => ringOfPath(path))
+    .filter((points): points is Ring => points !== null);
 }
 
 /** A subpath as a polygon ring, its curves sampled. `null` for an empty subpath. */
@@ -768,9 +783,10 @@ export function outlineStrokeOp(file: PigmaFile, id: string): OutlineResult {
   }
   const stroke = firstVisibleFill(node.strokes);
   if (!stroke || stroke.type !== 'SOLID') return refuse('The layer needs a visible solid stroke');
-  // The canvas draws the arrow caps as butt ends (Pigma has no arrowheads), so the outline draws them the same way.
+  // An arrow cap adds an arrowhead at each open end, and the path itself ends butt.
   const rawCap = node.strokeCap ?? 'NONE';
-  const cap = rawCap === 'ARROW_LINES' || rawCap === 'ARROW_EQUILATERAL' ? 'NONE' : rawCap;
+  const arrow = isArrowCap(rawCap) ? rawCap : null;
+  const cap = arrow ? 'NONE' : rawCap;
   const weight = node.strokeWeight ?? 1;
   if (!(weight > 0)) return refuse('The stroke has no width');
   const parentInfo = parentAndIndex(file.document, id);
@@ -816,13 +832,19 @@ export function outlineStrokeOp(file: PigmaFile, id: string): OutlineResult {
     if (dashes.length > 0) lines.push(...dashes.map((points) => ({ points, closed: false })));
     else lines.push(line);
   }
+  // The arms of an arrow line are solid strokes of the layer's weight; the triangles of an equilateral arrow are added to the band.
+  const arrowheads = arrow ? arrowheadsOf(openLines.map((line) => line.points), arrow, weight) : null;
+  if (arrowheads) lines.push(...arrowheads.arms.map((points) => ({ points, closed: false, cap: 'NONE' as StrokeCap })));
 
   let band: Ring[][] | null = null;
   const join = node.strokeJoin ?? 'MITER';
   const miterLimit = node.strokeMiterLimit ?? DEFAULT_MITER_LIMIT;
   for (const phase of JOIN_PHASES) {
     try {
-      const full = strokeBand(lines, reach, phase, join, miterLimit) as unknown as MultiPolygon;
+      let full = strokeBand(lines, reach, phase, join, miterLimit) as unknown as MultiPolygon;
+      if (arrowheads && arrowheads.heads.length > 0) {
+        full = polygonClipping.union(full, ...arrowheads.heads.map((head) => [[head]] as unknown as MultiPolygon));
+      }
       if (!shape) band = full as unknown as Ring[][];
       else band = (align === 'INSIDE' ? polygonClipping.intersection(full, shape) : polygonClipping.difference(full, shape)) as unknown as Ring[][];
       break;
