@@ -45,11 +45,12 @@ test('B24a running a built-in plugin edits the document in exactly one history e
   await runs.first().click();
   await nextPaint(page);
 
-  // 3. It renamed the layer.
+  // 3. It renamed the layer. A run is asynchronous, so the rename can land after the click and the next frame: poll for it rather
+  //    than read the names once, which failed about one run in six under parallel load.
+  await expect
+    .poll(async () => (await layerNames()).includes('Layer 1'), { message: 'the plugin did not rename the layer', timeout: 5000 })
+    .toBe(true);
   const afterRun = await layerNames();
-  expect(afterRun, `the plugin did not rename anything, saw ${JSON.stringify(afterRun)}`).toContain(
-    'Layer 1',
-  );
   expect(afterRun).not.toEqual(before);
 
   // 4. Exactly ONE history entry: a single Ctrl+Z restores the original name, and
