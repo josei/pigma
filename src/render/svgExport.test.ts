@@ -3,7 +3,7 @@ import { renderSvgDocument } from './svgExport';
 import { createFrameNode, createRectNode, createTextNode } from '../model/factory';
 import { emptyFile } from '../model/validate';
 import { syncTextSizes } from '../model/textSync';
-import type { PigmaFile, SceneNode } from '../model/types';
+import type { PigmaFile, SceneNode, StrokeCap } from '../model/types';
 import { parseFile, serializeFile } from '../model/serialize';
 
 function scene(): { file: PigmaFile; nodes: SceneNode[] } {
@@ -154,7 +154,7 @@ describe('blend modes', () => {
 });
 
 describe('stroke and corner polish', () => {
-  function styled(patch: { dash?: number[]; offset?: number; miterLimit?: number; radii?: [number, number, number, number] }): string {
+  function styled(patch: { dash?: number[]; offset?: number; miterLimit?: number; cap?: StrokeCap; radii?: [number, number, number, number] }): string {
     const file = emptyFile('Polish');
     const page = file.document.children[0]!;
     const rect = createRectNode(null, 0, 0, 120, 80);
@@ -163,6 +163,7 @@ describe('stroke and corner polish', () => {
     if (patch.dash) rect.dashPattern = patch.dash;
     if (patch.offset) rect.dashOffset = patch.offset;
     if (patch.miterLimit) rect.strokeMiterLimit = patch.miterLimit;
+    if (patch.cap) rect.strokeCap = patch.cap;
     if (patch.radii) rect.rectangleCornerRadii = patch.radii;
     page.children = [rect];
     return renderSvgDocument(file, [rect]);
@@ -171,6 +172,13 @@ describe('stroke and corner polish', () => {
   it('exports the dash pattern as stroke-dasharray', () => {
     expect(styled({ dash: [8, 4] })).toContain('stroke-dasharray="8 4"');
     expect(styled({})).not.toContain('stroke-dasharray');
+  });
+
+  it('exports the stroke cap as stroke-linecap, with butt as the default', () => {
+    expect(styled({ cap: 'ROUND' })).toContain('stroke-linecap="round"');
+    expect(styled({ cap: 'SQUARE' })).toContain('stroke-linecap="square"');
+    expect(styled({ cap: 'ARROW_LINES' })).toContain('stroke-linecap="butt"');
+    expect(styled({})).toContain('stroke-linecap="butt"');
   });
 
   it('exports a miter limit as stroke-miterlimit, only when the layer sets one', () => {

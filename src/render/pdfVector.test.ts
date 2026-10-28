@@ -105,6 +105,22 @@ describe('vector PDF', () => {
     expect(body).toContain('0 0 1 RG');
   });
 
+  it('sets the PDF line cap: round and square as their codes, and butt for None and for arrows', () => {
+    const capped = (cap: 'NONE' | 'ROUND' | 'SQUARE' | 'ARROW_LINES') => {
+      const rect = createRectNode(null, 0, 0, 40, 40);
+      rect.fills = [];
+      rect.strokes = [solid(0, 0, 1)];
+      rect.strokeWeight = 4;
+      rect.strokeCap = cap;
+      const { file, nodes } = page([rect]);
+      return decode(renderVectorPdf(file, nodes, { width: 40, height: 40 }).bytes);
+    };
+    expect(capped('ROUND')).toContain('1 J');
+    expect(capped('SQUARE')).toContain('2 J');
+    expect(capped('NONE')).toContain('0 J');
+    expect(capped('ARROW_LINES')).toContain('0 J');
+  });
+
   it('sets the PDF miter limit: the SVG default of 4 unless the layer sets its own', () => {
     const rect = createRectNode(null, 0, 0, 40, 40);
     rect.fills = [];

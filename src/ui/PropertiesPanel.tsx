@@ -48,7 +48,7 @@ import type { ComponentNode, ComponentPropertyValue, InstanceNode } from '../mod
 import { staleLibraryInstances } from '../model/library';
 import type { AutoLayout, ComponentPropertyDefinition, Constraints, GridTrackSize, LayoutGrid, MaskType } from '../model/types';
 import type { Effect } from '../model/types';
-import type { StrokeJoin } from '../model/types';
+import type { StrokeCap, StrokeJoin } from '../model/types';
 import { DEFAULT_MITER_LIMIT } from '../model/types';
 import { absoluteBounds, findNode, findParent } from '../model/tree';
 import { variablesOf } from '../model/variables';
@@ -711,6 +711,24 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
               />
             </div>
             {node.type === 'RECTANGLE' || node.type === 'FRAME' ? <IndividualStrokes node={node} /> : null}
+            <div className="prop-row">
+              <span className="prop-row__label">Cap</span>
+              <select
+                className="input"
+                aria-label="Stroke cap"
+                // Pigma has no arrowheads, so an arrow cap is drawn as a butt end; the tooltip says so.
+                title={node.strokeCap === 'ARROW_LINES' || node.strokeCap === 'ARROW_EQUILATERAL' ? 'Arrow caps are drawn as butt ends' : undefined}
+                value={node.strokeCap ?? 'NONE'}
+                onChange={(event) => updateSelected({ strokeCap: event.target.value as StrokeCap }, 'Set stroke cap')}
+              >
+                <option value="NONE">None</option>
+                <option value="ROUND">Round</option>
+                <option value="SQUARE">Square</option>
+                {node.strokeCap === 'ARROW_LINES' || node.strokeCap === 'ARROW_EQUILATERAL' ? (
+                  <option value={node.strokeCap}>{node.strokeCap === 'ARROW_LINES' ? 'Arrow lines' : 'Arrow equilateral'}</option>
+                ) : null}
+              </select>
+            </div>
             <div className="prop-row">
               <span className="prop-row__label">Join</span>
               <select
