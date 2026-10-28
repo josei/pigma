@@ -3,7 +3,7 @@ import { absoluteBounds, findNode, findParent, parentAndIndex, worldTransform } 
 import { boundsOf, rotationOf, roundTo as round } from './matrix';
 import { figmaColorToCss, firstVisibleFill, paintToCssBackground, rgbaToHex } from './paint';
 import { valuesAt } from './keyframes';
-import { ARROW_HEAD_LENGTH, arrowheadsOf, isArrowCap } from './arrowheads';
+import { ARROW_HEAD_LENGTH, arrowheadPaths, arrowheadsOf, isArrowCap } from './arrowheads';
 import { openPolylinesOf } from './boolean';
 import type { KeyframeTrack } from './types';
 import { DEFAULT_MITER_LIMIT } from './types';
@@ -137,10 +137,13 @@ export function cssDeclarations(file: PigmaFile, id: string): string[] {
   const node = findNode(file.document, id);
   const measured = measurements(file, id);
   if (!node || !measured || node.type === 'DOCUMENT' || node.type === 'CANVAS') return [];
+  const stroked = node.type === 'LINE' && firstVisibleFill(node.strokes);
+  // The canvas centres a line's stroke on its y, but the box's top border sits inside the box, so the box starts half a weight higher.
+  const top = stroked ? round(measured.relativeY - (node.strokeWeight ?? 1) / 2, 2) : measured.relativeY;
   const lines: string[] = [
     'position: absolute;',
     `left: ${measured.relativeX}px;`,
-    `top: ${measured.relativeY}px;`,
+    `top: ${top}px;`,
     `width: ${measured.width}px;`,
     `height: ${measured.height}px;`,
   ];
@@ -240,6 +243,25 @@ function jsxValue(value: string): string {
 }
 
 /** A copyable React component for the selection (inline styles). */
+/**
+ * An arrow line's arrowheads as an SVG child of its box. The box's padding starts a stroke weight below its top, and the stroke is
+ * centred half a weight below the box top, so the SVG is placed half a weight up from the padding and shares the line's origin.
+ * Null for a line without an arrow cap or without a solid stroke.
+ */
+function arrowSvgOf(node: SceneNode): string | null {
+  if (node.type !== 'LINE' || !isArrowCap(node.strokeCap)) return null;
+  const stroke = firstVisibleFill(node.strokes);
+  if (!stroke || stroke.type !== 'SOLID') return null;
+  const colour = paintToCssBackground(stroke);
+  const weight = node.strokeWeight ?? 1;
+  const { arms, heads } = arrowheadPaths(openPolylinesOf(node), node.strokeCap, weight, node.arrowHeadLength ?? ARROW_HEAD_LENGTH);
+  const marks = [
+    arms ? `<path d="${arms}" fill="none" stroke="${colour}" strokeWidth={${round(weight, 2)}} />` : '',
+    heads ? `<path d="${heads}" fill="${colour}" stroke="none" />` : '',
+  ].filter(Boolean);
+  return `\n        <svg\n          style={{ position: 'absolute', left: 0, top: ${round(-weight / 2, 2)}, overflow: 'visible' }}\n          width={0}\n          height={0}\n        >${marks.map((mark) => `\n          ${mark}`).join('')}\n        </svg>\n      `;
+}
+
 export function toReact(file: PigmaFile, id: string): string {
   const node = findNode(file.document, id);
   if (!node || node.type === 'DOCUMENT' || node.type === 'CANVAS') return '';
@@ -252,11 +274,11 @@ export function toReact(file: PigmaFile, id: string): string {
     const value = rest.join(':').trim();
     if (!property || !value) continue;
     if (property === 'position') continue;
-    if (/^[0-9.]+px$/.test(value)) {
+    if (/^-?[0-9.]+px$/.test(value)) {
       entries.push(`    ${property}: ${Number.parseFloat(value)},`);
       continue;
     }
-    if (/^[0-9.]+$/.test(value)) {
+    if (/^-?[0-9.]+$/.test(value)) {
       entries.push(`    ${property}: ${value},`);
       continue;
     }
@@ -272,7 +294,8 @@ export function toReact(file: PigmaFile, id: string): string {
   // A keyed layer also gets its animation in the style, and its @keyframes in a <style> element beside it.
   const motion = keyframesCss(file, id);
   if (motion) entries.push(`    animation: ${jsxValue(`${motionName(node)} ${motionSpan(node)}ms linear both`)},`);
-  const element = `<${tag}\n      style={{\n        position: 'absolute',\n${entries.join('\n')}\n      }}\n    >${body}</${tag}>`;
+  const arrows = arrowSvgOf(node);
+  const element = `<${tag}\n      style={{\n        position: 'absolute',\n${entries.join('\n')}\n      }}\n    >${arrows ?? body}</${tag}>`;
   const markup = motion ? `<>\n      <style>{\`${motion}\`}</style>\n      ${element}\n    </>` : element;
   return `export function ${component}() {\n  return (\n    ${markup}\n  );\n}\n`;
 }

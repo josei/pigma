@@ -578,7 +578,23 @@ describe('SwiftUI for keyframes', () => {
     const css = toCss(file, line.id);
     expect(css).toContain('border-top: 4px solid rgb(0, 0, 0);');
     expect(css).not.toMatch(/\n  border: /);
+    // The stroke is centred on the line's y, so the box starts half a weight above it: 2px above a line at y 0.
+    expect(css).toContain('top: -2px;');
     expect(toReact(file, line.id)).toContain('borderTop');
+  });
+
+  it('draws an arrow line in React with an SVG child for its heads, placed on the stroke\'s centre line', () => {
+    const file = emptyFile('ReactArrow');
+    const page = file.document.children[0]!;
+    const line = createLineNode(null, 0, 0, 100);
+    line.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    line.strokeWeight = 4;
+    line.strokeCap = 'ARROW_EQUILATERAL';
+    page.children = [line];
+    const react = toReact(file, line.id);
+    expect(react).toContain('<svg');
+    expect(react).toContain('top: -2, overflow');
+    expect(react).toContain('<path d="M 0 0 L 20 11.547 L 20 -11.547 Z M 100 0 L 80 -11.547 L 80 11.547 Z" fill="rgb(0, 0, 0)" stroke="none" />');
   });
 
   it('gives a dashed stroke a dashed border in CSS and React, and a StrokeStyle with its pattern and offset in SwiftUI', () => {
