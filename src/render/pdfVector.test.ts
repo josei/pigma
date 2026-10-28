@@ -105,6 +105,19 @@ describe('vector PDF', () => {
     expect(body).toContain('0 0 1 RG');
   });
 
+  it('starts the PDF dash pattern at its offset, in the same weight units as the pattern', () => {
+    const rect = createRectNode(null, 0, 0, 40, 40);
+    rect.fills = [];
+    rect.strokes = [solid(0, 0, 1)];
+    rect.strokeWeight = 4;
+    rect.dashPattern = [8, 4];
+    rect.dashOffset = 2;
+    const { file, nodes } = page([rect]);
+    const body = decode(renderVectorPdf(file, nodes, { width: 40, height: 40 }).bytes);
+    // Two units of offset at a weight of four is eight points.
+    expect(body).toContain('[32 16] 8 d');
+  });
+
   it('renders ellipses, stars and boolean geometry as paths', () => {
     const ellipse = createEllipseNode(null, 0, 0, 60, 40);
     ellipse.fills = [solid(0, 1, 0)];

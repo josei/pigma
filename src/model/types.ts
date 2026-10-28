@@ -414,6 +414,8 @@ export interface BaseNode {
   strokeCap?: StrokeCap;
   strokeJoin?: StrokeJoin;
   dashPattern?: number[];
+  /** Where the dash pattern starts, in the pattern's units; absent or 0 starts at the first dash. */
+  dashOffset?: number;
   effects?: Effect[];
   constraints?: Constraints;
   /** Present when the node is inside an auto-layout parent. */

@@ -694,14 +694,23 @@ interface StrokeLine {
  * one stops at its last. An odd pattern repeats to become even, as SVG does. A pattern with no length is no dashes at all, so the
  * caller draws the solid line instead.
  */
-function dashesOf(points: Ring, pattern: number[], closed: boolean): Ring[] {
+/** The dashes along a path, with the pattern starting `offset` units in: the first dash is cut short by the offset. */
+export function dashesOf(points: Ring, pattern: number[], closed: boolean, offset = 0): Ring[] {
   const lengths = pattern.length % 2 === 1 ? [...pattern, ...pattern] : pattern;
   const total = lengths.reduce((sum, value) => sum + value, 0);
   if (!(total > 0)) return [];
   const dashes: Ring[] = [];
   let current: Ring | null = null;
+  // Start the pattern `offset` units in, wrapped to one period, so an offset of a whole period changes nothing.
+  let skip = ((offset % total) + total) % total;
   let index = 0;
   let remaining = lengths[0]!;
+  while (skip > 0 && skip >= remaining) {
+    skip -= remaining;
+    index = (index + 1) % lengths.length;
+    remaining = lengths[index]!;
+  }
+  remaining -= skip;
   const edges = closed ? points.length : points.length - 1;
   for (let edge = 0; edge < edges; edge += 1) {
     const [x0, y0] = points[edge]!;
@@ -795,14 +804,15 @@ export function outlineStrokeOp(file: PigmaFile, id: string): OutlineResult {
   const shape = align === 'CENTER' || closedRings.length === 0 ? null : (evenOddPolygons(closedRings) as unknown as MultiPolygon);
   // Each closed edge and each open line is drawn solid, or as its dashes when there is a pattern with dashes.
   const pattern = node.dashPattern ?? [];
+  const offset = node.dashOffset ?? 0;
   const lines: StrokeLine[] = [];
   for (const ring of closedRings) {
-    const dashes = pattern.length > 0 ? dashesOf(ring, pattern, true) : [];
+    const dashes = pattern.length > 0 ? dashesOf(ring, pattern, true, offset) : [];
     if (dashes.length > 0) lines.push(...dashes.map((points) => ({ points, closed: false })));
     else lines.push({ points: ring, closed: true });
   }
   for (const line of openLines) {
-    const dashes = pattern.length > 0 ? dashesOf(line.points, pattern, false) : [];
+    const dashes = pattern.length > 0 ? dashesOf(line.points, pattern, false, offset) : [];
     if (dashes.length > 0) lines.push(...dashes.map((points) => ({ points, closed: false })));
     else lines.push(line);
   }

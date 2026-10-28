@@ -826,6 +826,8 @@ export interface NodePatch {
   strokeAlign?: StrokeAlign;
   /** Dash pattern in stroke-weight units (Figma's `dashPattern`); [] clears it. */
   dashPattern?: number[];
+  /** Where the dash pattern starts, in the pattern's units. */
+  dashOffset?: number;
   cornerRadius?: number;
   /**
    * Sides of a polygon / points of a star (Figma's `pointCount`). Ignored for

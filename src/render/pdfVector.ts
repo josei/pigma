@@ -389,7 +389,7 @@ function strokeExtras(builder: PdfBuilder, node: SceneNode): void {
   builder.content.push(node.strokeCap === 'ROUND' ? '1 J' : node.strokeCap === 'SQUARE' ? '2 J' : '0 J');
   builder.content.push(node.strokeJoin === 'ROUND' ? '1 j' : node.strokeJoin === 'BEVEL' ? '2 j' : '0 j');
   if (node.dashPattern && node.dashPattern.length > 0) {
-    builder.content.push(`[${node.dashPattern.map((value) => num(value * weight)).join(' ')}] 0 d`);
+    builder.content.push(`[${node.dashPattern.map((value) => num(value * weight)).join(' ')}] ${num((node.dashOffset ?? 0) * weight)} d`);
   } else {
     builder.content.push('[] 0 d');
   }

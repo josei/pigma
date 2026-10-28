@@ -709,7 +709,12 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
               />
             </div>
             {node.type === 'RECTANGLE' || node.type === 'FRAME' ? <IndividualStrokes node={node} /> : null}
-            <DashRow dash={node.dashPattern ?? []} onChange={(pattern) => updateSelected({ dashPattern: pattern }, 'Set dash pattern')} />
+            <DashRow
+              dash={node.dashPattern ?? []}
+              offset={node.dashOffset ?? 0}
+              onChange={(pattern) => updateSelected({ dashPattern: pattern }, 'Set dash pattern')}
+              onOffsetChange={(value) => updateSelected({ dashOffset: value }, 'Set dash offset')}
+            />
           </>
         ) : null}
         {node.type === 'POLYGON' || node.type === 'STAR' ? (
@@ -2372,7 +2377,7 @@ const DASH_PRESETS: Array<{ value: string; label: string; pattern: number[] }> =
 ];
 
 /** Stroke dash pattern: presets plus a free-form pattern. */
-function DashRow({ dash, onChange }: { dash: number[]; onChange: (pattern: number[]) => void }) {
+function DashRow({ dash, offset, onChange, onOffsetChange }: { dash: number[]; offset: number; onChange: (pattern: number[]) => void; onOffsetChange: (value: number) => void }) {
   const preset = DASH_PRESETS.find((entry) => entry.pattern.join(',') === dash.join(','))?.value ?? 'custom';
   const [custom, setCustom] = useState(dash.join(' '));
   return (
@@ -2412,6 +2417,11 @@ function DashRow({ dash, onChange }: { dash: number[]; onChange: (pattern: numbe
               onChange(custom.split(/[^0-9.]+/).map(Number).filter((value) => Number.isFinite(value) && value > 0));
             }}
           />
+        </div>
+      ) : null}
+      {dash.length > 0 ? (
+        <div className="prop-row">
+          <NumberField label="Offset" value={offset} step={1} onCommit={onOffsetChange} />
         </div>
       ) : null}
     </>

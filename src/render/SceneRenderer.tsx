@@ -899,6 +899,7 @@ function StrokeShapes({ node, path }: { node: SceneNode; path: string | null }) 
           strokeLinecap: STROKE_CAP[node.strokeCap ?? 'NONE'] ?? 'butt',
           strokeLinejoin: (node.strokeJoin ?? 'MITER').toLowerCase() as 'miter',
           strokeDasharray: node.dashPattern?.length ? node.dashPattern.join(' ') : undefined,
+          strokeDashoffset: node.dashPattern?.length && node.dashOffset ? node.dashOffset : undefined,
         };
         const clip = align === 'INSIDE' ? `url(#${strokeClipDefId(node.id, index)})` : undefined;
         const mask = align === 'OUTSIDE' ? `url(#${strokeMaskDefId(node.id, index)})` : undefined;

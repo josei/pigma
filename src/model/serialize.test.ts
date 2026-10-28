@@ -26,6 +26,20 @@ describe('serialization and validation', () => {
     expect(serializeFile(result.file!)).toBe(json);
   });
 
+  it('keeps a dash offset through a save and a load, and drops a zero offset', () => {
+    const file = emptyFile('Dash');
+    const rect = createRectNode(null, 0, 0, 40, 40);
+    rect.dashPattern = [8, 4];
+    rect.dashOffset = 3;
+    const zero = createRectNode(null, 50, 0, 40, 40);
+    zero.dashPattern = [8, 4];
+    zero.dashOffset = 0;
+    file.document.children[0]!.children = [rect, zero];
+    const restored = parseFile(serializeFile(file)).file!.document.children[0]!.children as Array<SceneNode & { dashOffset?: number }>;
+    expect(restored[0]!.dashOffset).toBe(3);
+    expect(restored[1]!.dashOffset).toBeUndefined();
+  });
+
   it('preserves unsupported Figma fields through a round trip', () => {
     const json = serializeFile(fileWithRaw());
     const result = parseFile(json);

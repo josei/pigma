@@ -515,6 +515,8 @@ function nodeChange(
   // The NATIVE schema spells this `dashPattern`; `strokeDashes` is the REST API's
   // name, so writing it here made the encoder drop the field silently.
   if (node.dashPattern) change.dashPattern = node.dashPattern;
+  // The schema has no dash offset, so this field is written only to be reported as unencodable.
+  if (node.dashOffset) change.dashOffset = node.dashOffset;
   const effects = toNativeEffects(node.effects);
   if (effects.length > 0) change.effects = effects;
   if (node.type === 'CANVAS') {
@@ -1139,6 +1141,7 @@ const NOTICEABLE_FIELDS = new Set([
   // change object the encoder sees.
   'strokeDashes',
   'dashPattern',
+  'dashOffset',
 ]);
 
 /**

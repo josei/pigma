@@ -1433,7 +1433,7 @@ export const useEditor = create<EditorState>((set, get) => ({
     const node = selectedNodes(get())[0] as (SceneNode & Record<string, unknown>) | undefined;
     if (!node) return;
     // Appearance only: never geometry, name or content, so pasting cannot move or rename.
-    const keys = ['opacity', 'blendMode', 'fills', 'strokes', 'strokeWeight', 'strokeAlign', 'dashPattern', 'cornerRadius', 'rectangleCornerRadii', 'effects'] as const;
+    const keys = ['opacity', 'blendMode', 'fills', 'strokes', 'strokeWeight', 'strokeAlign', 'dashPattern', 'dashOffset', 'cornerRadius', 'rectangleCornerRadii', 'effects'] as const;
     const patch: Record<string, unknown> = {};
     for (const key of keys) if (node[key] !== undefined) patch[key] = structuredClone(node[key]);
     // Text layers also carry their type setting; other layers ignore it on paste.

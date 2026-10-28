@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { outlineStrokeOp } from './boolean';
+import { dashesOf, outlineStrokeOp } from './boolean';
 import { createEllipseNode, createFrameNode, createLineNode, createRectNode, createShapeNode } from './factory';
 import { solidPaint } from './paint';
 import { emptyFile } from './validate';
@@ -126,6 +126,36 @@ describe('outline stroke', () => {
     expect(area).toBeLessThan(solid.area * 0.85);
     expect(area).toBeGreaterThan(solid.area * 0.4);
     expect(outline.pathData.split('M').length - 1).toBeGreaterThan(4);
+  });
+
+  it('a dash offset starts the pattern partway in, so the first dash is cut short and the last one is whole', () => {
+    // A 100-unit line with dashes of 10 and gaps of 10: from the start there are five dashes, at 0, 20, 40, 60 and 80.
+    const line: Array<[number, number]> = [
+      [0, 0],
+      [100, 0],
+    ];
+    expect(dashesOf(line, [10, 10], false)).toHaveLength(5);
+    expect(dashesOf(line, [10, 10], false)[0]).toEqual([
+      [0, 0],
+      [10, 0],
+    ]);
+    // Five units in, the first dash has five units left, and the pattern then gives six dashes, the last one cut at the end.
+    const offset = dashesOf(line, [10, 10], false, 5);
+    expect(offset).toHaveLength(6);
+    expect(offset[0]).toEqual([
+      [0, 0],
+      [5, 0],
+    ]);
+    expect(offset[1]).toEqual([
+      [15, 0],
+      [25, 0],
+    ]);
+    expect(offset[5]).toEqual([
+      [95, 0],
+      [100, 0],
+    ]);
+    // A whole period of offset changes nothing.
+    expect(dashesOf(line, [10, 10], false, 20)).toEqual(dashesOf(line, [10, 10], false));
   });
 
   it('refuses a layer that is not a rectangle, ellipse or vector', () => {
