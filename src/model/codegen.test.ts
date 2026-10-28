@@ -581,7 +581,7 @@ describe('SwiftUI for keyframes', () => {
     expect(toCss(file, rect.id)).toContain('border: 2px dashed');
     expect(toReact(file, rect.id)).toContain('dashed');
     const swift = toSwiftUI(file, rect.id);
-    expect(swift).toContain('.overlay(Rectangle().stroke(Color(red: 0, green: 0, blue: 0), style: StrokeStyle(lineWidth: 2, dash: [8, 4], dashPhase: 3)))');
+    expect(swift).toContain('.overlay(Rectangle().stroke(Color(red: 0, green: 0, blue: 0), style: StrokeStyle(lineWidth: 2, miterLimit: 4, dash: [8, 4], dashPhase: 3)))');
   });
 
   it('leaves an unkeyed layer as the plain SwiftUI view it was', () => {
@@ -609,6 +609,45 @@ describe('SwiftUI for keyframes', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pigma-swiftui-'));
     const source = join(dir, 'Card.swift');
     writeFileSync(source, `import SwiftUI\n\n${toSwiftUI(file, id)}`);
+    const target = process.arch === 'arm64' ? 'arm64-apple-macos14' : 'x86_64-apple-macos14';
+    expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
+  });
+
+  it('gives a stroke its cap, its join and its miter limit in the StrokeStyle, and leaves a plain line as lineWidth', () => {
+    const file = emptyFile('Caps');
+    const page = file.document.children[0]!;
+    const round = createRectNode(null, 0, 0, 120, 80);
+    round.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    round.strokeWeight = 6;
+    round.strokeCap = 'ROUND';
+    round.strokeJoin = 'BEVEL';
+    const sharp = createRectNode(null, 0, 0, 120, 80);
+    sharp.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    sharp.strokeWeight = 2;
+    sharp.strokeMiterLimit = 2;
+    const plain = createRectNode(null, 0, 0, 120, 80);
+    plain.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    plain.strokeWeight = 2;
+    page.children = [round, sharp, plain];
+    expect(toSwiftUI(file, round.id)).toContain('style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .bevel))');
+    expect(toSwiftUI(file, sharp.id)).toContain('style: StrokeStyle(lineWidth: 2, miterLimit: 2))');
+    expect(toSwiftUI(file, plain.id)).toContain('.stroke(Color(red: 0, green: 0, blue: 0), lineWidth: 2))');
+  });
+
+  it.skipIf(!swiftcAvailable)('the SwiftUI view for a stroke with a cap and a join typechecks in Swift', () => {
+    const file = emptyFile('Caps');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 120, 80);
+    rect.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    rect.strokeWeight = 6;
+    rect.strokeCap = 'SQUARE';
+    rect.strokeJoin = 'MITER';
+    rect.strokeMiterLimit = 3;
+    rect.dashPattern = [8, 4];
+    page.children = [rect];
+    const dir = mkdtempSync(join(tmpdir(), 'pigma-swiftui-caps-'));
+    const source = join(dir, 'Caps.swift');
+    writeFileSync(source, `import SwiftUI\n\n${toSwiftUI(file, rect.id)}`);
     const target = process.arch === 'arm64' ? 'arm64-apple-macos14' : 'x86_64-apple-macos14';
     expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
   });

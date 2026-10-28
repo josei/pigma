@@ -24,5 +24,5 @@ test('B189a the Inspect code for a dashed stroke names the dashed border, and th
 
   await page.locator('[aria-label="Show SwiftUI"]').click();
   await nextPaint(page);
-  await expect.poll(async () => (await code()) ?? '').toContain('StrokeStyle(lineWidth: 2, dash: [8, 4], dashPhase: 3)');
+  await expect.poll(async () => (await code()) ?? '').toContain('StrokeStyle(lineWidth: 2, miterLimit: 4, dash: [8, 4], dashPhase: 3)');
 });

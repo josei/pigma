@@ -4,6 +4,7 @@ import { boundsOf, rotationOf, roundTo as round } from './matrix';
 import { figmaColorToCss, firstVisibleFill, paintToCssBackground, rgbaToHex } from './paint';
 import { valuesAt } from './keyframes';
 import type { KeyframeTrack } from './types';
+import { DEFAULT_MITER_LIMIT } from './types';
 
 /**
  * Dev-mode style inspection (M14).
@@ -522,6 +523,27 @@ function composeShape(node: SceneNode): string | null {
 }
 
 /** A copyable SwiftUI view for the selection. */
+/**
+ * A SwiftUI StrokeStyle for a stroke that is more than a plain line: a dash, a cap, a join, or an explicit miter limit. The arguments
+ * come in the initializer's order. The dash is in the units the canvas uses. Arrow caps are .butt, since SwiftUI has no arrowheads.
+ * A miter join always states its limit, because SwiftUI's own default (10) is not Pigma's (4). Null for a plain line.
+ */
+function swiftStrokeStyle(node: SceneNode, width: number): string | null {
+  const pattern = node.dashPattern ?? [];
+  const cap = node.strokeCap === 'ROUND' ? '.round' : node.strokeCap === 'SQUARE' ? '.square' : null;
+  const join = node.strokeJoin === 'ROUND' ? '.round' : node.strokeJoin === 'BEVEL' ? '.bevel' : null;
+  const miterSet = node.strokeMiterLimit !== undefined && !join;
+  if (pattern.length === 0 && !cap && !join && !miterSet) return null;
+  const parts = [`lineWidth: ${width}`];
+  if (cap) parts.push(`lineCap: ${cap}`);
+  if (join) parts.push(`lineJoin: ${join}`);
+  if (!join) parts.push(`miterLimit: ${round(node.strokeMiterLimit ?? DEFAULT_MITER_LIMIT, 2)}`);
+  if (pattern.length > 0) {
+    parts.push(`dash: [${pattern.map((value) => round(value, 2)).join(', ')}]`, `dashPhase: ${round(node.dashOffset ?? 0, 2)}`);
+  }
+  return `StrokeStyle(${parts.join(', ')})`;
+}
+
 export function toSwiftUI(file: PigmaFile, id: string): string {
   const node = findNode(file.document, id);
   const measured = measurements(file, id);
@@ -591,11 +613,7 @@ export function toSwiftUI(file: PigmaFile, id: string): string {
       if (stroke && stroke.type === 'SOLID') {
         const color = swiftColor(stroke.color, stroke.opacity ?? 1);
         const width = round(node.strokeWeight ?? 1, 2);
-        // A dashed stroke takes its pattern and offset in a StrokeStyle, in the same units the canvas uses.
-        const pattern = node.dashPattern ?? [];
-        const style = pattern.length > 0
-          ? `StrokeStyle(lineWidth: ${width}, dash: [${pattern.map((value) => round(value, 2)).join(', ')}], dashPhase: ${round(node.dashOffset ?? 0, 2)})`
-          : null;
+        const style = swiftStrokeStyle(node, width);
         lines.push(
           style
             ? `      .overlay(${shape}.stroke(${color}, style: ${style}))`
