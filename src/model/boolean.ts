@@ -827,14 +827,15 @@ export function outlineStrokeOp(file: PigmaFile, id: string): OutlineResult {
     if (dashes.length > 0) lines.push(...dashes.map((points) => ({ points, closed: false })));
     else lines.push({ points: ring, closed: true });
   }
-  for (const line of openLines) {
+  // The arms of an arrow line are open lines like the path's, so a dashed stroke dashes them too; the triangles of an equilateral
+  // arrow are added to the band instead.
+  const arrowheads = arrow ? arrowheadsOf(openLines.map((line) => line.points), arrow, weight) : null;
+  const arms: StrokeLine[] = arrowheads ? arrowheads.arms.map((points) => ({ points, closed: false, cap: 'NONE' as StrokeCap })) : [];
+  for (const line of [...openLines, ...arms]) {
     const dashes = pattern.length > 0 ? dashesOf(line.points, pattern, false, offset) : [];
     if (dashes.length > 0) lines.push(...dashes.map((points) => ({ points, closed: false })));
     else lines.push(line);
   }
-  // The arms of an arrow line are solid strokes of the layer's weight; the triangles of an equilateral arrow are added to the band.
-  const arrowheads = arrow ? arrowheadsOf(openLines.map((line) => line.points), arrow, weight) : null;
-  if (arrowheads) lines.push(...arrowheads.arms.map((points) => ({ points, closed: false, cap: 'NONE' as StrokeCap })));
 
   let band: Ring[][] | null = null;
   const join = node.strokeJoin ?? 'MITER';

@@ -140,6 +140,22 @@ describe('vector PDF', () => {
     expect(operators('ARROW_LINES')).toEqual({ fills: 0, strokes: 2 });
   });
 
+  it('keeps the dash pattern on for the arms of an arrow line, so the arms are dashed too', () => {
+    const line = createLineNode(null, 0, 0, 100);
+    line.fills = [];
+    line.strokes = [solid(0, 0, 1)];
+    line.strokeWeight = 4;
+    line.strokeCap = 'ARROW_LINES';
+    line.dashPattern = [8, 4];
+    const { file, nodes } = page([line]);
+    const body = decode(renderVectorPdf(file, nodes, { width: 100, height: 40 }).bytes);
+    // The dash is set before the arms are stroked, and the arms are the last stroke, so nothing resets it between them.
+    const dash = body.indexOf('[32 16] 0 d');
+    const arms = body.lastIndexOf('\nS');
+    expect(dash).toBeGreaterThan(-1);
+    expect(arms).toBeGreaterThan(dash);
+  });
+
   it('sets the PDF miter limit: the SVG default of 4 unless the layer sets its own', () => {
     const rect = createRectNode(null, 0, 0, 40, 40);
     rect.fills = [];

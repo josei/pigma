@@ -254,6 +254,15 @@ describe('outline stroke on a line and an open path', () => {
     expect(band.area).toBeLessThan(3050);
   });
 
+  it('a dashed stroke dashes the arms of an arrow line too, so the arms cover less than solid ones', () => {
+    const { file, id } = line('ARROW_LINES');
+    const solid = bandOf(file, id);
+    const dashed = updateNode(file.document, id, (node) => ({ ...node, dashPattern: [10, 10] }) as AnyNode);
+    const band = bandOf({ ...file, document: dashed }, id);
+    expect(band.area).toBeLessThan(solid.area);
+    expect(band.area).toBeGreaterThan(1000);
+  });
+
   it('an arrow-lines cap on a line adds two chevron arms at each end, taller than the butt band', () => {
     const { file, id } = line('ARROW_LINES');
     const band = bandOf(file, id);

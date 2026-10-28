@@ -921,7 +921,17 @@ function StrokeShapes({ node, path }: { node: SceneNode; path: string | null }) 
         return (
           <g key={index} clipPath={clip} mask={mask}>
             {shape}
-            {arrows?.arms ? <path d={arrows.arms} fill="none" stroke={resolution.value} strokeOpacity={resolution.opacity} strokeWidth={weight} /> : null}
+            {arrows?.arms ? (
+              <path
+                d={arrows.arms}
+                fill="none"
+                stroke={resolution.value}
+                strokeOpacity={resolution.opacity}
+                strokeWidth={weight}
+                strokeDasharray={common.strokeDasharray}
+                strokeDashoffset={common.strokeDashoffset}
+              />
+            ) : null}
             {arrows?.heads ? <path d={arrows.heads} fill={resolution.value} fillOpacity={resolution.opacity} stroke="none" /> : null}
           </g>
         );

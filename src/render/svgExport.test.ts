@@ -197,6 +197,19 @@ describe('stroke and corner polish', () => {
     expect(lineWith('ARROW_LINES')).not.toContain('stroke="none"');
   });
 
+  it('dashes the arms of an arrow line with the layer\'s dash pattern', () => {
+    const file = emptyFile('Arrow');
+    const line = createLineNode(null, 0, 0, 100);
+    line.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    line.strokeWeight = 4;
+    line.strokeCap = 'ARROW_LINES';
+    line.dashPattern = [8, 4];
+    file.document.children[0]!.children = [line];
+    // The arms are a path of their own, so the dash pattern is on that path as well as on the line.
+    expect(renderSvgDocument(file, [line])).toContain('<path d="M ');
+    expect(renderSvgDocument(file, [line]).match(/<path[^>]*stroke-dasharray="8 4"/g)).toHaveLength(1);
+  });
+
   it('exports a miter limit as stroke-miterlimit, only when the layer sets one', () => {
     expect(styled({ miterLimit: 1.5 })).toContain('stroke-miterlimit="1.5"');
     expect(styled({})).not.toContain('stroke-miterlimit');
