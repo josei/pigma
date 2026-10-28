@@ -101,6 +101,8 @@ interface PdfBuilder {
   shadings: string[];
   /** Optional `cm` operator per shading, from the paint's gradient transform. */
   shadingTransforms: Map<string, string>;
+  /** Shading patterns for gradient strokes: the shading's index, and the matrix from its space to the page. */
+  patterns: Array<{ shading: number; matrix: Transform }>;
   gstates: Map<string, number>;
   /** Set of features already reported, so warnings stay readable. */
   reported: Set<string>;
@@ -154,6 +156,7 @@ function paintShape(
   paint: Paint,
   index: number,
   kind: 'fill' | 'stroke',
+  matrix?: Transform,
 ): void {
   const path = pdfShapePath(node);
   if (!path) return;
@@ -190,11 +193,19 @@ function paintShape(
       if (transform) builder.content.push('Q');
       builder.content.push('Q');
     } else {
-      warnOnce(builder, 'gradient-stroke', 'Gradient strokes are exported as a flat colour');
-      const [r, g, b] = midStop(paint);
-      builder.content.push(`${num(r)} ${num(g)} ${num(b)} RG`);
-      builder.content.push(pdfPath);
-      builder.content.push('S');
+      // A gradient stroke takes a shading pattern, so the gradient is laid out in the node's own space, as a fill is.
+      const pattern = matrix ? strokePatternName(builder, shading, matrix, paint) : null;
+      if (pattern) {
+        builder.content.push(`/Pattern CS /${pattern} SCN`);
+        builder.content.push(pdfPath);
+        builder.content.push('S');
+      } else {
+        warnOnce(builder, 'gradient-stroke', 'Gradient strokes are exported as a flat colour');
+        const [r, g, b] = midStop(paint);
+        builder.content.push(`${num(r)} ${num(g)} ${num(b)} RG`);
+        builder.content.push(pdfPath);
+        builder.content.push('S');
+      }
     }
     return;
   }
@@ -299,6 +310,18 @@ function shadingName(
   void kind;
   void index;
   return name;
+}
+
+/**
+ * A shading pattern for a gradient stroke. The shading was registered as for a fill, and the pattern maps its space to the page: the
+ * gradient transform comes first and the node's own matrix second, as they do for a fill. Returns the pattern's name.
+ */
+function strokePatternName(builder: PdfBuilder, shading: string, matrix: Transform, paint: Paint): string {
+  const transform = paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL' ? paint.gradientTransform : undefined;
+  const gradient = transform ? fromMatrix(transform) : null;
+  // The shading's name is `Sh` plus its place in the list, so its index is that number less one.
+  builder.patterns.push({ shading: Number(shading.slice(2)) - 1, matrix: gradient ? multiply(matrix, gradient) : matrix });
+  return `P${builder.patterns.length}`;
 }
 
 /** The link colour as PDF components: the same blue the canvas and SVG use (#0070c4). */
@@ -460,7 +483,7 @@ function paintNode(builder: PdfBuilder, file: PigmaFile, node: SceneNode, parent
       const stroke = target.strokes.find((paint) => paint.visible !== false);
       if (stroke && (target.strokeWeight ?? 1) > 0) {
         strokeExtras(builder, target);
-        paintShape(builder, target, stroke, 0, 'stroke');
+        paintShape(builder, target, stroke, 0, 'stroke', matrix);
         paintArrowheads(builder, target, stroke);
       }
     }
@@ -484,6 +507,7 @@ export function renderVectorPdf(file: PigmaFile, nodes: SceneNode[], options: Ve
     warnings: [],
     shadings: [],
     shadingTransforms: new Map(),
+    patterns: [],
     gstates: new Map(),
     reported: new Set(),
   };
@@ -509,6 +533,8 @@ function assemblePdf(builder: PdfBuilder, options: VectorPdfOptions): Uint8Array
   const contentBytes = encoder.encode(builder.content.join('\n'));
   const objects: Array<{ head: string; stream?: Uint8Array }> = [];
   const shadingIds = builder.shadings.map((_, index) => 9 + index);
+  // Pattern objects follow the shadings, in the same numbering.
+  const patternIds = builder.patterns.map((_, index) => 9 + builder.shadings.length + index);
 
   const resources = [
     // Objects 5 to 8 are the four base-14 faces registered below.
@@ -518,6 +544,9 @@ function assemblePdf(builder: PdfBuilder, options: VectorPdfOptions): Uint8Array
       : '',
     builder.shadings.length > 0
       ? `/Shading << ${builder.shadings.map((_, index) => `/Sh${index + 1} ${shadingIds[index]} 0 R`).join(' ')} >>`
+      : '',
+    builder.patterns.length > 0
+      ? `/Pattern << ${builder.patterns.map((_, index) => `/P${index + 1} ${patternIds[index]} 0 R`).join(' ')} >>`
       : '',
   ]
     .filter(Boolean)
@@ -536,6 +565,12 @@ function assemblePdf(builder: PdfBuilder, options: VectorPdfOptions): Uint8Array
   objects.push({ head: '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>' });
   objects.push({ head: '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-BoldOblique /Encoding /WinAnsiEncoding >>' });
   for (const shading of builder.shadings) objects.push({ head: shading });
+  for (const pattern of builder.patterns) {
+    const m = pattern.matrix;
+    objects.push({
+      head: `<< /Type /Pattern /PatternType 2 /Shading ${shadingIds[pattern.shading]} 0 R /Matrix [${num(m.a)} ${num(m.b)} ${num(m.c)} ${num(m.d)} ${num(m.tx)} ${num(m.ty)}] >>`,
+    });
+  }
   if (options.title) {
     objects.push({ head: `<< /Title (${pdfString(options.title)}) /Producer (Pigma) >>` });
   }
