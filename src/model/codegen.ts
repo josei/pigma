@@ -1,7 +1,9 @@
-import type { Paint, PigmaFile, SceneNode, ShadowEffect } from './types';
+import type { AnyNode, Paint, PigmaFile, SceneNode, ShadowEffect } from './types';
 import { absoluteBounds, findNode, findParent, parentAndIndex, worldTransform } from './tree';
 import { boundsOf, rotationOf, roundTo as round } from './matrix';
 import { figmaColorToCss, firstVisibleFill, paintToCssBackground, rgbaToHex } from './paint';
+import { valuesAt } from './keyframes';
+import type { KeyframeTrack } from './types';
 
 /**
  * Dev-mode style inspection (M14).
@@ -171,14 +173,55 @@ export function cssDeclarations(file: PigmaFile, id: string): string[] {
   return lines;
 }
 
-/** A copyable CSS rule for the selection. */
+/** The time span of a layer's keys, from 0 to its last key, in milliseconds; 0 when it has none. */
+function motionSpan(node: AnyNode): number {
+  const tracks = (node as { keyframes?: KeyframeTrack[] }).keyframes ?? [];
+  return tracks.reduce((last, track) => track.keys.reduce((latest, key) => Math.max(latest, key.time), last), 0);
+}
+
+/** The name of a layer's motion: its selector, with a suffix. */
+function motionName(node: AnyNode): string {
+  return `${node.name.trim().replace(/[^A-Za-z0-9_-]+/g, '-').toLowerCase() || 'layer'}-motion`;
+}
+
+/**
+ * A CSS @keyframes block for a layer's opacity and rotation keys: one keyframe at each key time, at its percentage of the span to
+ * the last key, with the values there. A key set to ease gives its keyframe an ease-in-out timing. '' when the layer has no keys.
+ */
+export function keyframesCss(file: PigmaFile, id: string): string {
+  const node = findNode(file.document, id);
+  const span = node ? motionSpan(node) : 0;
+  if (!node || node.type === 'DOCUMENT' || node.type === 'CANVAS' || span <= 0) return '';
+  const tracks = (node as { keyframes?: KeyframeTrack[] }).keyframes ?? [];
+  const times = [...new Set(tracks.flatMap((track) => track.keys.map((key) => key.time)))].sort((a, b) => a - b);
+  const frames = times.map((time) => {
+    const values = valuesAt(node as { keyframes?: KeyframeTrack[] }, time);
+    const lines: string[] = [];
+    if (values.opacity !== undefined) lines.push(`opacity: ${round(values.opacity)};`);
+    if (values.rotation !== undefined) lines.push(`transform: rotate(${round(values.rotation)}deg);`);
+    if (tracks.some((track) => track.keys.some((key) => key.time === time && key.easing === 'EASE_IN_OUT'))) {
+      lines.push('animation-timing-function: ease-in-out;');
+    }
+    return `  ${round((time / span) * 100)}% {\n${lines.map((line) => `    ${line}`).join('\n')}\n  }`;
+  });
+  return `@keyframes ${motionName(node)} {\n${frames.join('\n')}\n}`;
+}
+
+/**
+ * A copyable CSS rule for the selection. A layer with keys also gets its animation declaration and its @keyframes block, after the
+ * rule.
+ */
 export function toCss(file: PigmaFile, id: string): string {
   const node = findNode(file.document, id);
   if (!node) return '';
   const selector = `.${node.name.trim().replace(/[^A-Za-z0-9_-]+/g, '-').toLowerCase() || 'layer'}`;
   const lines = cssDeclarations(file, id);
   if (lines.length === 0) return '';
-  return `${selector} {\n${lines.map((line) => `  ${line}`).join('\n')}\n}`;
+  const span = motionSpan(node);
+  const motion = keyframesCss(file, id);
+  const declarations = motion ? [...lines, `animation: ${motionName(node)} ${span}ms linear both;`] : lines;
+  const rule = `${selector} {\n${declarations.map((line) => `  ${line}`).join('\n')}\n}`;
+  return motion ? `${rule}\n\n${motion}` : rule;
 }
 
 function jsxValue(value: string): string {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   cssDeclarations,
+  keyframesCss,
   measurementSummary,
   measurements,
   siblingGaps,
@@ -10,6 +11,7 @@ import {
   toSwiftUI,
 } from './codegen';
 import { createFrameNode, createRectNode, createStarNode, createTextNode } from './factory';
+import { setKeyEasingOp, setKeyframeOp } from './keyframes';
 import { emptyFile } from './validate';
 import { EFFECT_TYPES } from './effects';
 
@@ -449,3 +451,60 @@ describe('the note-specificity predicate itself', () => {
     }
   });
 });
+
+describe('CSS for keyframes', () => {
+  /** A page with one rectangle named "Card", keyed by the given opacity keys (time, value). */
+  function keyed(keys: Array<[number, number]>) {
+    const file = emptyFile('Motion');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 100, 60);
+    rect.name = 'Card';
+    page.children = [rect];
+    const withKeys = keys.reduce((next, [time, value]) => setKeyframeOp(next, rect.id, 'opacity', time, value), file);
+    return { file: withKeys, id: rect.id };
+  }
+
+  it('gives a keyframe at each key time, at its percentage of the span to the last key, with the values there', () => {
+    const { file, id } = keyed([
+      [0, 1],
+      [500, 0.4],
+      [1000, 0.4],
+    ]);
+    const css = keyframesCss(file, id);
+    expect(css).toContain('@keyframes card-motion {');
+    expect(css).toContain('0% {\n    opacity: 1;');
+    expect(css).toContain('50% {\n    opacity: 0.4;');
+    expect(css).toContain('100% {\n    opacity: 0.4;');
+  });
+
+  it('gives an eased key an ease-in-out timing, and a rotation key a rotate transform', () => {
+    const { file, id } = keyed([
+      [0, 1],
+      [1000, 0],
+    ]);
+    const eased = setKeyEasingOp(file, id, 'opacity', 0, 'EASE_IN_OUT');
+    expect(keyframesCss(eased, id)).toContain('0% {\n    opacity: 1;\n    animation-timing-function: ease-in-out;');
+    const turned = setKeyframeOp(file, id, 'rotation', 1000, 90);
+    expect(keyframesCss(turned, id)).toContain('100% {\n    opacity: 0;\n    transform: rotate(90deg);');
+  });
+
+  it('is empty for a layer with no keys, or whose keys are all at time 0', () => {
+    const { file, id } = keyed([]);
+    expect(keyframesCss(file, id)).toBe('');
+    expect(keyframesCss(keyed([[0, 1]]).file, keyed([[0, 1]]).id)).toBe('');
+  });
+
+  it('adds the animation declaration and the @keyframes block to the copied CSS of a keyed layer', () => {
+    const { file, id } = keyed([
+      [0, 1],
+      [1000, 0.4],
+    ]);
+    const css = toCss(file, id);
+    expect(css).toContain('.card {');
+    expect(css).toContain('  animation: card-motion 1000ms linear both;');
+    expect(css).toContain('@keyframes card-motion {');
+    const plain = keyed([]);
+    expect(toCss(plain.file, plain.id)).not.toContain('@keyframes');
+  });
+});
+
