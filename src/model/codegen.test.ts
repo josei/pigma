@@ -568,6 +568,22 @@ describe('SwiftUI for keyframes', () => {
     expect(swift).toContain('.rotationEffect(.degrees(values.rotation))');
   });
 
+  it('gives a dashed stroke a dashed border in CSS and React, and a StrokeStyle with its pattern and offset in SwiftUI', () => {
+    const file = emptyFile('Dashed');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 120, 80);
+    rect.name = 'Dashed';
+    rect.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    rect.strokeWeight = 2;
+    rect.dashPattern = [8, 4];
+    rect.dashOffset = 3;
+    page.children = [rect];
+    expect(toCss(file, rect.id)).toContain('border: 2px dashed');
+    expect(toReact(file, rect.id)).toContain('dashed');
+    const swift = toSwiftUI(file, rect.id);
+    expect(swift).toContain('.overlay(Rectangle().stroke(Color(red: 0, green: 0, blue: 0), style: StrokeStyle(lineWidth: 2, dash: [8, 4], dashPhase: 3)))');
+  });
+
   it('leaves an unkeyed layer as the plain SwiftUI view it was', () => {
     const file = emptyFile('Plain');
     const page = file.document.children[0]!;
@@ -593,6 +609,22 @@ describe('SwiftUI for keyframes', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pigma-swiftui-'));
     const source = join(dir, 'Card.swift');
     writeFileSync(source, `import SwiftUI\n\n${toSwiftUI(file, id)}`);
+    const target = process.arch === 'arm64' ? 'arm64-apple-macos14' : 'x86_64-apple-macos14';
+    expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
+  });
+
+  it.skipIf(!swiftcAvailable)('the SwiftUI view for a dashed stroke typechecks in Swift', () => {
+    const file = emptyFile('Dashed');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 120, 80);
+    rect.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    rect.strokeWeight = 2;
+    rect.dashPattern = [8, 4];
+    rect.dashOffset = 3;
+    page.children = [rect];
+    const dir = mkdtempSync(join(tmpdir(), 'pigma-swiftui-dash-'));
+    const source = join(dir, 'Dashed.swift');
+    writeFileSync(source, `import SwiftUI\n\n${toSwiftUI(file, rect.id)}`);
     const target = process.arch === 'arm64' ? 'arm64-apple-macos14' : 'x86_64-apple-macos14';
     expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
   });

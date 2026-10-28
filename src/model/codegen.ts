@@ -146,7 +146,9 @@ export function cssDeclarations(file: PigmaFile, id: string): string[] {
   const stroke = firstVisibleFill(node.strokes);
   if (stroke) {
     const weight = node.strokeWeight ?? 1;
-    lines.push(`border: ${weight}px solid ${paintToCssBackground(stroke)};`);
+    // A border has one dash style and no dash offset, so a dashed stroke is a dashed border and the browser sets the dash length.
+    const style = node.dashPattern?.length ? 'dashed' : 'solid';
+    lines.push(`border: ${weight}px ${style} ${paintToCssBackground(stroke)};`);
   }
   if (measured.cornerRadius > 0) lines.push(`border-radius: ${measured.cornerRadius}px;`);
   if (measured.rotation !== 0) lines.push(`transform: rotate(${measured.rotation}deg);`);
@@ -587,8 +589,17 @@ export function toSwiftUI(file: PigmaFile, id: string): string {
       lines.push(`      .frame(width: ${round(measured.width, 2)}, height: ${round(measured.height, 2)})`);
       const stroke = firstVisibleFill(node.strokes);
       if (stroke && stroke.type === 'SOLID') {
+        const color = swiftColor(stroke.color, stroke.opacity ?? 1);
+        const width = round(node.strokeWeight ?? 1, 2);
+        // A dashed stroke takes its pattern and offset in a StrokeStyle, in the same units the canvas uses.
+        const pattern = node.dashPattern ?? [];
+        const style = pattern.length > 0
+          ? `StrokeStyle(lineWidth: ${width}, dash: [${pattern.map((value) => round(value, 2)).join(', ')}], dashPhase: ${round(node.dashOffset ?? 0, 2)})`
+          : null;
         lines.push(
-          `      .overlay(${shape}.stroke(${swiftColor(stroke.color, stroke.opacity ?? 1)}, lineWidth: ${round(node.strokeWeight ?? 1, 2)}))`,
+          style
+            ? `      .overlay(${shape}.stroke(${color}, style: ${style}))`
+            : `      .overlay(${shape}.stroke(${color}, lineWidth: ${width}))`,
         );
       }
       if (measured.cornerRadius > 0) lines.push(`      .cornerRadius(${round(measured.cornerRadius, 2)})`);
