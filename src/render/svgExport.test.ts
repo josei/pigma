@@ -154,7 +154,7 @@ describe('blend modes', () => {
 });
 
 describe('stroke and corner polish', () => {
-  function styled(patch: { dash?: number[]; offset?: number; radii?: [number, number, number, number] }): string {
+  function styled(patch: { dash?: number[]; offset?: number; miterLimit?: number; radii?: [number, number, number, number] }): string {
     const file = emptyFile('Polish');
     const page = file.document.children[0]!;
     const rect = createRectNode(null, 0, 0, 120, 80);
@@ -162,6 +162,7 @@ describe('stroke and corner polish', () => {
     rect.strokeWeight = 2;
     if (patch.dash) rect.dashPattern = patch.dash;
     if (patch.offset) rect.dashOffset = patch.offset;
+    if (patch.miterLimit) rect.strokeMiterLimit = patch.miterLimit;
     if (patch.radii) rect.rectangleCornerRadii = patch.radii;
     page.children = [rect];
     return renderSvgDocument(file, [rect]);
@@ -170,6 +171,11 @@ describe('stroke and corner polish', () => {
   it('exports the dash pattern as stroke-dasharray', () => {
     expect(styled({ dash: [8, 4] })).toContain('stroke-dasharray="8 4"');
     expect(styled({})).not.toContain('stroke-dasharray');
+  });
+
+  it('exports a miter limit as stroke-miterlimit, only when the layer sets one', () => {
+    expect(styled({ miterLimit: 1.5 })).toContain('stroke-miterlimit="1.5"');
+    expect(styled({})).not.toContain('stroke-miterlimit');
   });
 
   it('exports a dash offset as stroke-dashoffset, only with a dash pattern', () => {

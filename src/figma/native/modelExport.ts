@@ -517,6 +517,8 @@ function nodeChange(
   if (node.dashPattern) change.dashPattern = node.dashPattern;
   // The schema has no dash offset, so this field is written only to be reported as unencodable.
   if (node.dashOffset) change.dashOffset = node.dashOffset;
+  // The schema has no miter limit, so this field is written only to be reported as unencodable.
+  if (node.strokeMiterLimit) change.strokeMiterLimit = node.strokeMiterLimit;
   const effects = toNativeEffects(node.effects);
   if (effects.length > 0) change.effects = effects;
   if (node.type === 'CANVAS') {
@@ -1142,6 +1144,7 @@ const NOTICEABLE_FIELDS = new Set([
   'strokeDashes',
   'dashPattern',
   'dashOffset',
+  'strokeMiterLimit',
 ]);
 
 /**

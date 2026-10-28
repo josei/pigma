@@ -90,6 +90,17 @@ describe('outline stroke', () => {
     expect(band.area).toBeLessThan(3010);
   });
 
+  it('a miter limit below a corner\'s miter ratio bevels that corner, and a higher limit keeps the miter', () => {
+    // A square corner's miter is about 1.41 half widths long: a limit of 1.2 bevels it, so the band matches the bevel band, and 2 keeps it.
+    const { file, id } = stroked('CENTER');
+    const limited = (limit: number) => ({ ...file, document: updateNode(file.document, id, (node) => ({ ...node, strokeMiterLimit: limit }) as AnyNode) });
+    const bevel = stroked('CENTER', 'BEVEL');
+    expect(bandOf(limited(1.2), id).area).toBeCloseTo(bandOf(bevel.file, bevel.id).area, 3);
+    const kept = bandOf(limited(2), id);
+    expect(kept.area).toBeGreaterThan(2990);
+    expect(kept.area).toBeLessThan(3010);
+  });
+
   it('a centred stroke with bevel joins cuts each outer corner across: a band of about 2950', () => {
     // Each corner loses a quarter of its square (25 square units, less the 12.5 of the bevel triangle), so 4 x 12.5 is cut from 3000.
     const { file, id } = stroked('CENTER', 'BEVEL');

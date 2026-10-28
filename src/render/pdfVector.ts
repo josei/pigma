@@ -1,5 +1,5 @@
 import type { PigmaFile, Paint, SceneNode, TextStyle, Transform } from '../model/types';
-import { hasChildren } from '../model/types';
+import { DEFAULT_MITER_LIMIT, hasChildren } from '../model/types';
 import { fromMatrix, multiply, roundTo } from '../model/matrix';
 
 import { cornerRadii, shapePath } from './SceneRenderer';
@@ -388,6 +388,7 @@ function strokeExtras(builder: PdfBuilder, node: SceneNode): void {
   builder.content.push(`${num(weight)} w`);
   builder.content.push(node.strokeCap === 'ROUND' ? '1 J' : node.strokeCap === 'SQUARE' ? '2 J' : '0 J');
   builder.content.push(node.strokeJoin === 'ROUND' ? '1 j' : node.strokeJoin === 'BEVEL' ? '2 j' : '0 j');
+  builder.content.push(`${num(node.strokeMiterLimit ?? DEFAULT_MITER_LIMIT)} M`);
   if (node.dashPattern && node.dashPattern.length > 0) {
     builder.content.push(`[${node.dashPattern.map((value) => num(value * weight)).join(' ')}] ${num((node.dashOffset ?? 0) * weight)} d`);
   } else {

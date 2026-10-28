@@ -26,7 +26,7 @@ import {
   rotationOf,
   withRotation,
 } from './matrix';
-import type { Rect } from './types';
+import type { Rect, StrokeJoin } from './types';
 import {
   absoluteBounds,
   boundsOfNodes,
@@ -824,6 +824,9 @@ export interface NodePatch {
   strokes?: Paint[];
   strokeWeight?: number;
   strokeAlign?: StrokeAlign;
+  strokeJoin?: StrokeJoin;
+  /** Miter limit for a MITER join; the default is DEFAULT_MITER_LIMIT. */
+  strokeMiterLimit?: number;
   /** Dash pattern in stroke-weight units (Figma's `dashPattern`); [] clears it. */
   dashPattern?: number[];
   /** Where the dash pattern starts, in the pattern's units. */

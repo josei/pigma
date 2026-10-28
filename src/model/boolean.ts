@@ -4,7 +4,7 @@ import { createShapeNode } from './factory';
 import { findNode, insertChild, parentAndIndex, removeNode, updateNode, worldTransform } from './tree';
 import { applyToPoint, invert, multiply, translate } from './matrix';
 import { firstVisibleFill } from './paint';
-import { hasChildren } from './types';
+import { DEFAULT_MITER_LIMIT, hasChildren } from './types';
 import { subpathsFromPathData, type VectorAnchor, type VectorPath } from './vector';
 
 /**
@@ -586,7 +586,7 @@ function discRing(x: number, y: number, radius: number, phase: number): Ring {
  * The band of half-width `halfWidth` around closed rings: a quad along each edge, and a disc at each vertex, so every join is
  * round whatever the layer's join setting. The union of the pieces is the band.
  */
-function strokeBand(lines: StrokeLine[], halfWidth: number, phase: number, join: StrokeJoin): Ring[][] {
+function strokeBand(lines: StrokeLine[], halfWidth: number, phase: number, join: StrokeJoin, miterLimit: number): Ring[][] {
   const pieces: Ring[][][] = [];
   for (const { points: given, closed, cap } of lines) {
     // A square cap extends an open line's ends by the half width; a round cap rounds them off.
@@ -616,7 +616,7 @@ function strokeBand(lines: StrokeLine[], halfWidth: number, phase: number, join:
         pieces.push([[discRing(vertex[0], vertex[1], halfWidth, phase)]]);
         return;
       }
-      const wedge = joinOuter(before, vertex, after, halfWidth, join);
+      const wedge = joinOuter(before, vertex, after, halfWidth, join, miterLimit);
       if (wedge) pieces.push([[wedge]]);
     });
   }
@@ -627,11 +627,11 @@ function strokeBand(lines: StrokeLine[], halfWidth: number, phase: number, join:
 
 /**
  * The outer side of a turn at `vertex`, between the edges from `before` and to `after`, as a piece of the band: a bevel is the
- * triangle across the corner; a miter is the quadrilateral out to the miter point. A miter longer than four times the half
- * width is bevelled instead, as the SVG default limit has it. A round join is a disc, drawn by the caller, so it returns `null`
+ * triangle across the corner; a miter is the quadrilateral out to the miter point. A miter longer than `miterLimit` times the
+ * half width is bevelled instead. A round join is a disc, drawn by the caller, so it returns `null`
  * here. A turn that does not bend, or an edge of no length, has no outer corner to fill.
  */
-function joinOuter(before: [number, number], vertex: [number, number], after: [number, number], halfWidth: number, join: StrokeJoin): Ring | null {
+function joinOuter(before: [number, number], vertex: [number, number], after: [number, number], halfWidth: number, join: StrokeJoin, miterLimit: number): Ring | null {
   if (join === 'ROUND') return null;
   const ax = vertex[0] - before[0];
   const ay = vertex[1] - before[1];
@@ -659,7 +659,7 @@ function joinOuter(before: [number, number], vertex: [number, number], after: [n
   const by2 = vertex[1] + side * halfWidth * n2y;
   const bevel: Ring = [vertex, [ax2, ay2], [bx2, by2]];
   const denominator = 1 + cos;
-  if (join === 'BEVEL' || denominator < 1e-9 || Math.sqrt(2 / denominator) > 4) return bevel;
+  if (join === 'BEVEL' || denominator < 1e-9 || Math.sqrt(2 / denominator) > miterLimit) return bevel;
   const tipX = vertex[0] + (side * halfWidth * (n1x + n2x)) / denominator;
   const tipY = vertex[1] + (side * halfWidth * (n1y + n2y)) / denominator;
   return [vertex, [ax2, ay2], [tipX, tipY], [bx2, by2]];
@@ -819,9 +819,10 @@ export function outlineStrokeOp(file: PigmaFile, id: string): OutlineResult {
 
   let band: Ring[][] | null = null;
   const join = node.strokeJoin ?? 'MITER';
+  const miterLimit = node.strokeMiterLimit ?? DEFAULT_MITER_LIMIT;
   for (const phase of JOIN_PHASES) {
     try {
-      const full = strokeBand(lines, reach, phase, join) as unknown as MultiPolygon;
+      const full = strokeBand(lines, reach, phase, join, miterLimit) as unknown as MultiPolygon;
       if (!shape) band = full as unknown as Ring[][];
       else band = (align === 'INSIDE' ? polygonClipping.intersection(full, shape) : polygonClipping.difference(full, shape)) as unknown as Ring[][];
       break;

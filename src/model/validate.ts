@@ -25,7 +25,7 @@ import type {
   Node,
   NodeType,
 } from './types';
-import { isContainer } from './types';
+import { DEFAULT_MITER_LIMIT, isContainer } from './types';
 import { isRecord } from './guards';
 import { IDENTITY, fromMatrix } from './matrix';
 import { hexToRgba } from './paint';
@@ -55,6 +55,7 @@ const BASE_KEYS = [
   'strokeAlign',
   'strokeCap',
   'strokeJoin',
+  'strokeMiterLimit',
   'dashPattern',
   'dashOffset',
   'effects',
@@ -433,6 +434,7 @@ function normalizeNode(value: unknown, warnings: string[], path: string): SceneN
     ...(typeof value.strokeAlign === 'string' ? { strokeAlign: value.strokeAlign as 'INSIDE' } : {}),
     ...(typeof value.strokeCap === 'string' ? { strokeCap: value.strokeCap as 'NONE' } : {}),
     ...(typeof value.strokeJoin === 'string' ? { strokeJoin: value.strokeJoin as 'MITER' } : {}),
+    ...(typeof value.strokeMiterLimit === 'number' && Number.isFinite(value.strokeMiterLimit) && value.strokeMiterLimit >= 1 && value.strokeMiterLimit !== DEFAULT_MITER_LIMIT ? { strokeMiterLimit: value.strokeMiterLimit } : {}),
     ...(Array.isArray(value.dashPattern) ? { dashPattern: value.dashPattern.filter((n) => typeof n === 'number') as number[] } : {}),
     ...(typeof value.dashOffset === 'number' && Number.isFinite(value.dashOffset) && value.dashOffset !== 0 ? { dashOffset: value.dashOffset } : {}),
     ...(typeof value.minWidth === 'number' ? { minWidth: value.minWidth } : {}),

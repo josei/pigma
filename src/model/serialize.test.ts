@@ -26,6 +26,19 @@ describe('serialization and validation', () => {
     expect(serializeFile(result.file!)).toBe(json);
   });
 
+  it('keeps a miter limit through a save and a load, and drops the default of 4', () => {
+    const file = emptyFile('Miter');
+    const sharp = createRectNode(null, 0, 0, 40, 40);
+    sharp.strokeJoin = 'MITER';
+    sharp.strokeMiterLimit = 1.5;
+    const plain = createRectNode(null, 50, 0, 40, 40);
+    plain.strokeMiterLimit = 4;
+    file.document.children[0]!.children = [sharp, plain];
+    const restored = parseFile(serializeFile(file)).file!.document.children[0]!.children as Array<SceneNode & { strokeMiterLimit?: number }>;
+    expect(restored[0]!.strokeMiterLimit).toBe(1.5);
+    expect(restored[1]!.strokeMiterLimit).toBeUndefined();
+  });
+
   it('keeps a dash offset through a save and a load, and drops a zero offset', () => {
     const file = emptyFile('Dash');
     const rect = createRectNode(null, 0, 0, 40, 40);

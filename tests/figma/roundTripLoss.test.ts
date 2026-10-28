@@ -173,6 +173,20 @@ describe('the export reports fields the schema cannot encode', () => {
     expect(change.dashPattern).toEqual([8, 4]);
   });
 
+  it('reports a miter limit as a field the schema cannot write', () => {
+    const file = emptyFile('Miter');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(file.document, 0, 0, 100, 50);
+    rect.name = 'Sharp';
+    rect.strokeJoin = 'MITER';
+    rect.strokeMiterLimit = 1.5;
+    page.children = [rect];
+    const { warnings } = pigmaToFigMessage(file, { schemaFrom: fixture('circle.fig'), decompress: nodeDecompressors });
+    const dropped = warnings.filter((line) => line.includes('"strokeMiterLimit" is not defined by this .fig schema'));
+    expect(dropped).toHaveLength(1);
+    expect(dropped[0]).toContain('(a user would notice this)');
+  });
+
   it('does not warn about fields the schema defines', () => {
     const file = emptyFile('Clean');
     const page = file.document.children[0]!;

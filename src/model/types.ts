@@ -413,6 +413,8 @@ export interface BaseNode {
   strokeAlign?: StrokeAlign;
   strokeCap?: StrokeCap;
   strokeJoin?: StrokeJoin;
+  /** Miter limit for a MITER join: the longest miter, as a multiple of the half stroke width. Absent means DEFAULT_MITER_LIMIT. */
+  strokeMiterLimit?: number;
   dashPattern?: number[];
   /** Where the dash pattern starts, in the pattern's units; absent or 0 starts at the first dash. */
   dashOffset?: number;
@@ -854,6 +856,9 @@ export function canHaveDevStatus(node: AnyNode | null | undefined): boolean {
   if (!node) return false;
   return node.type === 'FRAME' || node.type === 'COMPONENT' || node.type === 'INSTANCE' || node.type === 'SECTION';
 }
+
+/** The miter limit when a layer sets none: the SVG and PDF default, which Figma's stroke join also uses. */
+export const DEFAULT_MITER_LIMIT = 4;
 
 export function hasChildren(node: AnyNode): node is ParentNode {
   return Array.isArray((node as ParentNode).children);

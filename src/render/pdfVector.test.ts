@@ -105,6 +105,17 @@ describe('vector PDF', () => {
     expect(body).toContain('0 0 1 RG');
   });
 
+  it('sets the PDF miter limit: the SVG default of 4 unless the layer sets its own', () => {
+    const rect = createRectNode(null, 0, 0, 40, 40);
+    rect.fills = [];
+    rect.strokes = [solid(0, 0, 1)];
+    rect.strokeWeight = 4;
+    const { file, nodes } = page([rect]);
+    expect(decode(renderVectorPdf(file, nodes, { width: 40, height: 40 }).bytes)).toContain('4 M');
+    rect.strokeMiterLimit = 1.5;
+    expect(decode(renderVectorPdf(file, nodes, { width: 40, height: 40 }).bytes)).toContain('1.5 M');
+  });
+
   it('starts the PDF dash pattern at its offset, in the same weight units as the pattern', () => {
     const rect = createRectNode(null, 0, 0, 40, 40);
     rect.fills = [];

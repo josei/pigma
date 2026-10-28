@@ -898,6 +898,7 @@ function StrokeShapes({ node, path }: { node: SceneNode; path: string | null }) 
           strokeWidth: weight,
           strokeLinecap: STROKE_CAP[node.strokeCap ?? 'NONE'] ?? 'butt',
           strokeLinejoin: (node.strokeJoin ?? 'MITER').toLowerCase() as 'miter',
+          strokeMiterlimit: node.strokeMiterLimit,
           strokeDasharray: node.dashPattern?.length ? node.dashPattern.join(' ') : undefined,
           strokeDashoffset: node.dashPattern?.length && node.dashOffset ? node.dashOffset : undefined,
         };

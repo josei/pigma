@@ -48,6 +48,8 @@ import type { ComponentNode, ComponentPropertyValue, InstanceNode } from '../mod
 import { staleLibraryInstances } from '../model/library';
 import type { AutoLayout, ComponentPropertyDefinition, Constraints, GridTrackSize, LayoutGrid, MaskType } from '../model/types';
 import type { Effect } from '../model/types';
+import type { StrokeJoin } from '../model/types';
+import { DEFAULT_MITER_LIMIT } from '../model/types';
 import { absoluteBounds, findNode, findParent } from '../model/tree';
 import { variablesOf } from '../model/variables';
 import { roundTo as round } from '../model/matrix';
@@ -709,6 +711,30 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
               />
             </div>
             {node.type === 'RECTANGLE' || node.type === 'FRAME' ? <IndividualStrokes node={node} /> : null}
+            <div className="prop-row">
+              <span className="prop-row__label">Join</span>
+              <select
+                className="input"
+                aria-label="Stroke join"
+                value={node.strokeJoin ?? 'MITER'}
+                onChange={(event) => updateSelected({ strokeJoin: event.target.value as StrokeJoin }, 'Set stroke join')}
+              >
+                <option value="MITER">Miter</option>
+                <option value="BEVEL">Bevel</option>
+                <option value="ROUND">Round</option>
+              </select>
+            </div>
+            {(node.strokeJoin ?? 'MITER') === 'MITER' ? (
+              <div className="prop-row">
+                <NumberField
+                  label="Miter limit"
+                  value={node.strokeMiterLimit ?? DEFAULT_MITER_LIMIT}
+                  step={0.5}
+                  min={1}
+                  onCommit={(value) => updateSelected({ strokeMiterLimit: value }, 'Set miter limit')}
+                />
+              </div>
+            ) : null}
             <DashRow
               dash={node.dashPattern ?? []}
               offset={node.dashOffset ?? 0}
