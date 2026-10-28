@@ -3,6 +3,8 @@ import { absoluteBounds, findNode, findParent, parentAndIndex, worldTransform } 
 import { boundsOf, rotationOf, roundTo as round } from './matrix';
 import { figmaColorToCss, firstVisibleFill, paintToCssBackground, rgbaToHex } from './paint';
 import { valuesAt } from './keyframes';
+import { ARROW_HEAD_LENGTH, arrowheadsOf, isArrowCap } from './arrowheads';
+import { openPolylinesOf } from './boolean';
 import type { KeyframeTrack } from './types';
 import { DEFAULT_MITER_LIMIT } from './types';
 
@@ -493,6 +495,49 @@ function composeDecoration(textDecoration: string | undefined): string | null {
   return null;
 }
 
+/**
+ * The SwiftUI body of a line: the line as a path with its stroke, and an arrow cap's arms and heads as paths of their own, in the
+ * layer's own coordinates from its top-left corner, as the canvas draws them. A line without a solid stroke has nothing to draw.
+ */
+function swiftLineBody(node: SceneNode, width: number, height: number): string[] {
+  const stroke = firstVisibleFill(node.strokes);
+  if (!stroke || stroke.type !== 'SOLID') return ['    Color.clear', `      .frame(width: ${width}, height: ${height})`];
+  const paint = swiftColor(stroke.color, stroke.opacity ?? 1);
+  const weight = round(node.strokeWeight ?? 1, 2);
+  const polylines = openPolylinesOf(node);
+  const arrows = isArrowCap(node.strokeCap)
+    ? arrowheadsOf(polylines, node.strokeCap, node.strokeWeight ?? 1, node.arrowHeadLength ?? ARROW_HEAD_LENGTH)
+    : null;
+  const trace = (points: Array<[number, number]>, closed: boolean): string[] => [
+    ...points.map(([x, y], index) => `        path.${index === 0 ? 'move' : 'addLine'}(to: CGPoint(x: ${round(x, 2)}, y: ${round(y, 2)}))`),
+    ...(closed ? ['        path.closeSubpath()'] : []),
+  ];
+  const segmentStyle = swiftStrokeStyle(node, weight);
+  const lineStroke = segmentStyle
+    ? `      .stroke(${paint}, style: ${segmentStyle})`
+    : `      .stroke(${paint}, lineWidth: ${weight})`;
+  const body = [
+    '    ZStack(alignment: .topLeading) {',
+    '      Path { path in',
+    ...polylines.flatMap((points) => trace(points, false)),
+    '      }',
+    lineStroke,
+  ];
+  if (arrows && arrows.arms.length > 0) {
+    body.push(
+      '      Path { path in',
+      ...arrows.arms.flatMap((points) => trace(points, false)),
+      '      }',
+      `      .stroke(${paint}, style: ${segmentStyle ?? `StrokeStyle(lineWidth: ${weight})`})`,
+    );
+  }
+  if (arrows && arrows.heads.length > 0) {
+    body.push('      Path { path in', ...arrows.heads.flatMap((points) => trace(points, true)), '      }', `      .fill(${paint})`);
+  }
+  body.push('    }', `    .frame(width: ${width}, height: ${height}, alignment: .topLeading)`);
+  return body;
+}
+
 /** The shape modifier both targets use, or null when the geometry has no primitive. */
 function swiftShape(node: SceneNode): string | null {
   switch (node.type) {
@@ -596,6 +641,9 @@ export function toSwiftUI(file: PigmaFile, id: string): string {
     if (style.textDecoration === 'UNDERLINE') lines.push('      .underline()');
     if (style.textDecoration === 'STRIKETHROUGH') lines.push('      .strikethrough()');
     lines.push(`      .frame(width: ${round(measured.width, 2)}, height: ${round(measured.height, 2)}, alignment: .topLeading)`);
+    lines.push(...modifiers);
+  } else if (node.type === 'LINE') {
+    lines.push(...swiftLineBody(node, round(measured.width, 2), round(measured.height, 2)));
     lines.push(...modifiers);
   } else {
     const shape = swiftShape(node);

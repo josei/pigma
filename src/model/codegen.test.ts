@@ -14,7 +14,7 @@ import {
   toReact,
   toSwiftUI,
 } from './codegen';
-import { createFrameNode, createRectNode, createStarNode, createTextNode } from './factory';
+import { createFrameNode, createLineNode, createRectNode, createStarNode, createTextNode } from './factory';
 import { setKeyEasingOp, setKeyframeOp } from './keyframes';
 import { emptyFile } from './validate';
 import { EFFECT_TYPES } from './effects';
@@ -648,6 +648,41 @@ describe('SwiftUI for keyframes', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pigma-swiftui-caps-'));
     const source = join(dir, 'Caps.swift');
     writeFileSync(source, `import SwiftUI\n\n${toSwiftUI(file, rect.id)}`);
+    const target = process.arch === 'arm64' ? 'arm64-apple-macos14' : 'x86_64-apple-macos14';
+    expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
+  });
+
+  it('draws a line as a path, with an equilateral arrow as a filled path at each end', () => {
+    const file = emptyFile('Arrow');
+    const page = file.document.children[0]!;
+    const line = createLineNode(null, 0, 0, 100);
+    line.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    line.strokeWeight = 4;
+    line.strokeCap = 'ARROW_EQUILATERAL';
+    page.children = [line];
+    const swift = toSwiftUI(file, line.id);
+    expect(swift).not.toContain('Rectangle()');
+    expect(swift).toContain('ZStack(alignment: .topLeading) {');
+    expect(swift).toContain('path.move(to: CGPoint(x: 0, y: 0))');
+    expect(swift).toContain('path.addLine(to: CGPoint(x: 100, y: 0))');
+    expect(swift).toContain('.stroke(Color(red: 0, green: 0, blue: 0), lineWidth: 4)');
+    // Two heads, each a closed triangle, filled with the stroke's colour.
+    expect(swift.split('path.closeSubpath()')).toHaveLength(3);
+    expect(swift).toContain('.fill(Color(red: 0, green: 0, blue: 0))');
+  });
+
+  it.skipIf(!swiftcAvailable)('the SwiftUI view for a line with arrow heads and a dash typechecks in Swift', () => {
+    const file = emptyFile('ArrowLine');
+    const page = file.document.children[0]!;
+    const line = createLineNode(null, 0, 0, 100);
+    line.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    line.strokeWeight = 4;
+    line.strokeCap = 'ARROW_LINES';
+    line.dashPattern = [8, 4];
+    page.children = [line];
+    const dir = mkdtempSync(join(tmpdir(), 'pigma-swiftui-line-'));
+    const source = join(dir, 'ArrowLine.swift');
+    writeFileSync(source, `import SwiftUI\n\n${toSwiftUI(file, line.id)}`);
     const target = process.arch === 'arm64' ? 'arm64-apple-macos14' : 'x86_64-apple-macos14';
     expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
   });
