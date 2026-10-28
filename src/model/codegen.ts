@@ -523,13 +523,19 @@ export function toSwiftUI(file: PigmaFile, id: string): string {
   const name = identifier(node.name, 'Layer');
   const lines: string[] = [`// Pigma — ${node.name}`, `// Generated for iOS. Measurements in points, matching the frame's pixels.`];
   for (const note of unsupportedNotes(node, 'swift')) lines.push(`// Not represented: ${note}`);
+  const header = [...lines];
   lines.push('', `struct ${name}View: View {`, '  var body: some View {');
+  const bodyStart = lines.length;
+  // A layer with keys is animated: its keyed properties are read from the animator's values, not set statically.
+  const keyed = (property: 'opacity' | 'rotation') => (node as { keyframes?: KeyframeTrack[] }).keyframes?.some((track) => track.property === property && track.keys.length > 0) ?? false;
 
   const modifiers: string[] = [
     `      .offset(x: ${round(measured.relativeX, 2)}, y: ${round(measured.relativeY, 2)})`,
   ];
-  if (measured.rotation !== 0) modifiers.push(`      .rotationEffect(.degrees(${round(measured.rotation, 2)}))`);
-  if (measured.opacity < 1) modifiers.push(`      .opacity(${round(measured.opacity, 3)})`);
+  if (measured.rotation !== 0 && !keyed('rotation')) modifiers.push(`      .rotationEffect(.degrees(${round(measured.rotation, 2)}))`);
+  if (keyed('rotation')) modifiers.push('      .rotationEffect(.degrees(values.rotation))');
+  if (measured.opacity < 1 && !keyed('opacity')) modifiers.push(`      .opacity(${round(measured.opacity, 3)})`);
+  if (keyed('opacity')) modifiers.push('      .opacity(values.opacity)');
   const shadow = dropShadowOf(node);
   if (shadow) {
     modifiers.push(
@@ -586,8 +592,46 @@ export function toSwiftUI(file: PigmaFile, id: string): string {
     lines.push(...modifiers);
   }
 
-  lines.push('  }', '}', '');
-  return lines.join('\n');
+  const body = lines.splice(bodyStart);
+  const tracks = ((node as { keyframes?: KeyframeTrack[] }).keyframes ?? []).filter((track) => track.keys.length > 0);
+  if (tracks.length === 0) return [...lines, ...body, '  }', '}', ''].join('\n');
+  // Keys become a KeyframeAnimator: one track per keyed property, with times in seconds. A key that eases uses a cubic keyframe, an
+  // approximation of Pigma's smoothstep; a linear key is linear.
+  const motion = `${name}Motion`;
+  const trackLines = tracks.flatMap((track) => {
+    const path = track.property === 'opacity' ? '\\.opacity' : '\\.rotation';
+    // SwiftUI takes each keyframe's duration, the time from the previous keyframe (the first from 0), not its absolute time.
+    let previous = 0;
+    const frames = [...track.keys]
+      .sort((a, b) => a.time - b.time)
+      .map((key) => {
+        const value = track.property === 'opacity' ? round(key.value, 3) : round(key.value, 2);
+        const kind = key.easing === 'EASE_IN_OUT' ? 'CubicKeyframe' : 'LinearKeyframe';
+        const duration = round((key.time - previous) / 1000, 3);
+        previous = key.time;
+        return `        ${kind}(${value}, duration: ${duration})`;
+      });
+    return [`      KeyframeTrack(${path}) {`, ...frames, '      }'];
+  });
+  return [
+    ...header,
+    '',
+    `struct ${motion}: Equatable {`,
+    '  var opacity: Double = 1',
+    '  var rotation: Double = 0',
+    '}',
+    '',
+    `struct ${name}View: View {`,
+    '  var body: some View {',
+    `    KeyframeAnimator(initialValue: ${motion}(), repeating: false) { values in`,
+    ...body.map((line) => `  ${line}`),
+    '    } keyframes: { _ in',
+    ...trackLines,
+    '    }',
+    '  }',
+    '}',
+    '',
+  ].join('\n');
 }
 
 /** A copyable Jetpack Compose composable for the selection. */

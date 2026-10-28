@@ -1,3 +1,7 @@
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   cssDeclarations,
@@ -526,3 +530,62 @@ describe('React for keyframes', () => {
     expect(plain).not.toContain('<>');
   });
 });
+
+describe('SwiftUI for keyframes', () => {
+  /** A 120 x 80 rectangle named "Card", keyed in opacity (1 at 0 ms, 0.4 at 1000 ms) and turned 90 degrees at 1000 ms. */
+  function animated() {
+    const file = emptyFile('Motion');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 120, 80);
+    rect.name = 'Card';
+    page.children = [rect];
+    let keyed = setKeyframeOp(file, rect.id, 'opacity', 0, 1);
+    keyed = setKeyframeOp(keyed, rect.id, 'opacity', 1000, 0.4);
+    keyed = setKeyframeOp(keyed, rect.id, 'rotation', 1000, 90);
+    return { file: keyed, id: rect.id };
+  }
+
+  it('animates a keyed layer with a KeyframeAnimator, a track per keyed property, and segment durations in seconds', () => {
+    const { file, id } = animated();
+    const swift = toSwiftUI(file, id);
+    expect(swift).toContain('struct CardMotion: Equatable {');
+    expect(swift).toContain('KeyframeAnimator(initialValue: CardMotion(), repeating: false) { values in');
+    expect(swift).toContain('KeyframeTrack(\\.opacity) {');
+    expect(swift).toContain('LinearKeyframe(1, duration: 0)');
+    expect(swift).toContain('LinearKeyframe(0.4, duration: 1)');
+    expect(swift).toContain('KeyframeTrack(\\.rotation) {');
+    expect(swift).toContain('LinearKeyframe(90, duration: 1)');
+    expect(swift).toContain('.opacity(values.opacity)');
+    expect(swift).toContain('.rotationEffect(.degrees(values.rotation))');
+  });
+
+  it('leaves an unkeyed layer as the plain SwiftUI view it was', () => {
+    const file = emptyFile('Plain');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 120, 80);
+    rect.name = 'Card';
+    page.children = [rect];
+    const swift = toSwiftUI(file, rect.id);
+    expect(swift).not.toContain('KeyframeAnimator');
+    expect(swift).toContain('struct CardView: View {');
+  });
+
+  const swiftcAvailable = (() => {
+    try {
+      execFileSync('swiftc', ['--version'], { stdio: 'ignore' });
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  it.skipIf(!swiftcAvailable)('the generated view for a keyed layer typechecks in Swift against SwiftUI', () => {
+    const { file, id } = animated();
+    const dir = mkdtempSync(join(tmpdir(), 'pigma-swiftui-'));
+    const source = join(dir, 'Card.swift');
+    writeFileSync(source, `import SwiftUI\n\n${toSwiftUI(file, id)}`);
+    const target = process.arch === 'arm64' ? 'arm64-apple-macos14' : 'x86_64-apple-macos14';
+    expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
+  });
+});
+
