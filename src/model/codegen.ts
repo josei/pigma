@@ -1,4 +1,4 @@
-import type { AnyNode, Paint, PigmaFile, SceneNode, ShadowEffect } from './types';
+import type { AnyNode, KeyEasing, Paint, PigmaFile, SceneNode, ShadowEffect } from './types';
 import { absoluteBounds, findNode, findParent, parentAndIndex, worldTransform } from './tree';
 import { boundsOf, rotationOf, roundTo as round } from './matrix';
 import { figmaColorToCss, firstVisibleFill, paintToCssBackground, rgbaToHex } from './paint';
@@ -184,6 +184,11 @@ function motionName(node: AnyNode): string {
   return `${node.name.trim().replace(/[^A-Za-z0-9_-]+/g, '-').toLowerCase() || 'layer'}-motion`;
 }
 
+/** The CSS timing function for a key's easing. */
+function cssTiming(easing: KeyEasing): string {
+  return easing === 'EASE_IN' ? 'ease-in' : easing === 'EASE_OUT' ? 'ease-out' : 'ease-in-out';
+}
+
 /**
  * A CSS @keyframes block for a layer's opacity and rotation keys: one keyframe at each key time, at its percentage of the span to
  * the last key, with the values there. A key set to ease gives its keyframe an ease-in-out timing. '' when the layer has no keys.
@@ -199,9 +204,8 @@ export function keyframesCss(file: PigmaFile, id: string): string {
     const lines: string[] = [];
     if (values.opacity !== undefined) lines.push(`opacity: ${round(values.opacity)};`);
     if (values.rotation !== undefined) lines.push(`transform: rotate(${round(values.rotation)}deg);`);
-    if (tracks.some((track) => track.keys.some((key) => key.time === time && key.easing === 'EASE_IN_OUT'))) {
-      lines.push('animation-timing-function: ease-in-out;');
-    }
+    const timing = tracks.flatMap((track) => track.keys.filter((key) => key.time === time && key.easing && key.easing !== 'LINEAR').map((key) => key.easing))[0];
+    if (timing) lines.push(`animation-timing-function: ${cssTiming(timing)};`);
     return `  ${round((time / span) * 100)}% {\n${lines.map((line) => `    ${line}`).join('\n')}\n  }`;
   });
   return `@keyframes ${motionName(node)} {\n${frames.join('\n')}\n}`;
@@ -606,7 +610,7 @@ export function toSwiftUI(file: PigmaFile, id: string): string {
       .sort((a, b) => a.time - b.time)
       .map((key) => {
         const value = track.property === 'opacity' ? round(key.value, 3) : round(key.value, 2);
-        const kind = key.easing === 'EASE_IN_OUT' ? 'CubicKeyframe' : 'LinearKeyframe';
+        const kind = key.easing && key.easing !== 'LINEAR' ? 'CubicKeyframe' : 'LinearKeyframe';
         const duration = round((key.time - previous) / 1000, 3);
         previous = key.time;
         return `        ${kind}(${value}, duration: ${duration})`;

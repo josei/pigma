@@ -1530,7 +1530,8 @@ function AnimationSection({ node }: { node: SceneNode }) {
   // The key times of a property on the first selected layer, in time order: "none" when it has no keys.
   const keyTimes = (property: AnimatableProperty) => {
     const keys = (node.keyframes ?? []).find((track) => track.property === property)?.keys ?? [];
-    return keys.length === 0 ? 'none' : keys.map((key) => `${key.time} ms${key.easing === 'EASE_IN_OUT' ? ' (ease)' : ''}`).join(', ');
+    const label = (easing: string | undefined) => (easing === 'EASE_IN_OUT' ? ' (ease)' : easing === 'EASE_IN' ? ' (ease in)' : easing === 'EASE_OUT' ? ' (ease out)' : '');
+    return keys.length === 0 ? 'none' : keys.map((key) => `${key.time} ms${label(key.easing)}`).join(', ');
   };
   return (
     <div className="section">

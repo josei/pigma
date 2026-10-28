@@ -492,6 +492,15 @@ describe('CSS for keyframes', () => {
     expect(keyframesCss(turned, id)).toContain('100% {\n    opacity: 0;\n    transform: rotate(90deg);');
   });
 
+  it('gives an ease-in key and an ease-out key their own CSS timing functions', () => {
+    const { file, id } = keyed([
+      [0, 1],
+      [1000, 0],
+    ]);
+    expect(keyframesCss(setKeyEasingOp(file, id, 'opacity', 0, 'EASE_IN'), id)).toContain('0% {\n    opacity: 1;\n    animation-timing-function: ease-in;');
+    expect(keyframesCss(setKeyEasingOp(file, id, 'opacity', 0, 'EASE_OUT'), id)).toContain('0% {\n    opacity: 1;\n    animation-timing-function: ease-out;');
+  });
+
   it('is empty for a layer with no keys, or whose keys are all at time 0', () => {
     const { file, id } = keyed([]);
     expect(keyframesCss(file, id)).toBe('');

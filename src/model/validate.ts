@@ -1,5 +1,5 @@
 import { normalizeTextRanges } from './textRanges';
-import { isAnimatableProperty, normalizeKeys } from './keyframes';
+import { isAnimatableProperty, isKeyEasing, normalizeKeys } from './keyframes';
 import type {
   AutoLayout,
   LayoutGrid,
@@ -343,7 +343,7 @@ function normalizeKeyframes(value: unknown): KeyframeTrack[] | undefined {
   const tracks = value.filter(isRecord).flatMap((item) => {
     if (!isAnimatableProperty(item.property)) return [];
     const keys = Array.isArray(item.keys)
-      ? item.keys.filter(isRecord).map((key) => ({ time: key.time as number, value: key.value as number, ...(key.easing === 'EASE_IN_OUT' ? { easing: 'EASE_IN_OUT' as const } : {}) }))
+      ? item.keys.filter(isRecord).map((key) => ({ time: key.time as number, value: key.value as number, ...(isKeyEasing(key.easing) && key.easing !== 'LINEAR' ? { easing: key.easing } : {}) }))
       : [];
     return [{ property: item.property, keys: normalizeKeys(keys) }];
   });

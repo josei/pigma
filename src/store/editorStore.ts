@@ -57,7 +57,7 @@ import { validatePigmaFile } from '../model/validate';
 import { defaultLayoutGrid } from '../model/constraints';
 import { flipNodes, type FlipAxis } from '../model/flip';
 import { booleanLabel, booleanNodes, booleanOperandsOf, divideNodes, outlineStrokeOp, setBooleanMode as setBooleanModeOp, type BooleanMode } from '../model/boolean';
-import { applyKeysOp, removeKeyframeOp, setKeyEasingOp, setKeyframeOp } from '../model/keyframes';
+import { applyKeysOp, nextEasing, removeKeyframeOp, setKeyEasingOp, setKeyframeOp } from '../model/keyframes';
 import type { PresenceCursor, PresencePeer } from './presence';
 import type { DocumentSummary } from './documentLibrary';
 import { clearRoomTouched, createDocument, markDirty, markRoomTouched, persistNow } from './persistence';
@@ -1248,7 +1248,7 @@ export const useEditor = create<EditorState>((set, get) => ({
       if (!node || node.type === 'DOCUMENT' || node.type === 'CANVAS') return next;
       const key = (node as { keyframes?: KeyframeTrack[] }).keyframes?.find((track) => track.property === property)?.keys.find((entry) => entry.time === time);
       if (!key) return next;
-      return setKeyEasingOp(next, id, property, time, key.easing === 'EASE_IN_OUT' ? 'LINEAR' : 'EASE_IN_OUT');
+      return setKeyEasingOp(next, id, property, time, nextEasing(key.easing));
     }, state.file);
     if (file === state.file) return;
     get().apply(`Set ${property} easing`, () => file);

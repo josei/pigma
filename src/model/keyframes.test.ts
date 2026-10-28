@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addKeyframe, advanceTime, animateFile, applyKeysOp, fractionAtTime, normalizeKeys, removeKeyframe, removeKeyframeOp, sampleTrack, setKeyEasingOp, setKeyframeOp, smoothstep, TIMELINE_SPAN_MS, timeAtFraction, valuesAt } from './keyframes';
+import { addKeyframe, advanceTime, animateFile, applyKeysOp, easeFraction, fractionAtTime, isKeyEasing, nextEasing, normalizeKeys, removeKeyframe, removeKeyframeOp, sampleTrack, setKeyEasingOp, setKeyframeOp, smoothstep, TIMELINE_SPAN_MS, timeAtFraction, valuesAt } from './keyframes';
 import { createFrameNode, createRectNode } from './factory';
 import { parseFile, serializeFile } from './serialize';
 import { emptyFile } from './validate';
@@ -186,6 +186,36 @@ describe('keyframe tracks', () => {
     expect(smoothstep(0.5)).toBe(0.5);
   });
 
+  it('ease-in starts slow and ease-out ends slow, each a quadratic curve through the same endpoints', () => {
+    // A quarter of the way: ease-in is 0.25 squared, ease-out is 1 - 0.75 squared, and both meet 0 and 1 at the ends.
+    expect(easeFraction('EASE_IN', 0.25)).toBeCloseTo(0.0625, 9);
+    expect(easeFraction('EASE_OUT', 0.25)).toBeCloseTo(0.4375, 9);
+    expect(easeFraction('EASE_IN', 0)).toBe(0);
+    expect(easeFraction('EASE_IN', 1)).toBe(1);
+    expect(easeFraction('EASE_OUT', 0)).toBe(0);
+    expect(easeFraction('EASE_OUT', 1)).toBe(1);
+    expect(easeFraction(undefined, 0.25)).toBe(0.25);
+    expect(easeFraction('LINEAR', 0.25)).toBe(0.25);
+
+    const { file, id } = rectangle();
+    const keyed = setKeyframeOp(setKeyframeOp(file, id, 'opacity', 0, 0), id, 'opacity', 400, 1);
+    const ease = (easing: 'EASE_IN' | 'EASE_OUT') => setKeyEasingOp(keyed, id, 'opacity', 0, easing);
+    const track = (f: PigmaFile) => (findNode(f.document, id) as { keyframes?: KeyframeTrack[] }).keyframes![0]!;
+    expect(sampleTrack(track(ease('EASE_IN')), 100)).toBeCloseTo(0.0625, 9);
+    expect(sampleTrack(track(ease('EASE_OUT')), 100)).toBeCloseTo(0.4375, 9);
+  });
+
+  it('steps an easing through linear, ease-in-out, ease-in, ease-out, and back to linear', () => {
+    expect(nextEasing(undefined)).toBe('EASE_IN_OUT');
+    expect(nextEasing('LINEAR')).toBe('EASE_IN_OUT');
+    expect(nextEasing('EASE_IN_OUT')).toBe('EASE_IN');
+    expect(nextEasing('EASE_IN')).toBe('EASE_OUT');
+    expect(nextEasing('EASE_OUT')).toBe('LINEAR');
+    expect(isKeyEasing('EASE_OUT')).toBe(true);
+    expect(isKeyEasing('BOUNCE')).toBe(false);
+    expect(isKeyEasing(undefined)).toBe(false);
+  });
+
   it('setKeyEasingOp sets the easing of the key at a time, and a linear easing removes it', () => {
     const { file, id } = rectangle();
     const keyed = setKeyframeOp(setKeyframeOp(file, id, 'opacity', 0, 0), id, 'opacity', 400, 1);
@@ -208,6 +238,20 @@ describe('keyframe tracks', () => {
     expect(keys).toEqual([
       { time: 0, value: 0 },
       { time: 200, value: 1, easing: 'EASE_IN_OUT' },
+    ]);
+  });
+
+  it('keeps ease-in and ease-out keys through a save and a load, and turns a stored linear key into no easing', () => {
+    const { file, id } = rectangle();
+    const keyed = setKeyEasingOp(setKeyframeOp(file, id, 'opacity', 0, 0), id, 'opacity', 0, 'EASE_OUT');
+    const node = findNode(keyed.document, id) as unknown as Record<string, unknown>;
+    node.keyframes = [{ property: 'opacity', keys: [{ time: 0, value: 0, easing: 'EASE_OUT' }, { time: 200, value: 1, easing: 'EASE_IN' }, { time: 400, value: 0, easing: 'LINEAR' }] }];
+    const restored = parseFile(serializeFile(keyed));
+    const keys = ((findNode(restored.file!.document, id) as { keyframes?: KeyframeTrack[] }).keyframes ?? [])[0]!.keys;
+    expect(keys).toEqual([
+      { time: 0, value: 0, easing: 'EASE_OUT' },
+      { time: 200, value: 1, easing: 'EASE_IN' },
+      { time: 400, value: 0 },
     ]);
   });
 

@@ -26,11 +26,41 @@ export function isUsableKey(key: Keyframe): boolean {
 /**
  * The keys sorted by time, with a later key replacing an earlier one at the same time. Keys that are not usable are dropped.
  */
+/** The easings a key can have, in the order the easing control steps through them. Linear is the default. */
+export const KEY_EASINGS: readonly KeyEasing[] = ['LINEAR', 'EASE_IN_OUT', 'EASE_IN', 'EASE_OUT'];
+
+export function isKeyEasing(value: unknown): value is KeyEasing {
+  return typeof value === 'string' && (KEY_EASINGS as readonly string[]).includes(value);
+}
+
+/** The easing after `easing` in the cycle the control steps through: linear, then the eased curves, then back to linear. */
+export function nextEasing(easing: KeyEasing | undefined): KeyEasing {
+  const index = KEY_EASINGS.indexOf(easing ?? 'LINEAR');
+  return KEY_EASINGS[(index + 1) % KEY_EASINGS.length]!;
+}
+
+/**
+ * The fraction of a segment covered at `linear` (0 to 1 along it) under the easing of the key that leaves it: ease-in-out is a
+ * smoothstep, ease-in starts slow (t squared), ease-out ends slow, and linear or no easing is the straight line.
+ */
+export function easeFraction(easing: KeyEasing | undefined, linear: number): number {
+  switch (easing) {
+    case 'EASE_IN_OUT':
+      return smoothstep(linear);
+    case 'EASE_IN':
+      return linear * linear;
+    case 'EASE_OUT':
+      return 1 - (1 - linear) * (1 - linear);
+    default:
+      return linear;
+  }
+}
+
 export function normalizeKeys(keys: Keyframe[]): Keyframe[] {
   const byTime = new Map<number, Keyframe>();
   for (const key of keys) {
     if (!isUsableKey(key)) continue;
-    const easing = key.easing === 'EASE_IN_OUT' ? 'EASE_IN_OUT' : undefined;
+    const easing = isKeyEasing(key.easing) && key.easing !== 'LINEAR' ? key.easing : undefined;
     byTime.set(key.time, { time: key.time, value: key.value, ...(easing ? { easing } : {}) });
   }
   return [...byTime.values()].sort((a, b) => a.time - b.time);
@@ -69,7 +99,7 @@ export function sampleTrack(track: KeyframeTrack, time: number): number | null {
     const to = keys[index + 1]!;
     if (time >= from.time && time <= to.time) {
       const linear = (time - from.time) / (to.time - from.time);
-      const fraction = from.easing === 'EASE_IN_OUT' ? smoothstep(linear) : linear;
+      const fraction = easeFraction(from.easing, linear);
       return from.value + (to.value - from.value) * fraction;
     }
   }
@@ -181,7 +211,7 @@ export function setKeyEasingOp(file: PigmaFile, id: string, property: Animatable
   const tracks = (node as AnyNode & { keyframes?: KeyframeTrack[] }).keyframes ?? [];
   const track = tracks.find((entry) => entry.property === property);
   if (!track || !track.keys.some((key) => key.time === time)) return file;
-  const keys = track.keys.map((key) => (key.time === time ? { time: key.time, value: key.value, ...(easing === 'EASE_IN_OUT' ? { easing } : {}) } : key));
+  const keys = track.keys.map((key) => (key.time === time ? { time: key.time, value: key.value, ...(easing !== 'LINEAR' ? { easing } : {}) } : key));
   const next = tracks.map((entry) => (entry.property === property ? { ...entry, keys: normalizeKeys(keys) } : entry));
   return {
     ...file,

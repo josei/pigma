@@ -157,7 +157,7 @@ export type AnimatableProperty = 'opacity' | 'rotation';
 
 /** A value at a time, in milliseconds from the start of the animation. */
 /** How a value moves from its key to the next: a straight line, or a smoothstep that eases in and out. */
-export type KeyEasing = 'LINEAR' | 'EASE_IN_OUT';
+export type KeyEasing = 'LINEAR' | 'EASE_IN_OUT' | 'EASE_IN' | 'EASE_OUT';
 
 export interface Keyframe {
   time: number;
