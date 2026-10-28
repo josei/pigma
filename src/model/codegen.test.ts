@@ -568,6 +568,19 @@ describe('SwiftUI for keyframes', () => {
     expect(swift).toContain('.rotationEffect(.degrees(values.rotation))');
   });
 
+  it('draws a line in CSS with one top border, as a box of no height: a full border would draw it twice', () => {
+    const file = emptyFile('CssLine');
+    const page = file.document.children[0]!;
+    const line = createLineNode(null, 0, 0, 100);
+    line.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    line.strokeWeight = 4;
+    page.children = [line];
+    const css = toCss(file, line.id);
+    expect(css).toContain('border-top: 4px solid rgb(0, 0, 0);');
+    expect(css).not.toMatch(/\n  border: /);
+    expect(toReact(file, line.id)).toContain('borderTop');
+  });
+
   it('gives a dashed stroke a dashed border in CSS and React, and a StrokeStyle with its pattern and offset in SwiftUI', () => {
     const file = emptyFile('Dashed');
     const page = file.document.children[0]!;

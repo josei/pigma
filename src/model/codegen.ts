@@ -151,7 +151,9 @@ export function cssDeclarations(file: PigmaFile, id: string): string[] {
     const weight = node.strokeWeight ?? 1;
     // A border has one dash style and no dash offset, so a dashed stroke is a dashed border and the browser sets the dash length.
     const style = node.dashPattern?.length ? 'dashed' : 'solid';
-    lines.push(`border: ${weight}px ${style} ${paintToCssBackground(stroke)};`);
+    // A line is a box of no height, so one top border draws it. A full border would draw two lines, at the top and the bottom edge.
+    const side = node.type === 'LINE' ? 'border-top' : 'border';
+    lines.push(`${side}: ${weight}px ${style} ${paintToCssBackground(stroke)};`);
   }
   if (measured.cornerRadius > 0) lines.push(`border-radius: ${measured.cornerRadius}px;`);
   if (measured.rotation !== 0) lines.push(`transform: rotate(${measured.rotation}deg);`);
