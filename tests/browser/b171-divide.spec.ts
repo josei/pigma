@@ -57,3 +57,17 @@ test('B171b Divide turns three overlapping shapes into their seven regions', asy
   expect(pieces.map((piece) => piece.type)).toEqual(Array(7).fill('VECTOR'));
   expect(pieces.map((piece) => piece.width)).toEqual([80, 80, 40, 80, 80, 40, 160]);
 });
+
+test('B171c Divide turns five overlapping shapes into their 19 regions', async ({ page }) => {
+  await drawAndDivide(page, [
+    [-60, -40],
+    [30, -40],
+    [-30, 30],
+    [40, 30],
+    [0, -10],
+  ]);
+  const pieces = await layers(page);
+  // One flat vector per distinct set of covering shapes; the five shapes are gone.
+  expect(pieces).toHaveLength(19);
+  expect(pieces.every((piece) => piece.type === 'VECTOR')).toBe(true);
+});

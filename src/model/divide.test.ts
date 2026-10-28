@@ -62,13 +62,50 @@ describe('divide', () => {
     expect(divided.file).toBe(file);
   });
 
-  it('refuses fewer than two shapes, or more than four', () => {
+  it('refuses fewer than two shapes, or more than six', () => {
     const { file, ids } = pair([50, 50]);
-    expect(divideNodes(file, [ids[0]!]).reason).toBe('Divide takes two to 4 shapes');
+    expect(divideNodes(file, [ids[0]!]).reason).toBe('Divide takes two to 6 shapes');
     const page = file.document.children[0]!;
-    const extra = [0, 1, 2].map((i) => createRectNode(null, 10 + i * 5, 10, 20, 20));
+    const extra = [0, 1, 2, 3, 4].map((i) => createRectNode(null, 10 + i * 5, 10, 20, 20));
     page.children = [...page.children, ...extra];
-    expect(divideNodes(file, [...ids, ...extra.map((rect) => rect.id)]).reason).toBe('Divide takes two to 4 shapes');
+    expect(divideNodes(file, [...ids, ...extra.map((rect) => rect.id)]).reason).toBe('Divide takes two to 6 shapes');
+  });
+
+  it('divides five and six overlapping shapes into one region per distinct set of covering shapes', () => {
+    // An independent count: sample each unit cell of the shapes' bounds, and count the distinct sets of shapes covering the cells.
+    // The shapes sit on whole numbers, so every region is a union of unit cells and the count is exact.
+    const offsets: Array<[number, number]> = [
+      [0, 0],
+      [40, 0],
+      [0, 40],
+      [40, 40],
+      [20, 20],
+      [60, 60],
+    ];
+    for (const count of [5, 6]) {
+      const file = emptyFile('Divide');
+      const page = file.document.children[0]!;
+      const shapes = offsets.slice(0, count).map(([x, y], i) => {
+        const rect = createRectNode(null, x, y, 100, 100);
+        rect.fills = [solidPaint({ r: i / 6, g: 0.5, b: 1 - i / 6 })];
+        return rect;
+      });
+      page.children = shapes;
+      const sets = new Set<number>();
+      for (let x = 0; x < 160; x += 1) {
+        for (let y = 0; y < 160; y += 1) {
+          let mask = 0;
+          offsets.slice(0, count).forEach(([ox, oy], i) => {
+            if (x + 0.5 >= ox && x + 0.5 <= ox + 100 && y + 0.5 >= oy && y + 0.5 <= oy + 100) mask |= 1 << i;
+          });
+          if (mask) sets.add(mask);
+        }
+      }
+      const divided = divideNodes(file, shapes.map((rect) => rect.id));
+      expect(divided.reason).toBeUndefined();
+      expect(layers(divided.file)).toHaveLength(sets.size);
+      expect(layers(divided.file).every((piece) => piece.type === 'VECTOR')).toBe(true);
+    }
   });
 
   it('divides three overlapping shapes into the five regions they make, painted by the top-most shape that covers each', () => {

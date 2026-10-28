@@ -467,15 +467,15 @@ export interface DivideResult {
   reason?: string;
 }
 
-/** The most shapes a divide takes: 15 regions at most, one per non-empty subset of them. */
-export const DIVIDE_MAX_SHAPES = 4;
+/** The most shapes a divide takes: 63 regions at most, one per non-empty subset of them. */
+export const DIVIDE_MAX_SHAPES = 6;
 
 /**
  * Divide overlapping shapes into their regions. A region is the part covered by one set of shapes and by no others, so for
  * two shapes there are three: the lower shape alone, the overlap, and the upper shape alone. Each non-empty region becomes a
  * flat vector layer, placed where the lowest of the shapes was, ordered by its lowest shape and then by how many shapes it
  * covers. A region takes the paint of the top-most shape that covers it. The layers are static: unlike a boolean, they keep
- * no operands. The shapes must be two to four layers in the same parent that overlap; anything else is refused and the file
+ * no operands. The shapes must be two to six layers in the same parent that overlap; anything else is refused and the file
  * is unchanged.
  */
 export function divideNodes(file: PigmaFile, ids: string[]): DivideResult {
