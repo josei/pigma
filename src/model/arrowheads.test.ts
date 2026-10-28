@@ -44,6 +44,14 @@ describe('arrowheads', () => {
     expect(end[2]![1]).toBeCloseTo(-end[0]![1]!, 9);
   });
 
+  it('sizes the head by its length in stroke weights, so a longer head sets its base further back', () => {
+    // At a weight of 2, a head of 10 weights is 20 long: its base sits 20 back from the end point, not 10.
+    const { heads } = arrowheadsOf(line, 'ARROW_EQUILATERAL', 2, 10);
+    expect(heads[1]![0]).toEqual([100, 0]);
+    expect(heads[1]![1]![0]).toBeCloseTo(80, 9);
+    expect(Math.abs(heads[1]![1]![1]!)).toBeCloseTo(20 / Math.sqrt(3), 9);
+  });
+
   it('ignores a polyline with one point, and an end whose segment has no length', () => {
     expect(arrowheadsOf([[[5, 5]]], 'ARROW_EQUILATERAL', 2).heads).toEqual([]);
     expect(

@@ -4,7 +4,7 @@ import { fromMatrix, multiply, roundTo } from '../model/matrix';
 
 import { cornerRadii, shapePath } from './SceneRenderer';
 import { pathToPdf } from './pdfPath';
-import { arrowheadPaths, isArrowCap } from '../model/arrowheads';
+import { ARROW_HEAD_LENGTH, arrowheadPaths, isArrowCap } from '../model/arrowheads';
 import { openPolylinesOf } from '../model/boolean';
 import { layoutText, measureLine, measureParts } from './textMetrics';
 import { letterSpacingOf, textLinesOf } from './textMetrics';
@@ -243,7 +243,7 @@ function paintArrowheads(builder: PdfBuilder, node: SceneNode, paint: Paint, mat
   if (!colour) return;
   const alpha = paint.opacity ?? 1;
   if (alpha < 1) builder.content.push(`/${alphaName(builder, alpha)} gs`);
-  const { arms, heads } = arrowheadPaths(openPolylinesOf(node), node.strokeCap, node.strokeWeight ?? 1);
+  const { arms, heads } = arrowheadPaths(openPolylinesOf(node), node.strokeCap, node.strokeWeight ?? 1, node.arrowHeadLength ?? ARROW_HEAD_LENGTH);
   if (arms) {
     builder.content.push(colour.stroke);
     builder.content.push(pathToPdf(arms));

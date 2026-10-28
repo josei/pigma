@@ -254,6 +254,13 @@ describe('outline stroke on a line and an open path', () => {
     expect(band.area).toBeLessThan(3050);
   });
 
+  it('a longer arrowhead makes the equilateral head larger: a head of 10 weights on a 10-weight line is 2 x 100 / root 3 across', () => {
+    const { file, id } = line('ARROW_EQUILATERAL');
+    const longer = updateNode(file.document, id, (node) => ({ ...node, arrowHeadLength: 10 }) as AnyNode);
+    const band = bandOf({ ...file, document: longer }, id);
+    expect(band.height).toBeCloseTo((2 * 100) / Math.sqrt(3), 1);
+  });
+
   it('a dashed stroke dashes the arms of an arrow line too, so the arms cover less than solid ones', () => {
     const { file, id } = line('ARROW_LINES');
     const solid = bandOf(file, id);

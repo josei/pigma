@@ -415,6 +415,8 @@ export interface BaseNode {
   strokeJoin?: StrokeJoin;
   /** Miter limit for a MITER join: the longest miter, as a multiple of the half stroke width. Absent means DEFAULT_MITER_LIMIT. */
   strokeMiterLimit?: number;
+  /** Arrowhead length for an arrow cap, in stroke weights. Absent means ARROW_HEAD_LENGTH. */
+  arrowHeadLength?: number;
   dashPattern?: number[];
   /** Where the dash pattern starts, in the pattern's units; absent or 0 starts at the first dash. */
   dashOffset?: number;

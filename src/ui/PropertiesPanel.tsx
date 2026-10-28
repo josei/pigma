@@ -50,6 +50,7 @@ import type { AutoLayout, ComponentPropertyDefinition, Constraints, GridTrackSiz
 import type { Effect } from '../model/types';
 import type { StrokeCap, StrokeJoin } from '../model/types';
 import { DEFAULT_MITER_LIMIT } from '../model/types';
+import { ARROW_HEAD_LENGTH, isArrowCap } from '../model/arrowheads';
 import { absoluteBounds, findNode, findParent } from '../model/tree';
 import { variablesOf } from '../model/variables';
 import { roundTo as round } from '../model/matrix';
@@ -726,6 +727,17 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
                 <option value="ARROW_EQUILATERAL">Arrow equilateral</option>
               </select>
             </div>
+            {isArrowCap(node.strokeCap) ? (
+              <div className="prop-row">
+                <NumberField
+                  label="Head length"
+                  value={node.arrowHeadLength ?? ARROW_HEAD_LENGTH}
+                  step={1}
+                  min={1}
+                  onCommit={(value) => updateSelected({ arrowHeadLength: value }, 'Set arrow head length')}
+                />
+              </div>
+            ) : null}
             <div className="prop-row">
               <span className="prop-row__label">Join</span>
               <select

@@ -825,6 +825,8 @@ export interface NodePatch {
   strokeWeight?: number;
   strokeAlign?: StrokeAlign;
   strokeCap?: StrokeCap;
+  /** Arrowhead length for an arrow cap, in stroke weights. */
+  arrowHeadLength?: number;
   strokeJoin?: StrokeJoin;
   /** Miter limit for a MITER join; the default is DEFAULT_MITER_LIMIT. */
   strokeMiterLimit?: number;

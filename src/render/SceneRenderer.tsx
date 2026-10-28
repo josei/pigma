@@ -12,7 +12,7 @@ import type {
   TextNode,
 } from '../model/types';
 import { hasChildren } from '../model/types';
-import { arrowheadPaths, isArrowCap } from '../model/arrowheads';
+import { ARROW_HEAD_LENGTH, arrowheadPaths, isArrowCap } from '../model/arrowheads';
 import { openPolylinesOf } from '../model/boolean';
 import type { Transform } from '../model/types';
 import { transformToCss } from '../model/matrix';
@@ -917,7 +917,7 @@ function StrokeShapes({ node, path }: { node: SceneNode; path: string | null }) 
           shape = <rect x={0} y={0} width={Math.max(node.width, 0)} height={Math.max(node.height, 0)} {...common} />;
         }
         // An arrow cap draws its arrowhead at each open end, in the same paint as the stroke.
-        const arrows = isArrowCap(node.strokeCap) ? arrowheadPaths(openPolylinesOf(node), node.strokeCap, weight) : null;
+        const arrows = isArrowCap(node.strokeCap) ? arrowheadPaths(openPolylinesOf(node), node.strokeCap, weight, node.arrowHeadLength ?? ARROW_HEAD_LENGTH) : null;
         return (
           <g key={index} clipPath={clip} mask={mask}>
             {shape}

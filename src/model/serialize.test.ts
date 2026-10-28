@@ -26,6 +26,18 @@ describe('serialization and validation', () => {
     expect(serializeFile(result.file!)).toBe(json);
   });
 
+  it('keeps an arrowhead length through a save and a load, and drops the default of 5', () => {
+    const file = emptyFile('Arrow');
+    const long = createRectNode(null, 0, 0, 40, 40);
+    long.arrowHeadLength = 10;
+    const plain = createRectNode(null, 50, 0, 40, 40);
+    plain.arrowHeadLength = 5;
+    file.document.children[0]!.children = [long, plain];
+    const restored = parseFile(serializeFile(file)).file!.document.children[0]!.children as Array<SceneNode & { arrowHeadLength?: number }>;
+    expect(restored[0]!.arrowHeadLength).toBe(10);
+    expect(restored[1]!.arrowHeadLength).toBeUndefined();
+  });
+
   it('keeps a miter limit through a save and a load, and drops the default of 4', () => {
     const file = emptyFile('Miter');
     const sharp = createRectNode(null, 0, 0, 40, 40);

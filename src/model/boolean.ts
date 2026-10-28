@@ -5,7 +5,7 @@ import { findNode, insertChild, parentAndIndex, removeNode, updateNode, worldTra
 import { applyToPoint, invert, multiply, translate } from './matrix';
 import { firstVisibleFill } from './paint';
 import { DEFAULT_MITER_LIMIT, hasChildren } from './types';
-import { arrowheadsOf, isArrowCap } from './arrowheads';
+import { ARROW_HEAD_LENGTH, arrowheadsOf, isArrowCap } from './arrowheads';
 import { subpathsFromPathData, type VectorAnchor, type VectorPath } from './vector';
 
 /**
@@ -829,7 +829,7 @@ export function outlineStrokeOp(file: PigmaFile, id: string): OutlineResult {
   }
   // The arms of an arrow line are open lines like the path's, so a dashed stroke dashes them too; the triangles of an equilateral
   // arrow are added to the band instead.
-  const arrowheads = arrow ? arrowheadsOf(openLines.map((line) => line.points), arrow, weight) : null;
+  const arrowheads = arrow ? arrowheadsOf(openLines.map((line) => line.points), arrow, weight, node.arrowHeadLength ?? ARROW_HEAD_LENGTH) : null;
   const arms: StrokeLine[] = arrowheads ? arrowheads.arms.map((points) => ({ points, closed: false, cap: 'NONE' as StrokeCap })) : [];
   for (const line of [...openLines, ...arms]) {
     const dashes = pattern.length > 0 ? dashesOf(line.points, pattern, false, offset) : [];

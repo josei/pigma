@@ -6,7 +6,7 @@
 
 export type Point = [number, number];
 
-/** The length of an arrowhead, in stroke weights. */
+/** The default length of an arrowhead, in stroke weights. */
 export const ARROW_HEAD_LENGTH = 5;
 
 export type ArrowCap = 'ARROW_LINES' | 'ARROW_EQUILATERAL';
@@ -26,8 +26,8 @@ export interface ArrowheadGeometry {
  * The arrowheads at both ends of each open polyline. A polyline with fewer than two distinct points has no direction, so it gets
  * no head. The two ends of a line are the first and the last points, each with its direction taken from the segment beside it.
  */
-export function arrowheadsOf(polylines: Point[][], cap: ArrowCap, weight: number): ArrowheadGeometry {
-  const length = ARROW_HEAD_LENGTH * weight;
+export function arrowheadsOf(polylines: Point[][], cap: ArrowCap, weight: number, headLength = ARROW_HEAD_LENGTH): ArrowheadGeometry {
+  const length = headLength * weight;
   const arms: Point[][] = [];
   const heads: Point[][] = [];
   const cos = Math.cos(Math.PI / 6);
@@ -83,8 +83,8 @@ function pathDataOf(polyline: Point[], closed: boolean): string {
 }
 
 /** The arrowheads at the ends of the given open polylines as path data: the arms, and the heads (each closed). */
-export function arrowheadPaths(polylines: Point[][], cap: ArrowCap, weight: number): { arms: string; heads: string } {
-  const geometry = arrowheadsOf(polylines, cap, weight);
+export function arrowheadPaths(polylines: Point[][], cap: ArrowCap, weight: number, headLength = ARROW_HEAD_LENGTH): { arms: string; heads: string } {
+  const geometry = arrowheadsOf(polylines, cap, weight, headLength);
   return {
     arms: geometry.arms.map((arm) => pathDataOf(arm, false)).join(' '),
     heads: geometry.heads.map((head) => pathDataOf(head, true)).join(' '),
