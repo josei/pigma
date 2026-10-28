@@ -258,7 +258,12 @@ export function toReact(file: PigmaFile, id: string): string {
   const body = content
     ? `\n    ${content.replace(/\n/g, ' ')}\n  `
     : '';
-  return `export function ${component}() {\n  return (\n    <${tag}\n      style={{\n        position: 'absolute',\n${entries.join('\n')}\n      }}\n    >${body}</${tag}>\n  );\n}\n`;
+  // A keyed layer also gets its animation in the style, and its @keyframes in a <style> element beside it.
+  const motion = keyframesCss(file, id);
+  if (motion) entries.push(`    animation: ${jsxValue(`${motionName(node)} ${motionSpan(node)}ms linear both`)},`);
+  const element = `<${tag}\n      style={{\n        position: 'absolute',\n${entries.join('\n')}\n      }}\n    >${body}</${tag}>`;
+  const markup = motion ? `<>\n      <style>{\`${motion}\`}</style>\n      ${element}\n    </>` : element;
+  return `export function ${component}() {\n  return (\n    ${markup}\n  );\n}\n`;
 }
 
 // ---------------------------------------------------------------------------

@@ -508,3 +508,21 @@ describe('CSS for keyframes', () => {
   });
 });
 
+
+describe('React for keyframes', () => {
+  it('gives a keyed layer its animation style and a <style> element with the @keyframes, and leaves an unkeyed layer as it was', () => {
+    const file = emptyFile('Motion');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 100, 60);
+    rect.name = 'Card';
+    page.children = [rect];
+    const keyed = setKeyframeOp(setKeyframeOp(file, rect.id, 'opacity', 0, 1), rect.id, 'opacity', 1000, 0.4);
+    const component = toReact(keyed, rect.id);
+    expect(component).toContain("animation: 'card-motion 1000ms linear both',");
+    expect(component).toContain('<style>{`@keyframes card-motion {');
+    expect(component).toContain('<>');
+    const plain = toReact(file, rect.id);
+    expect(plain).not.toContain('<style>');
+    expect(plain).not.toContain('<>');
+  });
+});
