@@ -568,6 +568,30 @@ describe('SwiftUI for keyframes', () => {
     expect(swift).toContain('.rotationEffect(.degrees(values.rotation))');
   });
 
+  it('sizes a stroked box to its stroke: a centred stroke grows the box by half on each side, an inside stroke leaves it, and a border-box keeps the size', () => {
+    const file = emptyFile('Boxed');
+    const page = file.document.children[0]!;
+    const make = (align: 'CENTER' | 'INSIDE' | 'OUTSIDE') => {
+      const rect = createRectNode(null, 0, 0, 100, 60);
+      rect.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+      rect.strokeWeight = 10;
+      rect.strokeAlign = align;
+      page.children = [...page.children, rect];
+      return rect.id;
+    };
+    const centred = toCss(file, make('CENTER'));
+    expect(centred).toContain('left: -5px;');
+    expect(centred).toContain('width: 110px;');
+    expect(centred).toContain('height: 70px;');
+    expect(centred).toContain('box-sizing: border-box;');
+    const inside = toCss(file, make('INSIDE'));
+    expect(inside).toContain('left: 0px;');
+    expect(inside).toContain('width: 100px;');
+    const outside = toCss(file, make('OUTSIDE'));
+    expect(outside).toContain('left: -10px;');
+    expect(outside).toContain('width: 120px;');
+  });
+
   it('draws a line in CSS with one top border, as a box of no height: a full border would draw it twice', () => {
     const file = emptyFile('CssLine');
     const page = file.document.children[0]!;

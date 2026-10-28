@@ -137,21 +137,24 @@ export function cssDeclarations(file: PigmaFile, id: string): string[] {
   const node = findNode(file.document, id);
   const measured = measurements(file, id);
   if (!node || !measured || node.type === 'DOCUMENT' || node.type === 'CANVAS') return [];
-  const stroked = node.type === 'LINE' && firstVisibleFill(node.strokes);
-  // The canvas centres a line's stroke on its y, but the box's top border sits inside the box, so the box starts half a weight higher.
-  const top = stroked ? round(measured.relativeY - (node.strokeWeight ?? 1) / 2, 2) : measured.relativeY;
+  const stroke = firstVisibleFill(node.strokes);
+  const weight = node.strokeWeight ?? 1;
+  // CSS draws a border inside its box, but the canvas strokes an edge by its alignment: an inside stroke is within the box, a centred
+  // one half outside, an outside one wholly outside. The box grows to hold the stroke, and a border-box keeps its size. A line's stroke
+  // is centred on its y, so its box starts half a weight higher.
+  const grow = !stroke || node.type === 'LINE' ? 0 : node.strokeAlign === 'INSIDE' ? 0 : node.strokeAlign === 'OUTSIDE' ? weight : weight / 2;
+  const top = node.type === 'LINE' && stroke ? measured.relativeY - weight / 2 : measured.relativeY - grow;
   const lines: string[] = [
     'position: absolute;',
-    `left: ${measured.relativeX}px;`,
-    `top: ${top}px;`,
-    `width: ${measured.width}px;`,
-    `height: ${measured.height}px;`,
+    `left: ${round(measured.relativeX - grow, 2)}px;`,
+    `top: ${round(top, 2)}px;`,
+    `width: ${round(measured.width + 2 * grow, 2)}px;`,
+    `height: ${round(measured.height + 2 * grow, 2)}px;`,
   ];
+  if (stroke && node.type !== 'LINE') lines.push('box-sizing: border-box;');
   const fill = firstVisibleFill(node.fills);
   if (fill) lines.push(`background: ${paintToCssBackground(fill)};`);
-  const stroke = firstVisibleFill(node.strokes);
   if (stroke) {
-    const weight = node.strokeWeight ?? 1;
     // A border has one dash style and no dash offset, so a dashed stroke is a dashed border and the browser sets the dash length.
     const style = node.dashPattern?.length ? 'dashed' : 'solid';
     // A line is a box of no height, so one top border draws it. A full border would draw two lines, at the top and the bottom edge.
