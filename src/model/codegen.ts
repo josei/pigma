@@ -247,7 +247,38 @@ export function toCss(file: PigmaFile, id: string): string {
   const motion = keyframesCss(file, id);
   const declarations = motion ? [...lines, `animation: ${motionName(node)} ${span}ms linear both;`] : lines;
   const rule = `${selector} {\n${declarations.map((line) => `  ${line}`).join('\n')}\n}`;
-  return motion ? `${rule}\n\n${motion}` : rule;
+  const heads = arrowCssRules(node, selector);
+  const ruled = [rule, ...heads].join('\n\n');
+  return motion ? `${ruled}\n\n${motion}` : ruled;
+}
+
+/**
+ * The equilateral arrowheads of a line, as CSS pseudo-elements: a triangle at each end, clipped from a box of the head's length. The
+ * line's box sits a stroke weight below its padding's top border, so the stroke's centre line is half a weight above the padding's
+ * origin, and the triangles are placed from there. Arrow lines have no CSS form here and are left out.
+ */
+function arrowCssRules(node: AnyNode, selector: string): string[] {
+  if (node.type !== 'LINE' || node.strokeCap !== 'ARROW_EQUILATERAL') return [];
+  const stroke = firstVisibleFill(node.strokes);
+  if (!stroke || stroke.type !== 'SOLID') return [];
+  const colour = paintToCssBackground(stroke);
+  const weight = node.strokeWeight ?? 1;
+  const length = (node.arrowHeadLength ?? ARROW_HEAD_LENGTH) * weight;
+  const half = length / Math.sqrt(3);
+  const top = round(-weight / 2 - half, 2);
+  const common = [
+    '  content: "";',
+    '  position: absolute;',
+    `  top: ${top}px;`,
+    `  width: ${round(length, 2)}px;`,
+    `  height: ${round(2 * half, 2)}px;`,
+    `  background: ${colour};`,
+  ];
+  // The start's tip is at the left, and the end's at the right: each triangle's base is `length` back from its tip.
+  return [
+    [`${selector}::before {`, '  left: 0px;', ...common, '  clip-path: polygon(0 50%, 100% 0, 100% 100%);', '}'].join('\n'),
+    [`${selector}::after {`, `  left: ${round(node.width - length, 2)}px;`, ...common, '  clip-path: polygon(0 0, 100% 50%, 0 100%);', '}'].join('\n'),
+  ];
 }
 
 function jsxValue(value: string): string {

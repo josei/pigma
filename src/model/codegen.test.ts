@@ -804,6 +804,25 @@ describe('SwiftUI for keyframes', () => {
     expect(swift).not.toContain('// Not represented');
   });
 
+  it('draws an equilateral arrow line\'s heads in CSS as two clipped triangles, placed on the stroke\'s centre line', () => {
+    const file = emptyFile('CssArrow');
+    const page = file.document.children[0]!;
+    const line = createLineNode(null, 0, 0, 100);
+    line.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    line.strokeWeight = 4;
+    line.strokeCap = 'ARROW_EQUILATERAL';
+    page.children = [line];
+    const css = toCss(file, line.id);
+    // Each head is five weights long, 20 units, and its base is 2 x 20 / root 3 = 23.09 across, centred half a weight above the padding.
+    expect(css).toContain('.line-1::before {');
+    expect(css).toContain('clip-path: polygon(0 50%, 100% 0, 100% 100%);');
+    expect(css).toContain('top: -13.55px;');
+    expect(css).toContain('height: 23.09px;');
+    expect(css).toContain('.line-1::after {');
+    expect(css).toContain('left: 80px;');
+    expect(css).toContain('clip-path: polygon(0 0, 100% 50%, 0 100%);');
+  });
+
   it('writes CSS gradients the canvas\'s own way: a conic from the top for angular, an ellipse for radial, and a border image for a gradient stroke', () => {
     const file = emptyFile('CssGradients');
     const page = file.document.children[0]!;
