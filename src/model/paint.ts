@@ -169,8 +169,12 @@ export function paintToCssBackground(paint: Paint | null): string {
     case 'GRADIENT_ANGULAR':
     case 'GRADIENT_DIAMOND': {
       const stops = gradientCssStops(paint.gradientStops);
-      const cssKind = paint.type === 'GRADIENT_LINEAR' ? 'linear-gradient(90deg' : 'radial-gradient(circle at 50% 50%';
-      return `${cssKind}, ${stops})`;
+      // The canvas's own shapes: a linear ramp left to right, a radial ellipse with half the box as its radii, and a conic gradient from
+      // the top of the box, clockwise. CSS has no diamond, so a diamond keeps the circular radial it always had.
+      if (paint.type === 'GRADIENT_LINEAR') return `linear-gradient(90deg, ${stops})`;
+      if (paint.type === 'GRADIENT_RADIAL') return `radial-gradient(ellipse 50% 50% at 50% 50%, ${stops})`;
+      if (paint.type === 'GRADIENT_ANGULAR') return `conic-gradient(from 0deg at 50% 50%, ${stops})`;
+      return `radial-gradient(circle at 50% 50%, ${stops})`;
     }
     case 'IMAGE':
       return paint.dataUrl ? `url(${paint.dataUrl})` : '#c4c4c4';

@@ -159,7 +159,16 @@ export function cssDeclarations(file: PigmaFile, id: string): string[] {
     const style = node.dashPattern?.length ? 'dashed' : 'solid';
     // A line is a box of no height, so one top border draws it. A full border would draw two lines, at the top and the bottom edge.
     const side = node.type === 'LINE' ? 'border-top' : 'border';
-    lines.push(`${side}: ${weight}px ${style} ${paintToCssBackground(stroke)};`);
+    if (stroke.type === 'SOLID') {
+      lines.push(`${side}: ${weight}px ${style} ${paintToCssBackground(stroke)};`);
+    } else if (node.type === 'LINE') {
+      // A line's one border cannot take an image, so it takes the colour at the middle of its gradient.
+      lines.push(`${side}: ${weight}px ${style} ${midStopColour(stroke)};`);
+    } else {
+      // A border's colour cannot be a gradient, so the border is transparent and the gradient is its border image.
+      lines.push(`${side}: ${weight}px ${style} transparent;`);
+      lines.push(`border-image: ${paintToCssBackground(stroke)} 1;`);
+    }
   }
   if (measured.cornerRadius > 0) lines.push(`border-radius: ${measured.cornerRadius}px;`);
   if (measured.rotation !== 0) lines.push(`transform: rotate(${measured.rotation}deg);`);
@@ -637,6 +646,15 @@ function composeShape(node: SceneNode): string | null {
     default:
       return 'RectangleShape()';
   }
+}
+
+/** The colour of a gradient at its middle, as a CSS colour: the stop nearest the middle of the ramp. */
+function midStopColour(paint: Paint): string {
+  const stops: Array<{ position: number; color: { r: number; g: number; b: number; a?: number } }> =
+    (paint as { gradientStops?: Array<{ position: number; color: { r: number; g: number; b: number; a?: number } }> }).gradientStops ?? [];
+  if (stops.length === 0) return 'transparent';
+  const nearest = stops.reduce((best, stop) => (Math.abs(stop.position - 0.5) < Math.abs(best.position - 0.5) ? stop : best));
+  return figmaColorToCss(nearest.color, (nearest.color.a ?? 1) * (paint.opacity ?? 1));
 }
 
 /** A copyable SwiftUI view for the selection. */

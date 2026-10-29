@@ -804,6 +804,34 @@ describe('SwiftUI for keyframes', () => {
     expect(swift).not.toContain('// Not represented');
   });
 
+  it('writes CSS gradients the canvas\'s own way: a conic from the top for angular, an ellipse for radial, and a border image for a gradient stroke', () => {
+    const file = emptyFile('CssGradients');
+    const page = file.document.children[0]!;
+    const stops = [
+      { position: 0, color: { r: 1, g: 0, b: 0, a: 1 } },
+      { position: 1, color: { r: 0, g: 0, b: 1, a: 1 } },
+    ];
+    const angular = createRectNode(null, 0, 0, 120, 80);
+    angular.fills = [{ type: 'GRADIENT_ANGULAR', gradientStops: stops, opacity: 1 } as never];
+    const radial = createRectNode(null, 0, 0, 120, 80);
+    radial.fills = [{ type: 'GRADIENT_RADIAL', gradientStops: stops, opacity: 1 } as never];
+    const framed = createRectNode(null, 0, 0, 120, 80);
+    framed.strokes = [{ type: 'GRADIENT_LINEAR', gradientStops: stops, opacity: 1 } as never];
+    framed.strokeWeight = 4;
+    const line = createLineNode(null, 0, 0, 100);
+    line.strokes = [{ type: 'GRADIENT_LINEAR', gradientStops: stops, opacity: 1 } as never];
+    line.strokeWeight = 4;
+    page.children = [angular, radial, framed, line];
+    expect(toCss(file, angular.id)).toContain('background: conic-gradient(from 0deg at 50% 50%, rgb(255, 0, 0) 0%, rgb(0, 0, 255) 100%);');
+    expect(toCss(file, radial.id)).toContain('background: radial-gradient(ellipse 50% 50% at 50% 50%, ');
+    const framedCss = toCss(file, framed.id);
+    expect(framedCss).toContain('border: 4px solid transparent;');
+    expect(framedCss).toContain('border-image: linear-gradient(90deg, ');
+    // A line's border cannot take an image: it takes the colour at the middle of its ramp.
+    expect(toCss(file, line.id)).toContain('border-top: 4px solid rgb(');
+    expect(toCss(file, line.id)).not.toContain('linear-gradient');
+  });
+
   it.skipIf(!swiftcAvailable)('the SwiftUI view for an angular gradient typechecks in Swift', () => {
     const file = emptyFile('AngularView');
     const page = file.document.children[0]!;
