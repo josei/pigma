@@ -1,6 +1,6 @@
 import type { AnyNode, KeyEasing, Paint, PigmaFile, SceneNode, ShadowEffect } from './types';
 import { absoluteBounds, findNode, findParent, parentAndIndex, worldTransform } from './tree';
-import { boundsOf, rotationOf, roundTo as round } from './matrix';
+import { boundsOf, fromMatrix, rotationOf, roundTo as round } from './matrix';
 import { figmaColorToCss, firstVisibleFill, paintToCssBackground, rgbaToHex } from './paint';
 import { valuesAt } from './keyframes';
 import { ARROW_HEAD_LENGTH, arrowheadPaths, arrowheadsOf, isArrowCap } from './arrowheads';
@@ -321,9 +321,11 @@ function identifier(name: string, fallback: string): string {
 
 /** A colour literal per target, from a paint. */
 /**
- * A SwiftUI paint: a colour for a solid, and a LinearGradient or RadialGradient for a gradient. A linear gradient runs from the leading
- * edge to the trailing one, and a radial gradient is centred with the radius of half the shorter side, as the canvas lays them out.
- * A gradient transform is not applied. Null for a paint with no SwiftUI form, or a gradient with fewer than two stops.
+ * A SwiftUI paint: a colour for a solid, and a LinearGradient or RadialGradient for a gradient. The canvas lays a gradient out in the
+ * unit square of its box, with its transform applied there, and a UnitPoint is a point in that same square, so a linear gradient's
+ * start and end, and a radial gradient's centre, are the transformed points. A radial gradient stays circular: SwiftUI has no
+ * elliptical radial, so its radius is half the shorter side, which matches the canvas only on a square box. Null for a paint with no
+ * SwiftUI form, or a gradient with fewer than two stops.
  */
 function swiftPaint(paint: Paint, width: number, height: number): string | null {
   if (paint.type === 'SOLID') return swiftColor(paint.color, paint.opacity ?? 1);
@@ -334,8 +336,21 @@ function swiftPaint(paint: Paint, width: number, height: number): string | null 
     .map((stop) => `Gradient.Stop(color: ${swiftColor(stop.color, (stop.color.a ?? 1) * (paint.opacity ?? 1))}, location: ${round(stop.position, 3)})`)
     .join(', ');
   const gradient = `Gradient(stops: [${list}])`;
-  if (paint.type === 'GRADIENT_LINEAR') return `LinearGradient(gradient: ${gradient}, startPoint: .leading, endPoint: .trailing)`;
-  return `RadialGradient(gradient: ${gradient}, center: .center, startRadius: 0, endRadius: ${round(Math.min(width, height) / 2, 2)})`;
+  const transform = paint.gradientTransform ? fromMatrix(paint.gradientTransform) : null;
+  // A point of the unit square under the gradient transform, in the column convention SVG uses.
+  const at = (x: number, y: number) =>
+    transform
+      ? { x: round(transform.a * x + transform.c * y + transform.tx, 3), y: round(transform.b * x + transform.d * y + transform.ty, 3) }
+      : null;
+  const unit = (point: { x: number; y: number } | null, fallback: string) =>
+    point ? `UnitPoint(x: ${point.x}, y: ${point.y})` : fallback;
+  if (paint.type === 'GRADIENT_LINEAR') {
+    const start = unit(at(0, 0), '.leading');
+    const end = unit(at(1, 0), '.trailing');
+    return `LinearGradient(gradient: ${gradient}, startPoint: ${start}, endPoint: ${end})`;
+  }
+  const centre = unit(at(0.5, 0.5), '.center');
+  return `RadialGradient(gradient: ${gradient}, center: ${centre}, startRadius: 0, endRadius: ${round(Math.min(width, height) / 2, 2)})`;
 }
 
 function swiftColor(color: { r: number; g: number; b: number }, opacity: number): string {

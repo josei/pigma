@@ -742,6 +742,86 @@ describe('SwiftUI for keyframes', () => {
     expect(toCompose(file, rect.id)).toContain('the GRADIENT_LINEAR fill (2 stops) is not generated');
   });
 
+  it('moves a gradient\'s start, end and centre by its transform, in the unit square of the box', () => {
+    const file = emptyFile('Moved');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 120, 80);
+    rect.fills = [
+      {
+        type: 'GRADIENT_LINEAR',
+        gradientStops: [
+          { position: 0, color: { r: 1, g: 0, b: 0, a: 1 } },
+          { position: 1, color: { r: 0, g: 0, b: 1, a: 1 } },
+        ],
+        opacity: 1,
+        gradientTransform: [
+          [1, 0, 0.25],
+          [0, 1, 0.5],
+        ],
+      } as never,
+    ];
+    rect.strokes = [
+      {
+        type: 'GRADIENT_RADIAL',
+        gradientStops: [
+          { position: 0, color: { r: 0, g: 1, b: 0, a: 1 } },
+          { position: 1, color: { r: 0, g: 0, b: 0, a: 1 } },
+        ],
+        opacity: 1,
+        gradientTransform: [
+          [1, 0, 0.25],
+          [0, 1, 0.5],
+        ],
+      } as never,
+    ];
+    rect.strokeWeight = 4;
+    page.children = [rect];
+    const swift = toSwiftUI(file, rect.id);
+    expect(swift).toContain('startPoint: UnitPoint(x: 0.25, y: 0.5), endPoint: UnitPoint(x: 1.25, y: 0.5)');
+    expect(swift).toContain('center: UnitPoint(x: 0.75, y: 1)');
+  });
+
+  it.skipIf(!swiftcAvailable)('the SwiftUI view for a transformed gradient typechecks in Swift', () => {
+    const file = emptyFile('MovedView');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 120, 80);
+    rect.fills = [
+      {
+        type: 'GRADIENT_LINEAR',
+        gradientStops: [
+          { position: 0, color: { r: 1, g: 0, b: 0, a: 1 } },
+          { position: 1, color: { r: 0, g: 0, b: 1, a: 1 } },
+        ],
+        opacity: 1,
+        gradientTransform: [
+          [1, 0, 0.25],
+          [0, 1, 0.5],
+        ],
+      } as never,
+    ];
+    rect.strokes = [
+      {
+        type: 'GRADIENT_RADIAL',
+        gradientStops: [
+          { position: 0, color: { r: 0, g: 1, b: 0, a: 1 } },
+          { position: 1, color: { r: 0, g: 0, b: 0, a: 1 } },
+        ],
+        opacity: 1,
+        gradientTransform: [
+          [1, 0, 0.25],
+          [0, 1, 0.5],
+        ],
+      } as never,
+    ];
+    rect.strokeWeight = 4;
+    page.children = [rect];
+    const dir = mkdtempSync(join(tmpdir(), 'pigma-swiftui-moved-'));
+    const source = join(dir, 'MovedView.swift');
+    writeFileSync(source, `import SwiftUI\n\n${toSwiftUI(file, rect.id)}`);
+    const target = process.arch === 'arm64' ? 'arm64-apple-macos14' : 'x86_64-apple-macos14';
+    expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
+  });
+
   it.skipIf(!swiftcAvailable)('the SwiftUI view for a gradient fill and stroke typechecks in Swift', () => {
     const file = emptyFile('GradientView');
     const page = file.document.children[0]!;
