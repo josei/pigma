@@ -705,6 +705,76 @@ describe('SwiftUI for keyframes', () => {
     expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
   });
 
+  it('gives a linear gradient fill and a radial gradient stroke SwiftUI gradients, laid out as the canvas lays them out', () => {
+    const file = emptyFile('Gradient');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 120, 80);
+    rect.fills = [
+      {
+        type: 'GRADIENT_LINEAR',
+        gradientStops: [
+          { position: 0, color: { r: 1, g: 0, b: 0, a: 1 } },
+          { position: 1, color: { r: 0, g: 0, b: 1, a: 1 } },
+        ],
+        opacity: 1,
+      } as never,
+    ];
+    rect.strokes = [
+      {
+        type: 'GRADIENT_RADIAL',
+        gradientStops: [
+          { position: 0, color: { r: 0, g: 1, b: 0, a: 1 } },
+          { position: 1, color: { r: 0, g: 0, b: 0, a: 0.5 } },
+        ],
+        opacity: 1,
+      } as never,
+    ];
+    rect.strokeWeight = 4;
+    page.children = [rect];
+    const swift = toSwiftUI(file, rect.id);
+    expect(swift).toContain(
+      '.fill(LinearGradient(gradient: Gradient(stops: [Gradient.Stop(color: Color(red: 1, green: 0, blue: 0), location: 0), Gradient.Stop(color: Color(red: 0, green: 0, blue: 1), location: 1)]), startPoint: .leading, endPoint: .trailing))',
+    );
+    // The radial gradient is centred, with the radius of half the shorter side (60 for an 80 tall box, so 40).
+    expect(swift).toContain('.stroke(RadialGradient(gradient: Gradient(stops: [Gradient.Stop(color: Color(red: 0, green: 1, blue: 0), location: 0), Gradient.Stop(color: Color(red: 0, green: 0, blue: 0).opacity(0.5), location: 1)]), center: .center, startRadius: 0, endRadius: 40), lineWidth: 4)');
+    // Drawn gradients are not gaps in SwiftUI; Compose still reports them, with the real stop count.
+    expect(swift).not.toContain('// Not represented');
+    expect(toCompose(file, rect.id)).toContain('the GRADIENT_LINEAR fill (2 stops) is not generated');
+  });
+
+  it.skipIf(!swiftcAvailable)('the SwiftUI view for a gradient fill and stroke typechecks in Swift', () => {
+    const file = emptyFile('GradientView');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 120, 80);
+    rect.fills = [
+      {
+        type: 'GRADIENT_RADIAL',
+        gradientStops: [
+          { position: 0, color: { r: 1, g: 1, b: 0, a: 1 } },
+          { position: 1, color: { r: 0, g: 0, b: 1, a: 1 } },
+        ],
+        opacity: 1,
+      } as never,
+    ];
+    rect.strokes = [
+      {
+        type: 'GRADIENT_LINEAR',
+        gradientStops: [
+          { position: 0, color: { r: 1, g: 0, b: 0, a: 1 } },
+          { position: 1, color: { r: 0, g: 0, b: 1, a: 1 } },
+        ],
+        opacity: 1,
+      } as never,
+    ];
+    rect.strokeWeight = 4;
+    page.children = [rect];
+    const dir = mkdtempSync(join(tmpdir(), 'pigma-swiftui-gradient-'));
+    const source = join(dir, 'GradientView.swift');
+    writeFileSync(source, `import SwiftUI\n\n${toSwiftUI(file, rect.id)}`);
+    const target = process.arch === 'arm64' ? 'arm64-apple-macos14' : 'x86_64-apple-macos14';
+    expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
+  });
+
   it('draws a line as a path, with an equilateral arrow as a filled path at each end', () => {
     const file = emptyFile('Arrow');
     const page = file.document.children[0]!;

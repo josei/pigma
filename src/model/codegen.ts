@@ -320,6 +320,24 @@ function identifier(name: string, fallback: string): string {
 }
 
 /** A colour literal per target, from a paint. */
+/**
+ * A SwiftUI paint: a colour for a solid, and a LinearGradient or RadialGradient for a gradient. A linear gradient runs from the leading
+ * edge to the trailing one, and a radial gradient is centred with the radius of half the shorter side, as the canvas lays them out.
+ * A gradient transform is not applied. Null for a paint with no SwiftUI form, or a gradient with fewer than two stops.
+ */
+function swiftPaint(paint: Paint, width: number, height: number): string | null {
+  if (paint.type === 'SOLID') return swiftColor(paint.color, paint.opacity ?? 1);
+  if (paint.type !== 'GRADIENT_LINEAR' && paint.type !== 'GRADIENT_RADIAL') return null;
+  const stops = [...(paint.gradientStops ?? [])].sort((a, b) => a.position - b.position);
+  if (stops.length < 2) return null;
+  const list = stops
+    .map((stop) => `Gradient.Stop(color: ${swiftColor(stop.color, (stop.color.a ?? 1) * (paint.opacity ?? 1))}, location: ${round(stop.position, 3)})`)
+    .join(', ');
+  const gradient = `Gradient(stops: [${list}])`;
+  if (paint.type === 'GRADIENT_LINEAR') return `LinearGradient(gradient: ${gradient}, startPoint: .leading, endPoint: .trailing)`;
+  return `RadialGradient(gradient: ${gradient}, center: .center, startRadius: 0, endRadius: ${round(Math.min(width, height) / 2, 2)})`;
+}
+
 function swiftColor(color: { r: number; g: number; b: number }, opacity: number): string {
   const channel = (value: number) => Math.round(Math.min(1, Math.max(0, value)) * 1000) / 1000;
   const alpha = Math.round(Math.min(1, Math.max(0, opacity)) * 1000) / 1000;
@@ -385,12 +403,15 @@ function unsupportedNotes(node: SceneNode, target: 'swift' | 'compose'): string[
   // Each note carries a value a developer can act on: a stop count, a scale mode,
   // a command count — never just the name of the feature that was dropped.
   const stops = (paint: Paint): number => {
-    const value = (paint as unknown as { stops?: unknown }).stops;
+    const value = (paint as unknown as { gradientStops?: unknown }).gradientStops;
     return Array.isArray(value) ? value.length : 0;
   };
+  // SwiftUI draws a linear or radial gradient with two or more stops, so it is not a gap there.
+  const drawnInSwift = (paint: Paint): boolean =>
+    target === 'swift' && (paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL') && stops(paint) >= 2;
   const scaleMode = (paint: Paint): string => ((paint as { scaleMode?: string }).scaleMode ?? 'FILL').toUpperCase();
 
-  const gradient = paints.find((paint) => paint.type.startsWith('GRADIENT'));
+  const gradient = paints.find((paint) => paint.type.startsWith('GRADIENT') && !drawnInSwift(paint));
   if (gradient) notes.push(`the ${gradient.type} fill (${stops(gradient)} stops) is not generated — a solid fill is not substituted`);
   const image = paints.find((paint) => paint.type === 'IMAGE');
   if (image) notes.push(`the IMAGE fill (scaleMode ${scaleMode(image)}) is not generated — set the bitmap in the target`);
@@ -398,7 +419,7 @@ function unsupportedNotes(node: SceneNode, target: 'swift' | 'compose'): string[
   if (exotic) notes.push(`the ${exotic.type} paint (scaleMode ${scaleMode(exotic)}) is not generated`);
 
   const stroke = firstVisibleFill(node.strokes);
-  if (stroke && stroke.type !== 'SOLID') {
+  if (stroke && stroke.type !== 'SOLID' && !drawnInSwift(stroke)) {
     const detail = stroke.type.startsWith('GRADIENT') ? `${stops(stroke)} stops` : `scaleMode ${scaleMode(stroke)}`;
     notes.push(`the ${stroke.type} stroke (${detail}) is not generated — only SOLID strokes are`);
   }
@@ -682,18 +703,19 @@ export function toSwiftUI(file: PigmaFile, id: string): string {
     } else {
       lines.push(`    ${shape}`);
       const fill = firstVisibleFill(node.fills);
-      if (fill && fill.type === 'SOLID') lines.push(`      .fill(${swiftColor(fill.color, fill.opacity ?? 1)})`);
+      const fillStyle = fill ? swiftPaint(fill, measured.width, measured.height) : null;
+      if (fillStyle) lines.push(`      .fill(${fillStyle})`);
       else if (fill) lines.push('      .fill(Color.clear) // fill type not generated');
       lines.push(`      .frame(width: ${round(measured.width, 2)}, height: ${round(measured.height, 2)})`);
       const stroke = firstVisibleFill(node.strokes);
-      if (stroke && stroke.type === 'SOLID') {
-        const color = swiftColor(stroke.color, stroke.opacity ?? 1);
+      const strokeStyle = stroke ? swiftPaint(stroke, measured.width, measured.height) : null;
+      if (strokeStyle) {
         const width = round(node.strokeWeight ?? 1, 2);
         const style = swiftStrokeStyle(node, width);
         lines.push(
           style
-            ? `      .overlay(${shape}.stroke(${color}, style: ${style}))`
-            : `      .overlay(${shape}.stroke(${color}, lineWidth: ${width}))`,
+            ? `      .overlay(${shape}.stroke(${strokeStyle}, style: ${style}))`
+            : `      .overlay(${shape}.stroke(${strokeStyle}, lineWidth: ${width}))`,
         );
       }
       if (measured.cornerRadius > 0) lines.push(`      .cornerRadius(${round(measured.cornerRadius, 2)})`);
