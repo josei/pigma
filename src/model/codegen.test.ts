@@ -823,6 +823,27 @@ describe('SwiftUI for keyframes', () => {
     expect(css).toContain('clip-path: polygon(0 0, 100% 50%, 0 100%);');
   });
 
+  it('draws an arrow line\'s chevron in CSS as a V band clipped in a box of its arms plus a weight, at each end', () => {
+    const file = emptyFile('CssChevron');
+    const page = file.document.children[0]!;
+    const line = createLineNode(null, 0, 0, 240);
+    line.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+    line.strokeWeight = 4;
+    line.strokeCap = 'ARROW_LINES';
+    page.children = [line];
+    const css = toCss(file, line.id);
+    // The arms are 5 weights, 20 units, so the box is 20 + 2 x 4 = 28 across and tall; its top is half a weight and half its height above
+    // the line. The start's box sits a weight left of the line's start, and the end's a weight short of its right end, at 240 - 28 + 4.
+    expect(css).toContain('.line-1::before {');
+    expect(css).toContain('left: -4px;');
+    expect(css).toContain('top: -16px;');
+    expect(css).toContain('width: 28px;');
+    expect(css).toContain('height: 28px;');
+    expect(css).toContain('.line-1::after {');
+    expect(css).toContain('left: 216px;');
+    expect(css).not.toContain('ARROW_LINES');
+  });
+
   it('writes CSS gradients the canvas\'s own way: a conic from the top for angular, an ellipse for radial, and a border image for a gradient stroke', () => {
     const file = emptyFile('CssGradients');
     const page = file.document.children[0]!;

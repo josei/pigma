@@ -253,17 +253,57 @@ export function toCss(file: PigmaFile, id: string): string {
 }
 
 /**
+ * The chevron of an arrow line, one pseudo-element at each end: the two arms of the stroke's weight at 30 degrees either side of the line,
+ * with a miter at the tip and butt ends, clipped to that V-shaped band. The band is drawn in a box of the arms' length plus a weight, and
+ * the end's box is mirrored so its tip sits at the line's right end.
+ */
+function chevronCssRules(width: number, weight: number, length: number, colour: string, selector: string): string[] {
+  const cos = Math.cos(Math.PI / 6);
+  const sin = 0.5;
+  const half = weight / 2;
+  const halfHeight = length / 2 + weight;
+  const boxWidth = length + 2 * weight;
+  // The tip is at (weight, halfHeight) in the box. Points are the outer miter, the far ends of the outer and inner edges of each arm,
+  // and the inner corner, where the inner edges meet on the line.
+  const at = (x: number, y: number): [number, number] => [round(weight + x, 2), round(halfHeight + y, 2)];
+  const outline = [
+    at(-weight, 0),
+    at(length * cos - half * sin, -length * sin - half * cos),
+    at(length * cos + half * sin, -length * sin + half * cos),
+    at(weight, 0),
+    at(length * cos + half * sin, length * sin - half * cos),
+    at(length * cos - half * sin, length * sin + half * cos),
+  ];
+  const polygon = (points: Array<[number, number]>) => `polygon(${points.map(([x, y]) => `${x}px ${y}px`).join(', ')})`;
+  const common = [
+    '  content: "";',
+    '  position: absolute;',
+    `  top: ${round(-half - halfHeight, 2)}px;`,
+    `  width: ${round(boxWidth, 2)}px;`,
+    `  height: ${round(2 * halfHeight, 2)}px;`,
+    `  background: ${colour};`,
+  ];
+  // The end's chevron is the start's mirrored in x, so its tip lands on the line's right end.
+  const mirrored = outline.map(([x, y]): [number, number] => [round(boxWidth - x, 2), y]);
+  return [
+    [`${selector}::before {`, `  left: ${round(-weight, 2)}px;`, ...common, `  clip-path: ${polygon(outline)};`, '}'].join('\n'),
+    [`${selector}::after {`, `  left: ${round(width - boxWidth + weight, 2)}px;`, ...common, `  clip-path: ${polygon(mirrored)};`, '}'].join('\n'),
+  ];
+}
+
+/**
  * The equilateral arrowheads of a line, as CSS pseudo-elements: a triangle at each end, clipped from a box of the head's length. The
  * line's box sits a stroke weight below its padding's top border, so the stroke's centre line is half a weight above the padding's
  * origin, and the triangles are placed from there. Arrow lines have no CSS form here and are left out.
  */
 function arrowCssRules(node: AnyNode, selector: string): string[] {
-  if (node.type !== 'LINE' || node.strokeCap !== 'ARROW_EQUILATERAL') return [];
+  if (node.type !== 'LINE' || !isArrowCap(node.strokeCap)) return [];
   const stroke = firstVisibleFill(node.strokes);
   if (!stroke || stroke.type !== 'SOLID') return [];
   const colour = paintToCssBackground(stroke);
   const weight = node.strokeWeight ?? 1;
   const length = (node.arrowHeadLength ?? ARROW_HEAD_LENGTH) * weight;
+  if (node.strokeCap === 'ARROW_LINES') return chevronCssRules(node.width, weight, length, colour, selector);
   const half = length / Math.sqrt(3);
   const top = round(-weight / 2 - half, 2);
   const common = [
