@@ -329,18 +329,24 @@ function identifier(name: string, fallback: string): string {
  */
 function swiftPaint(paint: Paint, width: number, height: number): string | null {
   if (paint.type === 'SOLID') return swiftColor(paint.color, paint.opacity ?? 1);
-  if (paint.type !== 'GRADIENT_LINEAR' && paint.type !== 'GRADIENT_RADIAL') return null;
+  if (paint.type !== 'GRADIENT_LINEAR' && paint.type !== 'GRADIENT_RADIAL' && paint.type !== 'GRADIENT_ANGULAR') return null;
   const stops = [...(paint.gradientStops ?? [])].sort((a, b) => a.position - b.position);
   if (stops.length < 2) return null;
   const list = stops
     .map((stop) => `Gradient.Stop(color: ${swiftColor(stop.color, (stop.color.a ?? 1) * (paint.opacity ?? 1))}, location: ${round(stop.position, 3)})`)
     .join(', ');
   const gradient = `Gradient(stops: [${list}])`;
-  const transform = paint.gradientTransform ? fromMatrix(paint.gradientTransform) : null;
+  // The canvas draws an angular gradient from the top of its box, clockwise, and ignores the gradient transform. SwiftUI measures its
+  // angles from the right, clockwise, so the top is 270 degrees and one full turn ends at 630.
+  if (paint.type === 'GRADIENT_ANGULAR') {
+    return `AngularGradient(gradient: ${gradient}, center: .center, startAngle: .degrees(270), endAngle: .degrees(630))`;
+  }
+  const transform = paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL' ? paint.gradientTransform : undefined;
+  const matrix = transform ? fromMatrix(transform) : null;
   // A point of the unit square under the gradient transform, in the column convention SVG uses.
   const at = (x: number, y: number) =>
-    transform
-      ? { x: round(transform.a * x + transform.c * y + transform.tx, 3), y: round(transform.b * x + transform.d * y + transform.ty, 3) }
+    matrix
+      ? { x: round(matrix.a * x + matrix.c * y + matrix.tx, 3), y: round(matrix.b * x + matrix.d * y + matrix.ty, 3) }
       : null;
   const unit = (point: { x: number; y: number } | null, fallback: string) =>
     point ? `UnitPoint(x: ${point.x}, y: ${point.y})` : fallback;
@@ -423,7 +429,9 @@ function unsupportedNotes(node: SceneNode, target: 'swift' | 'compose'): string[
   };
   // SwiftUI draws a linear or radial gradient with two or more stops, so it is not a gap there.
   const drawnInSwift = (paint: Paint): boolean =>
-    target === 'swift' && (paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL') && stops(paint) >= 2;
+    target === 'swift' &&
+    (paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL' || paint.type === 'GRADIENT_ANGULAR') &&
+    stops(paint) >= 2;
   const scaleMode = (paint: Paint): string => ((paint as { scaleMode?: string }).scaleMode ?? 'FILL').toUpperCase();
 
   const gradient = paints.find((paint) => paint.type.startsWith('GRADIENT') && !drawnInSwift(paint));

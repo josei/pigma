@@ -781,6 +781,62 @@ describe('SwiftUI for keyframes', () => {
     expect(swift).toContain('center: UnitPoint(x: 0.75, y: 1)');
   });
 
+  it('gives an angular gradient an AngularGradient that starts at the top of its box and runs clockwise', () => {
+    const file = emptyFile('Angular');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 120, 80);
+    rect.fills = [
+      {
+        type: 'GRADIENT_ANGULAR',
+        gradientStops: [
+          { position: 0, color: { r: 1, g: 0, b: 0, a: 1 } },
+          { position: 1, color: { r: 0, g: 0, b: 1, a: 1 } },
+        ],
+        opacity: 1,
+      } as never,
+    ];
+    rect.strokes = [];
+    page.children = [rect];
+    const swift = toSwiftUI(file, rect.id);
+    expect(swift).toContain(
+      '.fill(AngularGradient(gradient: Gradient(stops: [Gradient.Stop(color: Color(red: 1, green: 0, blue: 0), location: 0), Gradient.Stop(color: Color(red: 0, green: 0, blue: 1), location: 1)]), center: .center, startAngle: .degrees(270), endAngle: .degrees(630)))',
+    );
+    expect(swift).not.toContain('// Not represented');
+  });
+
+  it.skipIf(!swiftcAvailable)('the SwiftUI view for an angular gradient typechecks in Swift', () => {
+    const file = emptyFile('AngularView');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 120, 80);
+    rect.fills = [
+      {
+        type: 'GRADIENT_ANGULAR',
+        gradientStops: [
+          { position: 0, color: { r: 1, g: 1, b: 0, a: 1 } },
+          { position: 1, color: { r: 0, g: 0, b: 1, a: 1 } },
+        ],
+        opacity: 1,
+      } as never,
+    ];
+    rect.strokes = [
+      {
+        type: 'GRADIENT_ANGULAR',
+        gradientStops: [
+          { position: 0, color: { r: 1, g: 0, b: 0, a: 1 } },
+          { position: 1, color: { r: 0, g: 1, b: 0, a: 1 } },
+        ],
+        opacity: 1,
+      } as never,
+    ];
+    rect.strokeWeight = 4;
+    page.children = [rect];
+    const dir = mkdtempSync(join(tmpdir(), 'pigma-swiftui-angular-'));
+    const source = join(dir, 'AngularView.swift');
+    writeFileSync(source, `import SwiftUI\n\n${toSwiftUI(file, rect.id)}`);
+    const target = process.arch === 'arm64' ? 'arm64-apple-macos14' : 'x86_64-apple-macos14';
+    expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
+  });
+
   it.skipIf(!swiftcAvailable)('the SwiftUI view for a transformed gradient typechecks in Swift', () => {
     const file = emptyFile('MovedView');
     const page = file.document.children[0]!;
