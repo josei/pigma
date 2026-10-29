@@ -180,12 +180,13 @@ describe('vector PDF', () => {
     ];
     const rect = createRectNode(null, 40, 40, 200, 120);
     rect.fills = [];
-    rect.strokes = [{ type: 'GRADIENT_LINEAR', gradientStops: stops, opacity: 1, gradientTransform: [[1, 0, 100], [0, 1, 0]] } as never];
+    rect.strokes = [{ type: 'GRADIENT_LINEAR', gradientStops: stops, opacity: 1, gradientTransform: [[1, 0, 0.25], [0, 1, 0]] } as never];
     rect.strokeWeight = 16;
     const { file, nodes } = page([rect]);
     const body = decode(renderVectorPdf(file, nodes, { width: 540, height: 200 }).bytes);
-    // The gradient moves 100 along x, then the node sits 40 along x and y: the pattern's matrix translates by 140 and 40.
-    expect(body).toContain('/Matrix [1 0 0 1 140 40]');
+    // The gradient moves a quarter of the box along x (50 of its 200), then the node sits 40 along x and y. The pattern maps the unit
+    // square to the box: scaled to 200 by 120, and moved to 90 and 40.
+    expect(body).toContain('/Matrix [200 0 0 120 90 40]');
   });
 
   it('fills the heads and strokes the arms of a gradient-stroked arrow with the stroke\'s shading pattern', () => {
@@ -203,6 +204,26 @@ describe('vector PDF', () => {
     // The heads are filled with a pattern, not a flat colour: the fill colour space is set to the pattern.
     expect(body).toMatch(/\/Pattern cs \/P\d+ scn/);
     expect(body).not.toMatch(/ rg\n/);
+  });
+
+  it('lays a radial gradient fill out as an ellipse on a non-square box, scaling its unit circle to the box', () => {
+    const rect = createRectNode(null, 0, 0, 200, 120);
+    rect.fills = [
+      {
+        type: 'GRADIENT_RADIAL',
+        gradientStops: [
+          { position: 0, color: { r: 1, g: 0, b: 0, a: 1 } },
+          { position: 1, color: { r: 0, g: 0, b: 1, a: 1 } },
+        ],
+        opacity: 1,
+      } as never,
+    ];
+    rect.strokes = [];
+    const { file, nodes } = page([rect]);
+    const body = decode(renderVectorPdf(file, nodes, { width: 200, height: 120 }).bytes);
+    // The shading is the unit circle about (0.5, 0.5) of radius 0.5; the box's 200 by 120 scales it to the ellipse of radii 100 and 60.
+    expect(body).toContain('200 0 0 120 0 0 cm');
+    expect(body).toContain('/Coords [0.5 0.5 0 0.5 0.5 0.5]');
   });
 
   it('sets the PDF miter limit: the SVG default of 4 unless the layer sets its own', () => {

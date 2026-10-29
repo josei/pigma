@@ -194,7 +194,7 @@ function paintShape(
       builder.content.push('Q');
     } else {
       // A gradient stroke takes a shading pattern, so the gradient is laid out in the node's own space, as a fill is.
-      const pattern = matrix ? strokePatternName(builder, shading, matrix, paint) : null;
+      const pattern = matrix ? strokePatternName(builder, shading, matrix, paint, node) : null;
       if (pattern) {
         builder.content.push(`/Pattern CS /${pattern} SCN`);
         builder.content.push(pdfPath);
@@ -269,7 +269,7 @@ function arrowheadColour(builder: PdfBuilder, node: SceneNode, paint: Paint, mat
   if (paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL') {
     const shading = shadingName(builder, paint, node, 0, 'stroke');
     if (shading) {
-      const pattern = strokePatternName(builder, shading, matrix, paint);
+      const pattern = strokePatternName(builder, shading, matrix, paint, node);
       return { stroke: `/Pattern CS /${pattern} SCN`, fill: `/Pattern cs /${pattern} scn` };
     }
   }
@@ -294,23 +294,14 @@ function shadingName(
   const stops = [...paint.gradientStops].sort((a, b) => a.position - b.position);
   if (stops.length < 2) return null;
   const name = `Sh${builder.shadings.length + 1}`;
-  // Coordinates live in the node's own space: the SVG default spans the bounding
-  // box left-to-right (linear) or from its centre (radial). A gradient transform
-  // is applied as a `cm` around the shading instead of /Matrix, which keeps the
-  // meaning unambiguous for viewers.
-  const width = Math.max(node.width, 0.0001);
-  const height = Math.max(node.height, 0.0001);
-  const coordinates =
-    paint.type === 'GRADIENT_LINEAR'
-      ? `0 0 ${num(width)} 0`
-      : `${num(width / 2)} ${num(height / 2)} 0 ${num(width / 2)} ${num(height / 2)} ${num(Math.min(width, height) / 2)}`;
-  if (paint.gradientTransform) {
-    const transform = fromMatrix(paint.gradientTransform);
-    builder.shadingTransforms.set(
-      name,
-      `${num(transform.a)} ${num(transform.b)} ${num(transform.c)} ${num(transform.d)} ${num(transform.tx)} ${num(transform.ty)} cm`,
-    );
-  }
+  // The shading is laid out in the box's unit square, as the canvas lays gradients out, and `unitToNode` scales it to the node. A
+  // radial circle of radius 0.5 becomes the box's ellipse under that scale. The map is a `cm` around the shading, not /Matrix.
+  const coordinates = paint.type === 'GRADIENT_LINEAR' ? '0 0 1 0' : '0.5 0.5 0 0.5 0.5 0.5';
+  const toNode = unitToNode(node, paint);
+  builder.shadingTransforms.set(
+    name,
+    `${num(toNode.a)} ${num(toNode.b)} ${num(toNode.c)} ${num(toNode.d)} ${num(toNode.tx)} ${num(toNode.ty)} cm`,
+  );
   const functions = stops
     .map((stop, position) => {
       const next = stops[position + 1];
@@ -336,12 +327,21 @@ function shadingName(
  * A shading pattern for a gradient stroke. The shading was registered as for a fill, and the pattern maps its space to the page: the
  * gradient transform comes first and the node's own matrix second, as they do for a fill. Returns the pattern's name.
  */
-function strokePatternName(builder: PdfBuilder, shading: string, matrix: Transform, paint: Paint): string {
-  const transform = paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL' ? paint.gradientTransform : undefined;
-  const gradient = transform ? fromMatrix(transform) : null;
+function strokePatternName(builder: PdfBuilder, shading: string, matrix: Transform, paint: Paint, node: SceneNode): string {
   // The shading's name is `Sh` plus its place in the list, so its index is that number less one.
-  builder.patterns.push({ shading: Number(shading.slice(2)) - 1, matrix: gradient ? multiply(matrix, gradient) : matrix });
+  builder.patterns.push({ shading: Number(shading.slice(2)) - 1, matrix: multiply(matrix, unitToNode(node, paint)) });
   return `P${builder.patterns.length}`;
+}
+
+/**
+ * The map from a gradient's unit square to the node's own space. Figma stores a gradient transform in the box's unit square, which
+ * the canvas applies there; so the shading is taken in that square and scaled to the box. A linear gradient runs from (0, 0) to (1, 0),
+ * and a radial one is a circle of radius 0.5 about (0.5, 0.5), which the scale turns into the box's ellipse.
+ */
+function unitToNode(node: SceneNode, paint: Paint): Transform {
+  const scale: Transform = { a: Math.max(node.width, 0.0001), b: 0, c: 0, d: Math.max(node.height, 0.0001), tx: 0, ty: 0 };
+  const transform = paint.type === 'GRADIENT_LINEAR' || paint.type === 'GRADIENT_RADIAL' ? paint.gradientTransform : undefined;
+  return transform ? multiply(scale, fromMatrix(transform)) : scale;
 }
 
 /** The link colour as PDF components: the same blue the canvas and SVG use (#0070c4). */
