@@ -25,6 +25,7 @@ import type {
   StrokeAlign,
   StrokeCap,
   StrokeJoin,
+  MaskType,
   StrokeSideWeights,
   TextStyle,
   TransformMatrix,
@@ -49,6 +50,7 @@ import {
   mapStrokeAlign,
   mapStrokeCap,
   mapStrokeJoin,
+  mapMaskType,
   mapStrokeSideWeights,
   textRuns,
 } from './mappers';
@@ -93,6 +95,7 @@ export interface NormalizedNode {
   gridRowGuids?: string[];
   /** The native `mask` flag, carried into the model's `isMask`. */
   isMask?: boolean;
+  maskType?: MaskType;
   /** The auto-layout child fields, under their native names. */
   layoutAlign?: 'INHERIT' | 'STRETCH';
   layoutGrow?: number;
@@ -402,6 +405,9 @@ function adaptRestNode(node: FigmaRestNode, path: string, report: ReportBuilder)
   if (constraints) normalized.constraints = constraints;
   if (typeof node.cornerRadius === 'number') normalized.cornerRadius = node.cornerRadius;
   if (typeof node.cornerSmoothing === 'number') normalized.cornerSmoothing = node.cornerSmoothing;
+  if (node.isMask === true) normalized.isMask = true;
+  const maskType = mapMaskType(node.maskType);
+  if (maskType) normalized.maskType = maskType;
   const corners = [
     node.rectangleTopLeftCornerRadius,
     node.rectangleTopRightCornerRadius,

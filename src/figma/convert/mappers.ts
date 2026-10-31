@@ -23,6 +23,7 @@ import type {
   StrokeAlign,
   StrokeCap,
   StrokeJoin,
+  MaskType,
   StrokeSideWeights,
   TextStyle,
   Transform,
@@ -390,6 +391,11 @@ export function mapNativeConstraints(node: FigNode): Constraints | undefined {
 }
 
 // ─── Stroke enums ───────────────────────────────────────────────────────────
+
+/** A mask's type, as the REST API names it. A value Pigma does not know is dropped, and the mask keeps the default, alpha. */
+export function mapMaskType(value: unknown): MaskType | undefined {
+  return value === 'ALPHA' || value === 'VECTOR' || value === 'LUMINANCE' ? value : undefined;
+}
 
 /** The four side weights of a stroke, as the REST API gives them. A side that is missing, or not a finite non-negative number, drops the set. */
 export function mapStrokeSideWeights(value: unknown): StrokeSideWeights | undefined {
