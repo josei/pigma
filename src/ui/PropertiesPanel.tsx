@@ -725,6 +725,9 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
                 <option value="SQUARE">Square</option>
                 <option value="ARROW_LINES">Arrow lines</option>
                 <option value="ARROW_EQUILATERAL">Arrow equilateral</option>
+                <option value="TRIANGLE_FILLED">Triangle, filled</option>
+                <option value="DIAMOND_FILLED">Diamond, filled</option>
+                <option value="CIRCLE_FILLED">Circle, filled</option>
               </select>
             </div>
             {isArrowCap(node.strokeCap) ? (

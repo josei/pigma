@@ -851,6 +851,9 @@ const STROKE_CAP: Record<string, 'butt' | 'round' | 'square'> = {
   SQUARE: 'square',
   ARROW_LINES: 'butt',
   ARROW_EQUILATERAL: 'butt',
+  TRIANGLE_FILLED: 'butt',
+  DIAMOND_FILLED: 'butt',
+  CIRCLE_FILLED: 'butt',
 };
 
 /**

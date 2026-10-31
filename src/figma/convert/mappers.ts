@@ -395,7 +395,8 @@ export function mapStrokeAlign(value: unknown): StrokeAlign | undefined {
 }
 
 export function mapStrokeCap(value: unknown, ctx: MapperContext): StrokeCap | undefined {
-  if (value === 'NONE' || value === 'ROUND' || value === 'SQUARE') return value;
+  if (value === 'NONE' || value === 'ROUND' || value === 'SQUARE' || value === 'ARROW_LINES' || value === 'ARROW_EQUILATERAL') return value;
+  if (value === 'TRIANGLE_FILLED' || value === 'DIAMOND_FILLED' || value === 'CIRCLE_FILLED') return value;
   if (typeof value === 'string' && value.includes('ARROW')) {
     ctx.report.addUnsupported({ nodeId: ctx.nodeId, path: ctx.path, feature: `strokeCap:${value}` });
     return 'ARROW_LINES';

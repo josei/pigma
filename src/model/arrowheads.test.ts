@@ -10,9 +10,12 @@ const line = [
 ] as Array<Array<[number, number]>>;
 
 describe('arrowheads', () => {
-  it('knows the two arrow caps and no other', () => {
+  it('knows the arrow caps and the filled ends, and no other', () => {
     expect(isArrowCap('ARROW_LINES')).toBe(true);
     expect(isArrowCap('ARROW_EQUILATERAL')).toBe(true);
+    expect(isArrowCap('TRIANGLE_FILLED')).toBe(true);
+    expect(isArrowCap('DIAMOND_FILLED')).toBe(true);
+    expect(isArrowCap('CIRCLE_FILLED')).toBe(true);
     expect(isArrowCap('ROUND')).toBe(false);
     expect(isArrowCap(undefined)).toBe(false);
   });
@@ -30,6 +33,39 @@ describe('arrowheads', () => {
     // The end: tip at (100, 0), the base at (90, 0).
     expect(heads[1]![0]).toEqual([100, 0]);
     expect(heads[1]![1]![0]).toBeCloseTo(90, 9);
+  });
+
+  it('gives an inward triangle at each end, its base on the end point and its tip 10 back along the path', () => {
+    const { heads, arms } = arrowheadsOf(line, 'TRIANGLE_FILLED', 2);
+    expect(arms).toEqual([]);
+    expect(heads).toHaveLength(2);
+    // The start: the base lies on the origin, the tip is 10 along the line from it.
+    expect(heads[0]![0]![0]).toBeCloseTo(0, 9);
+    expect(heads[0]![1]).toEqual([expect.closeTo(10, 9), expect.closeTo(0, 9)]);
+    expect(heads[0]![0]![1]).toBeCloseTo(-heads[0]![2]![1]!, 9);
+    expect(Math.abs(heads[0]![0]![1]!)).toBeCloseTo(10 / Math.sqrt(3), 9);
+    // The end: the base lies on (100, 0), the tip is 10 back, at (90, 0).
+    expect(heads[1]![0]![0]).toBeCloseTo(100, 9);
+    expect(heads[1]![1]![0]).toBeCloseTo(90, 9);
+  });
+
+  it('centres a diamond and a circle on each end point, 10 across', () => {
+    const diamond = arrowheadsOf(line, 'DIAMOND_FILLED', 2);
+    expect(diamond.arms).toEqual([]);
+    expect(diamond.heads).toHaveLength(2);
+    // Four vertices, each 5 from the start point, and the diamond's centre is that point.
+    expect(diamond.heads[0]!).toHaveLength(4);
+    for (const [x, y] of diamond.heads[0]!) expect(Math.hypot(x!, y!)).toBeCloseTo(5, 9);
+    const centre = diamond.heads[1]!.reduce((sum, [x, y]) => [sum[0] + x! / 4, sum[1] + y! / 4], [0, 0]);
+    expect(centre[0]).toBeCloseTo(100, 9);
+    expect(centre[1]).toBeCloseTo(0, 9);
+
+    const circle = arrowheadsOf(line, 'CIRCLE_FILLED', 2);
+    expect(circle.arms).toEqual([]);
+    expect(circle.heads).toHaveLength(2);
+    // A 32-sided polygon, every vertex 5 from the end point it is centred on.
+    expect(circle.heads[1]!).toHaveLength(32);
+    for (const [x, y] of circle.heads[1]!) expect(Math.hypot(x! - 100, y!)).toBeCloseTo(5, 9);
   });
 
   it('gives a chevron of two arms at each end, meeting at the end point, each 10 long', () => {

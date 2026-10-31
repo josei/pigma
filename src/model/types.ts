@@ -209,7 +209,7 @@ export interface UnsupportedEffect {
 
 export type Effect = ShadowEffect | BlurEffect | UnsupportedEffect;
 
-export type StrokeCap = 'NONE' | 'ROUND' | 'SQUARE' | 'ARROW_LINES' | 'ARROW_EQUILATERAL';
+export type StrokeCap = 'NONE' | 'ROUND' | 'SQUARE' | 'ARROW_LINES' | 'ARROW_EQUILATERAL' | 'TRIANGLE_FILLED' | 'DIAMOND_FILLED' | 'CIRCLE_FILLED';
 export type StrokeJoin = 'MITER' | 'BEVEL' | 'ROUND';
 export type StrokeAlign = 'INSIDE' | 'OUTSIDE' | 'CENTER';
 

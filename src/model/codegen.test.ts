@@ -823,6 +823,41 @@ describe('SwiftUI for keyframes', () => {
     expect(css).toContain('clip-path: polygon(0 0, 100% 50%, 0 100%);');
   });
 
+  it('draws the filled ends in CSS: an inward triangle on its end point, a diamond and a circle centred on it', () => {
+    // Weight 4, head length 5: each head is 20 units. A diamond or circle is a 20-unit square centred on the end, so it starts 10 before
+    // the end point; an inward triangle has its base on the end point and its tip 20 back, as the equilateral one does.
+    const cssFor = (cap: 'TRIANGLE_FILLED' | 'DIAMOND_FILLED' | 'CIRCLE_FILLED') => {
+      const file = emptyFile('CssFilled');
+      const page = file.document.children[0]!;
+      const line = createLineNode(null, 0, 0, 100);
+      line.strokes = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+      line.strokeWeight = 4;
+      line.strokeCap = cap;
+      page.children = [line];
+      return toCss(file, line.id);
+    };
+
+    const triangle = cssFor('TRIANGLE_FILLED');
+    expect(triangle).toContain('clip-path: polygon(0 0, 100% 50%, 0 100%);');
+    expect(triangle).toContain('clip-path: polygon(100% 0, 0 50%, 100% 100%);');
+    expect(triangle).toContain('left: 80px;');
+    expect(triangle).toContain('height: 23.09px;');
+
+    const diamond = cssFor('DIAMOND_FILLED');
+    expect(diamond).toContain('left: -10px;');
+    expect(diamond).toContain('left: 90px;');
+    expect(diamond).toContain('height: 20px;');
+    expect(diamond).toContain('top: -12px;');
+    expect(diamond).toContain('clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);');
+    expect(diamond).not.toContain('border-radius');
+
+    const circle = cssFor('CIRCLE_FILLED');
+    expect(circle).toContain('border-radius: 50%;');
+    expect(circle).toContain('left: -10px;');
+    expect(circle).toContain('left: 90px;');
+    expect(circle).not.toContain('clip-path');
+  });
+
   it('draws an arrow line\'s chevron in CSS as a V band clipped in a box of its arms plus a weight, at each end', () => {
     const file = emptyFile('CssChevron');
     const page = file.document.children[0]!;

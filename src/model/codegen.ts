@@ -292,9 +292,9 @@ function chevronCssRules(width: number, weight: number, length: number, colour: 
 }
 
 /**
- * The equilateral arrowheads of a line, as CSS pseudo-elements: a triangle at each end, clipped from a box of the head's length. The
+ * The filled arrowheads of a line, as CSS pseudo-elements: a shape at each end, clipped from a box of the head's length. The
  * line's box sits a stroke weight below its padding's top border, so the stroke's centre line is half a weight above the padding's
- * origin, and the triangles are placed from there. Arrow lines have no CSS form here and are left out.
+ * origin, and the shapes are placed from there. Arrow lines have no CSS form here and are left out.
  */
 function arrowCssRules(node: AnyNode, selector: string): string[] {
   if (node.type !== 'LINE' || !isArrowCap(node.strokeCap)) return [];
@@ -304,21 +304,42 @@ function arrowCssRules(node: AnyNode, selector: string): string[] {
   const weight = node.strokeWeight ?? 1;
   const length = (node.arrowHeadLength ?? ARROW_HEAD_LENGTH) * weight;
   if (node.strokeCap === 'ARROW_LINES') return chevronCssRules(node.width, weight, length, colour, selector);
-  const half = length / Math.sqrt(3);
-  const top = round(-weight / 2 - half, 2);
+  // A diamond and a circle are a square of the head's length, centred on the end point; the triangles are as tall as an
+  // equilateral head, with their base or tip on the end point.
+  const centred = node.strokeCap === 'DIAMOND_FILLED' || node.strokeCap === 'CIRCLE_FILLED';
+  const height = centred ? length : (2 * length) / Math.sqrt(3);
+  const top = round(-weight / 2 - height / 2, 2);
   const common = [
     '  content: "";',
     '  position: absolute;',
     `  top: ${top}px;`,
     `  width: ${round(length, 2)}px;`,
-    `  height: ${round(2 * half, 2)}px;`,
+    `  height: ${round(height, 2)}px;`,
     `  background: ${colour};`,
+    ...(node.strokeCap === 'CIRCLE_FILLED' ? ['  border-radius: 50%;'] : []),
   ];
-  // The start's tip is at the left, and the end's at the right: each triangle's base is `length` back from its tip.
-  return [
-    [`${selector}::before {`, '  left: 0px;', ...common, '  clip-path: polygon(0 50%, 100% 0, 100% 100%);', '}'].join('\n'),
-    [`${selector}::after {`, `  left: ${round(node.width - length, 2)}px;`, ...common, '  clip-path: polygon(0 0, 100% 50%, 0 100%);', '}'].join('\n'),
-  ];
+  const diamond = 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)';
+  // The start's shape is at the left, and the end's at the right. An equilateral's tip points out, past the end point; a
+  // filled triangle's base sits on the end point and its tip points back along the line.
+  const [startClip, endClip] =
+    node.strokeCap === 'ARROW_EQUILATERAL'
+      ? ['polygon(0 50%, 100% 0, 100% 100%)', 'polygon(0 0, 100% 50%, 0 100%)']
+      : node.strokeCap === 'TRIANGLE_FILLED'
+        ? ['polygon(0 0, 100% 50%, 0 100%)', 'polygon(100% 0, 0 50%, 100% 100%)']
+        : node.strokeCap === 'DIAMOND_FILLED'
+          ? [diamond, diamond]
+          : [null, null];
+  const startLeft = centred ? -length / 2 : 0;
+  const endLeft = node.width - (centred ? length / 2 : length);
+  const rule = (pseudo: 'before' | 'after', left: number, clip: string | null) =>
+    [
+      `${selector}::${pseudo} {`,
+      `  left: ${round(left, 2)}px;`,
+      ...common,
+      ...(clip ? [`  clip-path: ${clip};`] : []),
+      '}',
+    ].join('\n');
+  return [rule('before', startLeft, startClip), rule('after', endLeft, endClip)];
 }
 
 function jsxValue(value: string): string {
