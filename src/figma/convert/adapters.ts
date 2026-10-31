@@ -102,6 +102,7 @@ export interface NormalizedNode {
   bindings?: Record<string, string>;
   cornerRadius?: number;
   rectangleCornerRadii?: [number, number, number, number];
+  cornerSmoothing?: number;
   pathData?: string;
   windingRule?: 'NONZERO' | 'EVENODD';
   pointCount?: number;
@@ -400,6 +401,7 @@ function adaptRestNode(node: FigmaRestNode, path: string, report: ReportBuilder)
   const constraints = mapRestConstraints(node);
   if (constraints) normalized.constraints = constraints;
   if (typeof node.cornerRadius === 'number') normalized.cornerRadius = node.cornerRadius;
+  if (typeof node.cornerSmoothing === 'number') normalized.cornerSmoothing = node.cornerSmoothing;
   const corners = [
     node.rectangleTopLeftCornerRadius,
     node.rectangleTopRightCornerRadius,

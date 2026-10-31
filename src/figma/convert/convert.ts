@@ -144,6 +144,10 @@ function buildBase(node: NormalizedNode, type: NodeType, state: ConvertState): B
   if (node.blendMode) base.blendMode = node.blendMode;
   if (node.strokeWeight !== undefined) base.strokeWeight = node.strokeWeight;
   if (node.individualStrokeWeights) base.individualStrokeWeights = node.individualStrokeWeights;
+  // Corners belong to every node a frame, rectangle or component can be, so they are copied here rather than per shape.
+  if (node.cornerRadius !== undefined) base.cornerRadius = node.cornerRadius;
+  if (node.rectangleCornerRadii) base.rectangleCornerRadii = node.rectangleCornerRadii;
+  if (node.cornerSmoothing !== undefined) base.cornerSmoothing = node.cornerSmoothing;
   if (node.strokeAlign) base.strokeAlign = node.strokeAlign;
   if (node.strokeCap) base.strokeCap = node.strokeCap;
   if (node.strokeJoin) base.strokeJoin = node.strokeJoin;
@@ -230,8 +234,6 @@ function convertScene(node: NormalizedNode, parentAbs: Box | null, state: Conver
   }
 
   const shape: ShapeNode = { ...base, type: type as ShapeType };
-  if (node.cornerRadius !== undefined) shape.cornerRadius = node.cornerRadius;
-  if (node.rectangleCornerRadii) shape.rectangleCornerRadii = node.rectangleCornerRadii;
   if (node.pathData !== undefined) shape.pathData = node.pathData;
   if (node.windingRule) shape.windingRule = node.windingRule;
   if (node.pointCount !== undefined) shape.pointCount = node.pointCount;

@@ -448,6 +448,7 @@ export function mapRestAutoLayout(node: FigmaRestNode, ctx: MapperContext): Auto
   if (typeof node.paddingBottom === 'number') layout.paddingBottom = node.paddingBottom;
   if (typeof node.paddingLeft === 'number') layout.paddingLeft = node.paddingLeft;
   if (typeof node.itemSpacing === 'number') layout.itemSpacing = node.itemSpacing;
+  if (typeof node.counterAxisSpacing === 'number') layout.counterAxisSpacing = node.counterAxisSpacing;
   if (node.layoutWrap === 'NO_WRAP' || node.layoutWrap === 'WRAP') layout.layoutWrap = node.layoutWrap;
   const h = layoutSizing(node.layoutSizingHorizontal);
   if (h) layout.layoutSizingHorizontal = h;
