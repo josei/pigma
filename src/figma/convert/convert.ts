@@ -143,6 +143,7 @@ function buildBase(node: NormalizedNode, type: NodeType, state: ConvertState): B
   };
   if (node.blendMode) base.blendMode = node.blendMode;
   if (node.strokeWeight !== undefined) base.strokeWeight = node.strokeWeight;
+  if (node.individualStrokeWeights) base.individualStrokeWeights = node.individualStrokeWeights;
   if (node.strokeAlign) base.strokeAlign = node.strokeAlign;
   if (node.strokeCap) base.strokeCap = node.strokeCap;
   if (node.strokeJoin) base.strokeJoin = node.strokeJoin;

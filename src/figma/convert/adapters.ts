@@ -25,6 +25,7 @@ import type {
   StrokeAlign,
   StrokeCap,
   StrokeJoin,
+  StrokeSideWeights,
   TextStyle,
   TransformMatrix,
 } from '../../model/types';
@@ -48,6 +49,7 @@ import {
   mapStrokeAlign,
   mapStrokeCap,
   mapStrokeJoin,
+  mapStrokeSideWeights,
   textRuns,
 } from './mappers';
 import type { ReportBuilder } from './report';
@@ -72,6 +74,7 @@ export interface NormalizedNode {
   fills: Paint[];
   strokes: Paint[];
   strokeWeight?: number;
+  individualStrokeWeights?: StrokeSideWeights;
   strokeAlign?: StrokeAlign;
   strokeCap?: StrokeCap;
   strokeJoin?: StrokeJoin;
@@ -381,6 +384,8 @@ function adaptRestNode(node: FigmaRestNode, path: string, report: ReportBuilder)
   const mode = blendMode(node.blendMode, ctx, 'node');
   if (mode) normalized.blendMode = mode;
   if (typeof node.strokeWeight === 'number') normalized.strokeWeight = node.strokeWeight;
+  const sides = mapStrokeSideWeights(node.individualStrokeWeights);
+  if (sides) normalized.individualStrokeWeights = sides;
   const align = mapStrokeAlign(node.strokeAlign);
   if (align) normalized.strokeAlign = align;
   const cap = mapStrokeCap(node.strokeCap, ctx);

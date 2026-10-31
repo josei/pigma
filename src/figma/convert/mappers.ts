@@ -23,6 +23,7 @@ import type {
   StrokeAlign,
   StrokeCap,
   StrokeJoin,
+  StrokeSideWeights,
   TextStyle,
   Transform,
   TransformMatrix,
@@ -389,6 +390,15 @@ export function mapNativeConstraints(node: FigNode): Constraints | undefined {
 }
 
 // ─── Stroke enums ───────────────────────────────────────────────────────────
+
+/** The four side weights of a stroke, as the REST API gives them. A side that is missing, or not a finite non-negative number, drops the set. */
+export function mapStrokeSideWeights(value: unknown): StrokeSideWeights | undefined {
+  if (!isRecord(value)) return undefined;
+  const { top, right, bottom, left } = value;
+  const sides = [top, right, bottom, left];
+  if (!sides.every((side) => typeof side === 'number' && Number.isFinite(side) && side >= 0)) return undefined;
+  return { top: top as number, right: right as number, bottom: bottom as number, left: left as number };
+}
 
 export function mapStrokeAlign(value: unknown): StrokeAlign | undefined {
   return value === 'INSIDE' || value === 'OUTSIDE' || value === 'CENTER' ? value : undefined;
