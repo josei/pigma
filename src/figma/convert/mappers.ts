@@ -23,6 +23,7 @@ import type {
   StrokeAlign,
   StrokeCap,
   StrokeJoin,
+  DevStatus,
   MaskType,
   StrokeSideWeights,
   TextStyle,
@@ -391,6 +392,24 @@ export function mapNativeConstraints(node: FigNode): Constraints | undefined {
 }
 
 // ─── Stroke enums ───────────────────────────────────────────────────────────
+
+/**
+ * A Dev Mode status, as the REST API gives it: an object whose type is READY_FOR_DEV or COMPLETED, or null for no status. Pigma
+ * names the first READY_FOR_DEVELOPMENT, as its own status. Any other type is no status.
+ */
+export function mapDevStatus(value: unknown): DevStatus | undefined {
+  if (!isRecord(value)) return undefined;
+  if (value.type === 'READY_FOR_DEV') return 'READY_FOR_DEVELOPMENT';
+  if (value.type === 'COMPLETED') return 'COMPLETED';
+  return undefined;
+}
+
+/** A layer's component property references: each property the layer's field follows, by name. Entries that are not strings are dropped. */
+export function mapComponentPropertyReferences(value: unknown): Record<string, string> | undefined {
+  if (!isRecord(value)) return undefined;
+  const references = Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string');
+  return references.length > 0 ? Object.fromEntries(references) : undefined;
+}
 
 /** A mask's type, as the REST API names it. A value Pigma does not know is dropped, and the mask keeps the default, alpha. */
 export function mapMaskType(value: unknown): MaskType | undefined {

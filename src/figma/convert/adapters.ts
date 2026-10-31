@@ -25,6 +25,7 @@ import type {
   StrokeAlign,
   StrokeCap,
   StrokeJoin,
+  DevStatus,
   MaskType,
   StrokeSideWeights,
   TextStyle,
@@ -50,6 +51,8 @@ import {
   mapStrokeAlign,
   mapStrokeCap,
   mapStrokeJoin,
+  mapComponentPropertyReferences,
+  mapDevStatus,
   mapMaskType,
   mapStrokeSideWeights,
   textRuns,
@@ -96,6 +99,8 @@ export interface NormalizedNode {
   /** The native `mask` flag, carried into the model's `isMask`. */
   isMask?: boolean;
   maskType?: MaskType;
+  devStatus?: DevStatus;
+  componentPropertyReferences?: Record<string, string>;
   /** The auto-layout child fields, under their native names. */
   layoutAlign?: 'INHERIT' | 'STRETCH';
   layoutGrow?: number;
@@ -408,6 +413,10 @@ function adaptRestNode(node: FigmaRestNode, path: string, report: ReportBuilder)
   if (node.isMask === true) normalized.isMask = true;
   const maskType = mapMaskType(node.maskType);
   if (maskType) normalized.maskType = maskType;
+  const devStatus = mapDevStatus(node.devStatus);
+  if (devStatus) normalized.devStatus = devStatus;
+  const references = mapComponentPropertyReferences(node.componentPropertyReferences);
+  if (references) normalized.componentPropertyReferences = references;
   const corners = [
     node.rectangleTopLeftCornerRadius,
     node.rectangleTopRightCornerRadius,
