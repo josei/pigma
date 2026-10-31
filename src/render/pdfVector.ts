@@ -463,7 +463,8 @@ function strokeExtras(builder: PdfBuilder, node: SceneNode): void {
   builder.content.push(node.strokeJoin === 'ROUND' ? '1 j' : node.strokeJoin === 'BEVEL' ? '2 j' : '0 j');
   builder.content.push(`${num(node.strokeMiterLimit ?? DEFAULT_MITER_LIMIT)} M`);
   if (node.dashPattern && node.dashPattern.length > 0) {
-    builder.content.push(`[${node.dashPattern.map((value) => num(value * weight)).join(' ')}] ${num((node.dashOffset ?? 0) * weight)} d`);
+    // Dash values are in the same raw units the canvas and SVG use, so the export matches the screen.
+    builder.content.push(`[${node.dashPattern.map((value) => num(value)).join(' ')}] ${num(node.dashOffset ?? 0)} d`);
   } else {
     builder.content.push('[] 0 d');
   }

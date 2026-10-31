@@ -101,7 +101,7 @@ describe('vector PDF', () => {
     const body = decode(renderVectorPdf(file, nodes, { width: 40, height: 40 }).bytes);
     expect(body).toContain('4 w');
     expect(body).toContain('1 J');
-    expect(body).toContain('[32 16] 0 d');
+    expect(body).toContain('[8 4] 0 d');
     expect(body).toContain('0 0 1 RG');
   });
 
@@ -150,7 +150,7 @@ describe('vector PDF', () => {
     const { file, nodes } = page([line]);
     const body = decode(renderVectorPdf(file, nodes, { width: 100, height: 40 }).bytes);
     // The dash is set before the arms are stroked, and the arms are the last stroke, so nothing resets it between them.
-    const dash = body.indexOf('[32 16] 0 d');
+    const dash = body.indexOf('[8 4] 0 d');
     const arms = body.lastIndexOf('\nS');
     expect(dash).toBeGreaterThan(-1);
     expect(arms).toBeGreaterThan(dash);
@@ -237,7 +237,7 @@ describe('vector PDF', () => {
     expect(decode(renderVectorPdf(file, nodes, { width: 40, height: 40 }).bytes)).toContain('1.5 M');
   });
 
-  it('starts the PDF dash pattern at its offset, in the same weight units as the pattern', () => {
+  it('starts the PDF dash pattern at its offset, in the same raw units the canvas uses', () => {
     const rect = createRectNode(null, 0, 0, 40, 40);
     rect.fills = [];
     rect.strokes = [solid(0, 0, 1)];
@@ -246,8 +246,8 @@ describe('vector PDF', () => {
     rect.dashOffset = 2;
     const { file, nodes } = page([rect]);
     const body = decode(renderVectorPdf(file, nodes, { width: 40, height: 40 }).bytes);
-    // Two units of offset at a weight of four is eight points.
-    expect(body).toContain('[32 16] 8 d');
+    // The offset is two units, the same as the pattern's raw values.
+    expect(body).toContain('[8 4] 2 d');
   });
 
   it('renders ellipses, stars and boolean geometry as paths', () => {
