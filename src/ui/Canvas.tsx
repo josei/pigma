@@ -106,6 +106,14 @@ const HANDLE_CURSOR: Record<ResizeHandle, string> = {
 };
 
 /** Topmost child of `container` under the point, in paint order, skipping hidden/locked nodes. */
+/**
+ * The file a pointer picks against: while the animation preview is on, the layers at the key time, as the drawing shows them. Edits
+ * still act on the stored file, so picking the previewed place selects the same layer.
+ */
+function pickFile(state: ReturnType<typeof useEditor.getState>): PigmaFile {
+  return state.animationPreview && !state.previewFile ? animateFile(state.file, state.keyframeTime) : state.file;
+}
+
 function hitTestContainer(file: PigmaFile, containerId: string, point: Point, exclude?: string): SceneNode | null {
   return hitTestChild(file.document, containerId, point.x, point.y, exclude);
 }
@@ -421,7 +429,7 @@ export function Canvas() {
     void decodeImageFile(file, file.name || 'Image').then(
       (decoded) => {
         const store = useEditor.getState();
-        const hit = hitTestContainer(store.file, container.id, world);
+        const hit = hitTestContainer(pickFile(store), container.id, world);
         const filled = hit && hit.type !== 'TEXT' && !hit.locked
           ? (store.select([hit.id]), store.applyImageFill(decoded.dataUrl, { width: decoded.width, height: decoded.height }))
           : false;
@@ -538,7 +546,7 @@ export function Canvas() {
 
     if (tool === 'comment') {
       const state2 = useEditor.getState();
-      const hit = hitTestContainer(state2.file, container.id, world);
+      const hit = hitTestContainer(pickFile(state2), container.id, world);
       state2.startComment(world.x, world.y, hit ? hit.id : null);
       return;
     }
@@ -585,7 +593,7 @@ export function Canvas() {
     }
 
     const deep = event.altKey || event.metaKey;
-    const hit = deep ? hitTestDeep(state.file, container.id, world) : hitTestContainer(state.file, container.id, world);
+    const hit = deep ? hitTestDeep(pickFile(state), container.id, world) : hitTestContainer(pickFile(state), container.id, world);
     const additive = event.shiftKey;
 
     if (!hit) {
@@ -653,10 +661,10 @@ export function Canvas() {
 
     if (!interaction) {
       const state = useEditor.getState();
-      const hit = hitTestContainer(state.file, container.id, world);
+      const hit = hitTestContainer(pickFile(state), container.id, world);
       setHoverId(hit?.id ?? null);
       // Redlines want the innermost layer, not the top-level container.
-      const deep = hit ? hitTestDeep(state.file, container.id, world) : null;
+      const deep = hit ? hitTestDeep(pickFile(state), container.id, world) : null;
       setHoverDeepId(deep?.id ?? hit?.id ?? null);
       return;
     }
@@ -897,7 +905,7 @@ export function Canvas() {
     // A press on the rotate handle that does not move is a click, and selects the layer behind the handle (Sketch Dublin: a
     // click on a hovered corner's rotation handle selects the layer behind). A drag still rotates.
     if (current.kind === 'rotate' && Math.hypot(event.clientX - current.pointer.x, event.clientY - current.pointer.y) < 4) {
-      const behind = hitTestContainer(state.file, activeContainer(state).id, current.handle, current.id);
+      const behind = hitTestContainer(pickFile(state), activeContainer(state).id, current.handle, current.id);
       if (behind) state.select([behind.id], 'replace');
     }
 
@@ -1174,7 +1182,7 @@ export function Canvas() {
             return;
           }
         }
-        const hit = hitTestDeep(state.file, container.id, world);
+        const hit = hitTestDeep(pickFile(state), container.id, world);
         if (!hit) return;
         // Figma drills into the container that holds the target, so a double
         // click on a shape inside a frame makes that shape directly draggable.
