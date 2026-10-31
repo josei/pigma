@@ -411,19 +411,41 @@ export function mapDevStatus(value: unknown): DevStatus | undefined {
  */
 export function mapExportSettings(value: unknown, ctx: MapperContext): ExportSetting[] | undefined {
   if (!Array.isArray(value)) return undefined;
-  const settings: ExportSetting[] = [];
-  for (const entry of value) {
-    if (!isRecord(entry)) continue;
-    const constraint = isRecord(entry.constraint) ? entry.constraint : {};
-    const { format } = entry;
-    if ((format === 'PNG' || format === 'SVG') && constraint.type === 'SCALE' && typeof constraint.value === 'number' && constraint.value > 0) {
-      settings.push({ format, scale: constraint.value, suffix: typeof entry.suffix === 'string' ? entry.suffix : '' });
-      continue;
-    }
-    const kind = constraint.type === 'SCALE' ? String(format) : `${String(format)}:${String(constraint.type)}`;
-    ctx.report.addUnsupported({ nodeId: ctx.nodeId, path: ctx.path, feature: `exportSetting:${kind}` });
-  }
+  const settings = value
+    .filter(isRecord)
+    .map((entry) => {
+      const constraint = isRecord(entry.constraint) ? entry.constraint : {};
+      return exportSettingOf(entry.format, constraint.type, constraint.value, entry.suffix, ctx);
+    })
+    .filter((setting): setting is ExportSetting => setting !== null);
   return settings.length > 0 ? settings : undefined;
+}
+
+/**
+ * A native .fig layer's export settings. The image type is the format; the constraint is a scale of the content, which Pigma reads as
+ * a scale, so a PNG or SVG at a content scale is kept like a REST one.
+ */
+export function mapNativeExportSettings(value: unknown, ctx: MapperContext): ExportSetting[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const settings = value
+    .filter(isRecord)
+    .map((entry) => {
+      const constraint = isRecord(entry.constraint) ? entry.constraint : {};
+      return exportSettingOf(entry.imageType, constraint.type, constraint.value, entry.suffix, ctx);
+    })
+    .filter((setting): setting is ExportSetting => setting !== null);
+  return settings.length > 0 ? settings : undefined;
+}
+
+/** One export setting, kept as a PNG or SVG at a scale. Any other format, or a constraint that is not a scale, is reported and returns null. */
+function exportSettingOf(format: unknown, constraint: unknown, value: unknown, suffix: unknown, ctx: MapperContext): ExportSetting | null {
+  const scaled = constraint === 'SCALE' || constraint === 'CONTENT_SCALE';
+  if ((format === 'PNG' || format === 'SVG') && scaled && typeof value === 'number' && value > 0) {
+    return { format, scale: value, suffix: typeof suffix === 'string' ? suffix : '' };
+  }
+  const kind = scaled ? String(format) : `${String(format)}:${String(constraint)}`;
+  ctx.report.addUnsupported({ nodeId: ctx.nodeId, path: ctx.path, feature: `exportSetting:${kind}` });
+  return null;
 }
 
 /** A layer's component property references: each property the layer's field follows, by name. Entries that are not strings are dropped. */

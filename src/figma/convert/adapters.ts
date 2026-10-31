@@ -55,6 +55,7 @@ import {
   mapComponentPropertyReferences,
   mapDevStatus,
   mapExportSettings,
+  mapNativeExportSettings,
   mapMaskType,
   mapStrokeSideWeights,
   textRuns,
@@ -775,6 +776,8 @@ function adaptNativeNode(doc: FigDocument, node: FigNode, path: string, report: 
   }
   const interactions = fromNativeInteractions(node);
   if (interactions) normalized.interactions = interactions;
+  const exportSettings = mapNativeExportSettings(node.exportSettings, ctx);
+  if (exportSettings) normalized.exportSettings = exportSettings;
   // Grid: the tracks arrive as a GUIDPositionMap, our tracks are numeric, so the
   // guids are carried alongside (and the anchors as child guids).
   const gridGuids = (value: unknown): string[] | undefined => {
