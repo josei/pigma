@@ -158,6 +158,10 @@ function buildBase(node: NormalizedNode, type: NodeType, state: ConvertState): B
   if (node.devStatus) base.devStatus = node.devStatus;
   if (node.componentPropertyReferences) base.componentPropertyReferences = node.componentPropertyReferences;
   if (node.exportSettings) base.exportSettings = node.exportSettings;
+  if (node.minWidth !== undefined) base.minWidth = node.minWidth;
+  if (node.maxWidth !== undefined) base.maxWidth = node.maxWidth;
+  if (node.minHeight !== undefined) base.minHeight = node.minHeight;
+  if (node.maxHeight !== undefined) base.maxHeight = node.maxHeight;
   // Grid placement, including the wire guids carried alongside the indices.
   if (typeof node.gridColumnSpan === 'number') base.gridColumnSpan = node.gridColumnSpan;
   if (typeof node.gridRowSpan === 'number') base.gridRowSpan = node.gridRowSpan;

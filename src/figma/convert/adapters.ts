@@ -103,6 +103,10 @@ export interface NormalizedNode {
   maskType?: MaskType;
   devStatus?: DevStatus;
   exportSettings?: ExportSetting[];
+  minWidth?: number;
+  maxWidth?: number;
+  minHeight?: number;
+  maxHeight?: number;
   componentPropertyReferences?: Record<string, string>;
   /** The auto-layout child fields, under their native names. */
   layoutAlign?: 'INHERIT' | 'STRETCH';
@@ -422,6 +426,11 @@ function adaptRestNode(node: FigmaRestNode, path: string, report: ReportBuilder)
   if (references) normalized.componentPropertyReferences = references;
   const exportSettings = mapExportSettings(node.exportSettings, ctx);
   if (exportSettings) normalized.exportSettings = exportSettings;
+  // The size limits apply to auto layout frames and their direct children, as Figma's own type file says; the model keeps them on any layer.
+  if (typeof node.minWidth === 'number') normalized.minWidth = node.minWidth;
+  if (typeof node.maxWidth === 'number') normalized.maxWidth = node.maxWidth;
+  if (typeof node.minHeight === 'number') normalized.minHeight = node.minHeight;
+  if (typeof node.maxHeight === 'number') normalized.maxHeight = node.maxHeight;
   const corners = [
     node.rectangleTopLeftCornerRadius,
     node.rectangleTopRightCornerRadius,
