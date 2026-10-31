@@ -146,6 +146,7 @@ function buildBase(node: NormalizedNode, type: NodeType, state: ConvertState): B
   if (node.strokeAlign) base.strokeAlign = node.strokeAlign;
   if (node.strokeCap) base.strokeCap = node.strokeCap;
   if (node.strokeJoin) base.strokeJoin = node.strokeJoin;
+  if (node.strokeMiterLimit !== undefined) base.strokeMiterLimit = node.strokeMiterLimit;
   if (node.dashPattern) base.dashPattern = node.dashPattern;
   if (node.isMask === true) base.isMask = true;
   // Grid placement, including the wire guids carried alongside the indices.

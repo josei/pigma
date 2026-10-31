@@ -75,6 +75,7 @@ export interface NormalizedNode {
   strokeAlign?: StrokeAlign;
   strokeCap?: StrokeCap;
   strokeJoin?: StrokeJoin;
+  strokeMiterLimit?: number;
   dashPattern?: number[];
   layoutGrids?: LayoutGrid[];
   gridColumnSpan?: number;
@@ -343,6 +344,15 @@ export function normalizeBindings(
   return Object.keys(bindings).length > 0 ? bindings : undefined;
 }
 
+/**
+ * The miter limit a Figma miter angle stands for. A miter join's tip is 1 / sin(angle / 2) half widths from the corner, which is the ratio
+ * the model's limit is measured in. Null for an angle outside (0, 180) degrees, which has no limit.
+ */
+export function miterLimitFromAngle(angle: number): number | null {
+  if (!Number.isFinite(angle) || angle <= 0 || angle >= 180) return null;
+  return Math.round((1 / Math.sin((angle * Math.PI) / 360)) * 1000) / 1000;
+}
+
 function adaptRestNode(node: FigmaRestNode, path: string, report: ReportBuilder): NormalizedNode {
   const ctx = { report, nodeId: node.id, path };
   const box = node.absoluteBoundingBox ?? null;
@@ -377,6 +387,10 @@ function adaptRestNode(node: FigmaRestNode, path: string, report: ReportBuilder)
   if (cap) normalized.strokeCap = cap;
   const join = mapStrokeJoin(node.strokeJoin);
   if (join) normalized.strokeJoin = join;
+  if (typeof node.strokeMiterAngle === 'number') {
+    const limit = miterLimitFromAngle(node.strokeMiterAngle);
+    if (limit !== null) normalized.strokeMiterLimit = limit;
+  }
   if (Array.isArray(node.strokeDashes)) normalized.dashPattern = node.strokeDashes;
   const constraints = mapRestConstraints(node);
   if (constraints) normalized.constraints = constraints;
