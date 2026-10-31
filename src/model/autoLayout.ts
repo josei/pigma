@@ -242,10 +242,11 @@ function layoutGridContainer<T extends AnyNode>(node: T, layout: AutoLayout): T 
 
 /**
  * How far a child's visible stroke reaches past its geometry on each side: none for an inside stroke, half the weight for
- * a centred one, the full weight for an outside one. A child with no visible stroke reaches nowhere.
+ * a centred one, the full weight for an outside one. A child with no visible stroke reaches nowhere. Individual stroke weights
+ * are drawn inside the box, so they reach nowhere either, whatever the alignment: the layout box matches what is drawn.
  */
 export function strokeInsetOf(node: SceneNode): number {
-  if (!firstVisibleFill(node.strokes)) return 0;
+  if (!firstVisibleFill(node.strokes) || node.individualStrokeWeights) return 0;
   const weight = node.strokeWeight ?? 1;
   const align = node.strokeAlign ?? 'CENTER';
   if (align === 'INSIDE') return 0;

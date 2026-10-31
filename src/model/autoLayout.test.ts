@@ -362,6 +362,16 @@ function strokedRow(align: 'INSIDE' | 'CENTER' | 'OUTSIDE', strokesIncluded: boo
 }
 
 describe('auto layout with strokes in the layout box', () => {
+  it('individual stroke weights reach nowhere past the geometry, whatever the alignment, as their bands are drawn inside', () => {
+    const { file, frameId, childIds } = strokedRow('CENTER', true);
+    const frame = findNode(file.document, frameId) as SceneNode & { children: SceneNode[] };
+    for (const child of frame.children) child.individualStrokeWeights = { top: 4, right: 4, bottom: 4, left: 4 };
+    const reflowed = reflowTree(file.document);
+    // No inset: the boxes are the 100-wide geometry, placed 12px apart from the frame's padding, as with no stroke at all.
+    expect(childTransforms({ ...file, document: reflowed }, childIds).map((child) => child.x)).toEqual([16, 128, 240]);
+    expect(childTransforms({ ...file, document: reflowed }, childIds).map((child) => child.w)).toEqual([100, 100, 100]);
+  });
+
   it('a centred stroke adds half its weight per side, and the geometry is placed inside the box', () => {
     const { file, frameId, childIds } = strokedRow('CENTER', true);
     const reflowed = reflowTree(file.document);
