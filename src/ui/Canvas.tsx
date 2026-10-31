@@ -609,6 +609,8 @@ export function Canvas() {
     }
     if (!state.selection.includes(hit.id)) state.select([hit.id]);
     if (hit.locked) return;
+    // While the animation preview is on, the layers are shown at their keys: a press selects, and edits wait for the preview to stop.
+    if (state.animationPreview) return;
 
     if (event.altKey) {
       state.duplicateSelection();
@@ -1001,13 +1003,17 @@ export function Canvas() {
     event.stopPropagation();
     const state = useEditor.getState();
     const id = state.selection[0];
-    if (!id) return;
+    if (!id || state.animationPreview) return;
     state.beginTransaction();
     applyInteraction({ kind: 'resize', handle, id, base: state.file, startWorld: toWorld(event.clientX, event.clientY), keepRatio: false });
   };
 
   // `anchor` is the handle in the layer's own coordinates: a corner zone passes its own, and the default is the top-centre handle.
   const startRotate = (event: React.PointerEvent, anchor?: Point) => {
+    if (useEditor.getState().animationPreview) {
+      event.stopPropagation();
+      return;
+    }
     event.stopPropagation();
     const state = useEditor.getState();
     const id = state.selection[0];
@@ -1114,9 +1120,11 @@ export function Canvas() {
     [selection, file],
   );
   const singleId = selection.length === 1 ? selection[0] : null;
-  const singleNode = singleId ? findNode(file.document, singleId) : null;
+  // The overlay follows the drawing (see multiBounds); the drag code still reads the stored file.
+  const singleNode = singleId ? findNode(drawnFile.document, singleId) : null;
   const pendingComment = useEditor((state) => state.pendingComment);
-  const multiBounds = selection.length > 1 ? boundsOfNodes(file.document, selection) : null;
+  // The handles follow the drawing: the drawn outline while the preview is on, which is the stored one otherwise.
+  const multiBounds = selection.length > 1 ? boundsOfNodes(drawnFile.document, selection) : null;
 
   const cursor = spaceDown || tool === 'hand' || interaction?.kind === 'pan'
     ? 'grab'
@@ -1383,7 +1391,7 @@ export function Canvas() {
           entry.node && selection.length > 1 ? (
             <polygon
               key={entry.id}
-              points={outlinePoints(file, entry.id)}
+              points={outlinePoints(drawnFile, entry.id)}
               fill="none"
               stroke="#0d99ff"
               strokeWidth={1 / viewport.zoom}
@@ -1392,7 +1400,7 @@ export function Canvas() {
         )}
 
         {singleId && singleNode && tool === 'select' ? (
-          <g transform={transformToCss(worldTransform(file.document, singleId))}>
+          <g transform={transformToCss(worldTransform(drawnFile.document, singleId))}>
             <rect
               x={0}
               y={0}
@@ -1774,7 +1782,7 @@ export function Canvas() {
           viewport={viewport}
           width={containerRef.current?.clientWidth ?? 1200}
           height={containerRef.current?.clientHeight ?? 800}
-          selection={multiBounds ?? (singleId ? absoluteBounds(file.document, singleId) : null)}
+          selection={multiBounds ?? (singleId ? absoluteBounds(drawnFile.document, singleId) : null)}
         />
       ) : null}
       <Guides
