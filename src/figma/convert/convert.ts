@@ -157,6 +157,7 @@ function buildBase(node: NormalizedNode, type: NodeType, state: ConvertState): B
   if (node.maskType) base.maskType = node.maskType;
   if (node.devStatus) base.devStatus = node.devStatus;
   if (node.componentPropertyReferences) base.componentPropertyReferences = node.componentPropertyReferences;
+  if (node.exportSettings) base.exportSettings = node.exportSettings;
   // Grid placement, including the wire guids carried alongside the indices.
   if (typeof node.gridColumnSpan === 'number') base.gridColumnSpan = node.gridColumnSpan;
   if (typeof node.gridRowSpan === 'number') base.gridRowSpan = node.gridRowSpan;

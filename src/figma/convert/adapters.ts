@@ -26,6 +26,7 @@ import type {
   StrokeCap,
   StrokeJoin,
   DevStatus,
+  ExportSetting,
   MaskType,
   StrokeSideWeights,
   TextStyle,
@@ -53,6 +54,7 @@ import {
   mapStrokeJoin,
   mapComponentPropertyReferences,
   mapDevStatus,
+  mapExportSettings,
   mapMaskType,
   mapStrokeSideWeights,
   textRuns,
@@ -100,6 +102,7 @@ export interface NormalizedNode {
   isMask?: boolean;
   maskType?: MaskType;
   devStatus?: DevStatus;
+  exportSettings?: ExportSetting[];
   componentPropertyReferences?: Record<string, string>;
   /** The auto-layout child fields, under their native names. */
   layoutAlign?: 'INHERIT' | 'STRETCH';
@@ -417,6 +420,8 @@ function adaptRestNode(node: FigmaRestNode, path: string, report: ReportBuilder)
   if (devStatus) normalized.devStatus = devStatus;
   const references = mapComponentPropertyReferences(node.componentPropertyReferences);
   if (references) normalized.componentPropertyReferences = references;
+  const exportSettings = mapExportSettings(node.exportSettings, ctx);
+  if (exportSettings) normalized.exportSettings = exportSettings;
   const corners = [
     node.rectangleTopLeftCornerRadius,
     node.rectangleTopRightCornerRadius,

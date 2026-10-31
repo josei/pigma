@@ -24,6 +24,7 @@ import type {
   StrokeCap,
   StrokeJoin,
   DevStatus,
+  ExportSetting,
   MaskType,
   StrokeSideWeights,
   TextStyle,
@@ -402,6 +403,27 @@ export function mapDevStatus(value: unknown): DevStatus | undefined {
   if (value.type === 'READY_FOR_DEV') return 'READY_FOR_DEVELOPMENT';
   if (value.type === 'COMPLETED') return 'COMPLETED';
   return undefined;
+}
+
+/**
+ * A layer's export settings, as the REST API gives them. Pigma keeps a PNG or SVG at a scale, with its suffix. Any other setting, a
+ * JPG or PDF or a width or height, has no form in Pigma's export, so it is dropped and reported.
+ */
+export function mapExportSettings(value: unknown, ctx: MapperContext): ExportSetting[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const settings: ExportSetting[] = [];
+  for (const entry of value) {
+    if (!isRecord(entry)) continue;
+    const constraint = isRecord(entry.constraint) ? entry.constraint : {};
+    const { format } = entry;
+    if ((format === 'PNG' || format === 'SVG') && constraint.type === 'SCALE' && typeof constraint.value === 'number' && constraint.value > 0) {
+      settings.push({ format, scale: constraint.value, suffix: typeof entry.suffix === 'string' ? entry.suffix : '' });
+      continue;
+    }
+    const kind = constraint.type === 'SCALE' ? String(format) : `${String(format)}:${String(constraint.type)}`;
+    ctx.report.addUnsupported({ nodeId: ctx.nodeId, path: ctx.path, feature: `exportSetting:${kind}` });
+  }
+  return settings.length > 0 ? settings : undefined;
 }
 
 /** A layer's component property references: each property the layer's field follows, by name. Entries that are not strings are dropped. */
