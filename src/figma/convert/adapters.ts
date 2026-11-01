@@ -36,7 +36,7 @@ import { FigmaImportError } from '../errors';
 import { isRecord } from '../internal/json';
 import { figNodeId, resolveBlob, type FigDocument, type FigNode } from '../native/parse';
 import { commandsToSvgPath, decodeCommandsBlob, parseVectorNetworkBlob, vectorNetworkToSvgPath } from '../native/vector';
-import type { FigmaRestFile, FigmaRestNode } from '../rest/types';
+import type { FigmaArcData, FigmaRestFile, FigmaRestNode } from '../rest/types';
 import {
   blendMode,
   mapEffects,
@@ -453,7 +453,8 @@ function adaptRestNode(node: FigmaRestNode, path: string, report: ReportBuilder)
   if (typeof node.clipsContent === 'boolean') normalized.clipsContent = node.clipsContent;
   if (typeof node.overflowDirection === 'string') normalized.overflowDirection = node.overflowDirection;
   if (typeof node.booleanOperation === 'string') normalized.booleanOperation = node.booleanOperation;
-  if (node.arcData) {
+  // A full circle with no hole is a plain ellipse, which Pigma draws, so its arc data is no loss. Any other arc is reported.
+  if (node.arcData && !isFullEllipse(node.arcData)) {
     report.addUnsupported({
       nodeId: node.id,
       path,
@@ -639,6 +640,15 @@ const idOfGuid = (guid: unknown): string | null => {
 };
 
 /** One native `PrototypeAction` as the model's action. */
+/**
+ * Whether an ellipse's arc data is a whole circle with no hole. Figma writes it as 0 to 2 pi, in float32, for a plain ellipse, so the
+ * tolerance is wider than float64 rounding.
+ */
+function isFullEllipse(arc: FigmaArcData): boolean {
+  const sweep = Math.abs(arc.endingAngle - arc.startingAngle);
+  return sweep >= 2 * Math.PI - 1e-4 && arc.innerRadius === 0;
+}
+
 function fromNativeAction(raw: Record<string, unknown>): PrototypeAction | null {
   // Set variable: the variable GUID and the value the exporter writes (see modelExport.ts). An
   // action without a readable variable or value is dropped, as an unknown connection is.
