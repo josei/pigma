@@ -1575,7 +1575,8 @@ function KeyTimeline({ node }: { node: SceneNode }) {
 
 /**
  * Animation for the selection: the time keys are set at, a key on each selected layer's opacity or rotation at that time, and how
- * many keys of each the first selected layer has. Playback is not built yet, so a key shows in the file and in these counts only.
+ * many keys of each the first selected layer has. Play moves the key time on through the timeline, and Preview keys draws the values the
+ * keys give at that time. A key is stored in the file and shows in these counts.
  */
 function AnimationSection({ node }: { node: SceneNode }) {
   const keyframeTime = useEditor((state) => state.keyframeTime);
