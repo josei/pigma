@@ -536,8 +536,8 @@ export const readTools: RegisteredTool[] = [
       name: 'get_motion_context',
       title: 'Get motion context',
       description:
-        'Prototype interactions attached to a layer or the current selection. Pigma has no keyframe animation model, ' +
-        'so keyframe tracks and generated CSS/motion code are not available.',
+        'Prototype interactions and keyframe tracks (opacity and rotation) attached to a layer or the current selection. ' +
+        'The generated CSS, React and SwiftUI motion code is in the Inspect panel, not in this tool.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -551,17 +551,21 @@ export const readTools: RegisteredTool[] = [
       const nodes = resolveTargets(file, optionalString(args, 'nodeId'), ctx.session.getSelection());
       const recursive = optionalBoolean(args, 'recursive') ?? false;
       const interactions: Array<Record<string, unknown>> = [];
+      const keyed: Array<Record<string, unknown>> = [];
       const visit = (node: SceneNode): void => {
         if (node.interactions && node.interactions.length > 0) {
           interactions.push({ nodeId: node.id, name: node.name, interactions: node.interactions });
+        }
+        if (node.keyframes && node.keyframes.length > 0) {
+          keyed.push({ nodeId: node.id, name: node.name, tracks: node.keyframes });
         }
         if (recursive && hasChildren(node)) for (const child of (node as ContainerNode).children) visit(child);
       };
       for (const node of nodes) visit(node);
       return jsonResult({
         nodes: interactions,
-        keyframes: [],
-        note: 'Pigma models prototype interactions only; keyframe animation is not represented.',
+        keyframes: keyed,
+        note: 'Keyframe tracks are returned as stored: a time in milliseconds and a value per key. The generated motion code is not in this tool.',
       });
     },
   },

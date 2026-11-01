@@ -440,10 +440,24 @@ describe('MCP read tools', () => {
     expect(value.structuredContent).toEqual({ map: {} });
   });
 
-  it('get_motion_context reports interactions and no keyframes', async () => {
+  it('get_motion_context reports interactions, with no keyframes on a layer that has none', async () => {
     const { server } = buildServer();
     const value = result(await call(server, 'tools/call', { name: 'get_motion_context', arguments: { nodeId: '1:2', recursive: true } }));
     expect(value.structuredContent).toMatchObject({ keyframes: [] });
+  });
+
+  it('get_motion_context returns the keyframe tracks a layer is keyed with', async () => {
+    const { file } = figmaRestToPigmaFile(parseFigmaRestFile(json('rest-file.json')), { now: () => 1_700_000_000_000 });
+    // The Card (1:4) is keyed on opacity: 100% at 0 ms, 0% at 1000 ms.
+    Object.assign(findNode(file.document, '1:4')!, {
+      keyframes: [{ property: 'opacity', keys: [{ time: 0, value: 1 }, { time: 1000, value: 0 }] }],
+    });
+    const session = createSession(file);
+    const server = createMcpServer({ session, rasterizer: nodeRasterizer });
+    const value = result(await call(server, 'tools/call', { name: 'get_motion_context', arguments: { nodeId: '1:4' } }));
+    expect(value.structuredContent).toMatchObject({
+      keyframes: [{ nodeId: '1:4', tracks: [{ property: 'opacity', keys: [{ time: 0, value: 1 }, { time: 1000, value: 0 }] }] }],
+    });
   });
 });
 
