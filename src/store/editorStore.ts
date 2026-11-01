@@ -893,9 +893,14 @@ export function activePage(state: Pick<EditorState, 'file' | 'pageId'>): CanvasN
 }
 
 export function selectedNodes(state: EditorState): SceneNode[] {
+  return selectedNodesOf(state.file, state.selection);
+}
+
+/** The layers of `selection` in `file`, skipping the document and the canvas. The panel reads the drawn file through this too. */
+export function selectedNodesOf(file: PigmaFile, selection: string[]): SceneNode[] {
   const out: SceneNode[] = [];
-  for (const id of state.selection) {
-    const node = findNode(state.file.document, id);
+  for (const id of selection) {
+    const node = findNode(file.document, id);
     if (node && node.type !== 'DOCUMENT' && node.type !== 'CANVAS') out.push(node);
   }
   return out;

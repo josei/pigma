@@ -1,6 +1,6 @@
-import { Fragment, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from './icons';
-import { selectedNodes, useEditor } from '../store/editorStore';
+import { selectedNodesOf, useEditor } from '../store/editorStore';
 import type { AlignMode, ReorderMode } from '../model/ops';
 import { firstVisibleFill, gradientAngle, paintToCssBackground, radialPlacement, rgbaToHex, hexToRgba, selectionColours, selectionPaintOf, withGradientAngle, withRadialPlacement } from '../model/paint';
 import type { BlendMode, ContainerNode, OverlayPosition, Paint, RGBA, SceneNode, TextNode, TextStyle } from '../model/types';
@@ -12,7 +12,7 @@ import { decodeImageFile } from './imageInput';
 import { hasChildren } from '../model/types';
 import { canShareChild, childFillsAxis, defaultAutoLayout, fillAxisOf, gridRowCount } from '../model/autoLayout';
 import type { AnimatableProperty } from '../model/types';
-import { fractionAtTime, timeAtFraction } from '../model/keyframes';
+import { animateFile, fractionAtTime, timeAtFraction } from '../model/keyframes';
 import { EFFECT_TYPES, effectLabel, isBlur, isShadow, type EffectKind } from '../model/effects';
 import { CONSTRAINT_TYPES, constraintLabel } from '../model/constraints';
 import { VariableBindInline, VariableBindRow } from './VariablesPanel';
@@ -47,7 +47,7 @@ import {
 import type { ComponentNode, ComponentPropertyValue, InstanceNode } from '../model/types';
 import { staleLibraryInstances } from '../model/library';
 import type { AutoLayout, ComponentPropertyDefinition, Constraints, GridTrackSize, LayoutGrid, MaskType } from '../model/types';
-import type { Effect } from '../model/types';
+import type { Effect, PigmaFile } from '../model/types';
 import type { StrokeCap, StrokeJoin } from '../model/types';
 import { DEFAULT_MITER_LIMIT } from '../model/types';
 import { ARROW_HEAD_LENGTH, isArrowCap } from '../model/arrowheads';
@@ -503,7 +503,7 @@ function Segmented<T extends string>({
 
 function TransformSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[] }) {
   const stepSelected = useEditor((state) => state.stepSelected);
-  const file = useEditor((state) => state.file);
+  const file = useDisplayedFile();
   const updateSelected = useEditor((state) => state.updateSelected);
   const bounds = absoluteBounds(file.document, node.id);
   const rotation = Math.round((Math.atan2(node.transform.b, node.transform.a) * 180) / Math.PI);
@@ -909,7 +909,7 @@ function AppearanceSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
  */
 function ImageFillControls() {
   const selection = useEditor((state) => state.selection);
-  const file = useEditor((state) => state.file);
+  const file = useDisplayedFile();
   const setImageScaleMode = useEditor((state) => state.setImageScaleMode);
   const setImageCrop = useEditor((state) => state.setImageCrop);
   const replaceSelectedImage = useEditor((state) => state.replaceSelectedImage);
@@ -1409,7 +1409,7 @@ const CONSTRAINT_OPTIONS_VERTICAL = CONSTRAINT_TYPES.map((type) => ({
  * for the children of a parent that can share (see canShareChild).
  */
 function ChildFillSection({ nodes }: { nodes: SceneNode[] }) {
-  const file = useEditor((state) => state.file);
+  const file = useDisplayedFile();
   const setChildFill = useEditor((state) => state.setChildFill);
   const setChildPercent = useEditor((state) => state.setChildPercent);
   const setChildCounterPercent = useEditor((state) => state.setChildCounterPercent);
@@ -1490,7 +1490,7 @@ function ChildFillSection({ nodes }: { nodes: SceneNode[] }) {
  * start. Shown only when a selected layer is a grid child. The mixed state is taken across the selection.
  */
 function GridShareSection({ nodes }: { nodes: SceneNode[] }) {
-  const file = useEditor((state) => state.file);
+  const file = useDisplayedFile();
   const setGridShare = useEditor((state) => state.setGridShare);
   const cells = nodes.filter((node) => {
     const parent = findParent(file.document, node.id);
@@ -2183,7 +2183,7 @@ function AutoLayoutSection({ node, nodes }: { node: SceneNode; nodes: SceneNode[
  * which propagate to the instance's children through the normal instance sync.
  */
 function VariantsSection({ node }: { node: SceneNode }) {
-  const file = useEditor((state) => state.file);
+  const file = useDisplayedFile();
   const selection = useEditor((state) => state.selection);
   const createComponentSet = useEditor((state) => state.createComponentSet);
   const setInstanceVariant = useEditor((state) => state.setInstanceVariant);
@@ -2502,7 +2502,7 @@ const ACTION_KINDS: Array<{ value: PrototypeActionKind; label: string }> = [
  */
 function BooleanSection() {
   const selection = useEditor((state) => state.selection);
-  const file = useEditor((state) => state.file);
+  const file = useDisplayedFile();
   const booleanOp = useEditor((state) => state.booleanOp);
   const setBooleanMode = useEditor((state) => state.setBooleanMode);
 
@@ -2617,12 +2617,26 @@ function ComponentSection({ node }: { node: SceneNode }) {
   );
 }
 
+/**
+ * The file the panel reads. While the animation preview is on, it is the drawing at the key time, so the fields show the drawn values;
+ * otherwise it is the stored file. The fields are held during the preview, so nothing is written from the drawn values.
+ */
+function useDisplayedFile(): PigmaFile {
+  const file = useEditor((state) => state.file);
+  const previewing = useEditor((state) => state.animationPreview && !state.previewFile);
+  const time = useEditor((state) => state.keyframeTime);
+  return useMemo(() => (previewing ? animateFile(file, time) : file), [file, previewing, time]);
+}
+
 export function PropertiesPanel() {
   const panelWidth = useEditor((state) => state.panelWidths.right);
   const drawer = useEditor((state) => state.mobileDrawer);
   const setMobileDrawer = useEditor((state) => state.setMobileDrawer);
   const isMobile = useIsMobile();
-  const nodes = useEditor((state) => selectedNodes(state));
+  const drawn = useDisplayedFile();
+  const selection = useEditor((state) => state.selection);
+  const previewing = useEditor((state) => state.animationPreview && !state.previewFile);
+  const nodes = useMemo(() => selectedNodesOf(drawn, selection), [drawn, selection]);
   const rightTab = useEditor((state) => state.rightTab);
   const setRightTab = useEditor((state) => state.setRightTab);
   const devMode = useEditor((state) => state.devMode);
@@ -2693,30 +2707,36 @@ export function PropertiesPanel() {
           <PrototypeSection node={node ?? null} />
         ) : node ? (
           <>
-            {nodes.length > 1 ? (
-              <div className="section">
-                <div className="section__body">
-                  <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>{nodes.length} layers selected</p>
+            {/* While the preview is on, the edit sections are held: they show the drawn values and take no input. The Animation
+                section sits between the two groups, so its Stop preview control stays usable. */}
+            <fieldset className="panel__group" disabled={previewing}>
+              {nodes.length > 1 ? (
+                <div className="section">
+                  <div className="section__body">
+                    <p style={{ margin: 0, color: 'var(--figma-text-secondary)' }}>{nodes.length} layers selected</p>
+                  </div>
                 </div>
-              </div>
-            ) : null}
-            <TransformSection node={node} nodes={nodes} />
-            <AppearanceSection node={node} nodes={nodes} />
-            <SelectionColoursSection nodes={nodes} />
-            {textNode ? <TextSection node={textNode} nodes={nodes} /> : null}
-            <BooleanSection />
-            <EffectsSection node={node} nodes={nodes} />
-            <ChildFillSection nodes={nodes} />
-            <GridShareSection nodes={nodes} />
+              ) : null}
+              <TransformSection node={node} nodes={nodes} />
+              <AppearanceSection node={node} nodes={nodes} />
+              <SelectionColoursSection nodes={nodes} />
+              {textNode ? <TextSection node={textNode} nodes={nodes} /> : null}
+              <BooleanSection />
+              <EffectsSection node={node} nodes={nodes} />
+              <ChildFillSection nodes={nodes} />
+              <GridShareSection nodes={nodes} />
+            </fieldset>
             <AnimationSection node={node} />
-            <RotateCopiesSection />
-            <ConstraintsSection node={node} />
-            <AutoLayoutSection node={node} nodes={nodes} />
-            <SizeLimitsSection node={node} />
-            <AlignmentSection />
-            <LayoutSection node={node} />
-            <VariantsSection node={node} />
-            <ComponentSection node={node} />
+            <fieldset className="panel__group" disabled={previewing}>
+              <RotateCopiesSection />
+              <ConstraintsSection node={node} />
+              <AutoLayoutSection node={node} nodes={nodes} />
+              <SizeLimitsSection node={node} />
+              <AlignmentSection />
+              <LayoutSection node={node} />
+              <VariantsSection node={node} />
+              <ComponentSection node={node} />
+            </fieldset>
           </>
         ) : (
           <EmptySelection pageName={page?.name ?? 'Page'} />
@@ -2744,7 +2764,7 @@ function EmptySelection({ pageName }: { pageName: string }): ReactNode {
 }
 
 function PrototypeSection({ node }: { node: SceneNode | null }) {
-  const file = useEditor((state) => state.file);
+  const file = useDisplayedFile();
   const pageId = useEditor((state) => state.pageId);
   const selection = useEditor((state) => state.selection);
   const addInteraction = useEditor((state) => state.addInteraction);

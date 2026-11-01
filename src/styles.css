@@ -318,6 +318,14 @@ select {
   background: var(--figma-bg);
 }
 
+/* The edit groups of the side panel: a fieldset, disabled while the animation preview is on, with the fieldset's default box removed. */
+.panel__group {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
 .panel__scroll {
   flex: 1 1 auto;
   min-height: 0;
