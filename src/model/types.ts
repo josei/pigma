@@ -501,10 +501,21 @@ export type DevStatus = 'READY_FOR_DEVELOPMENT' | 'COMPLETED';
 export type ShapeType = 'RECTANGLE' | 'ELLIPSE' | 'LINE' | 'POLYGON' | 'STAR' | 'VECTOR' | 'SLICE';
 export type ContainerKind = 'FRAME' | 'GROUP' | 'SECTION' | 'BOOLEAN_OPERATION';
 
+/**
+ * A partial ellipse, as Figma's plugin docs define it: angles in radians with zero on the x axis, increasing clockwise, and an inner
+ * radius from 0 to 1 as a fraction of each radius. Pigma draws it on the canvas and in SVG; the PDF and the code output do not.
+ */
+export interface EllipseArc {
+  startingAngle: number;
+  endingAngle: number;
+  innerRadius: number;
+}
+
 export interface ShapeNode extends BaseNode {
   type: ShapeType;
   pointCount?: number;
   innerRadius?: number;
+  arc?: EllipseArc;
 }
 
 /**

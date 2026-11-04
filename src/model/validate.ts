@@ -24,6 +24,7 @@ import type {
   KeyframeTrack,
   Node,
   NodeType,
+  EllipseArc,
 } from './types';
 import { DEFAULT_MITER_LIMIT, isContainer } from './types';
 import { ARROW_HEAD_LENGTH } from './arrowheads';
@@ -120,6 +121,21 @@ const BASE_KEYS = [
 const KNOWN_KEYS = new Set<string>(BASE_KEYS);
 
 type Json = Record<string, unknown>;
+
+/** An arc with finite angles and an inner radius from 0 to 1 is kept; anything else is dropped rather than drawn wrongly. */
+function isEllipseArc(value: unknown): value is EllipseArc {
+  if (!value || typeof value !== 'object') return false;
+  const arc = value as Record<string, unknown>;
+  return (
+    typeof arc.startingAngle === 'number' &&
+    typeof arc.endingAngle === 'number' &&
+    typeof arc.innerRadius === 'number' &&
+    Number.isFinite(arc.startingAngle) &&
+    Number.isFinite(arc.endingAngle) &&
+    arc.innerRadius >= 0 &&
+    arc.innerRadius <= 1
+  );
+}
 
 function num(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -544,6 +560,7 @@ function normalizeNode(value: unknown, warnings: string[], path: string): SceneN
         ...(typeof value.windingRule === 'string' ? { windingRule: value.windingRule as 'NONZERO' } : {}),
         ...(typeof value.pointCount === 'number' ? { pointCount: value.pointCount } : {}),
         ...(typeof value.innerRadius === 'number' ? { innerRadius: value.innerRadius } : {}),
+        ...(isEllipseArc(value.arc) ? { arc: value.arc } : {}),
       };
       return shape as SceneNode;
     }

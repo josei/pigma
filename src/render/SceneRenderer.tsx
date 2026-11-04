@@ -13,6 +13,7 @@ import type {
 } from '../model/types';
 import { hasChildren } from '../model/types';
 import { ARROW_HEAD_LENGTH, arrowheadPaths, isArrowCap } from '../model/arrowheads';
+import { ellipseArcPath } from '../model/ellipseArc';
 import { openPolylinesOf } from '../model/boolean';
 import type { Transform } from '../model/types';
 import { transformToCss } from '../model/matrix';
@@ -243,6 +244,7 @@ export function shapePath(node: SceneNode): string | null {
       return null;
     }
     case 'ELLIPSE': {
+      if (node.arc) return ellipseArcPath(node.width, node.height, node.arc);
       const rx = node.width / 2;
       const ry = node.height / 2;
       return `M 0 ${ry} A ${rx} ${ry} 0 1 0 ${node.width} ${ry} A ${rx} ${ry} 0 1 0 0 ${ry} Z`;
@@ -806,6 +808,10 @@ function fillShapes(node: SceneNode): ReactNode[] {
     const key = `fill-${index}`;
     switch (node.type) {
       case 'ELLIPSE':
+        if (node.arc) {
+          shapes.push(<path key={key} d={ellipseArcPath(node.width, node.height, node.arc)} {...common} />);
+          break;
+        }
         shapes.push(
           <ellipse
             key={key}
@@ -925,7 +931,7 @@ function StrokeShapes({ node, path }: { node: SceneNode; path: string | null }) 
         let shape: ReactNode = null;
         if (node.type === 'LINE') {
           shape = <line x1={0} y1={0} x2={node.width} y2={0} {...common} />;
-        } else if (node.type === 'ELLIPSE') {
+        } else if (node.type === 'ELLIPSE' && !node.arc) {
           shape = <ellipse cx={node.width / 2} cy={node.height / 2} rx={Math.max(node.width / 2, 0)} ry={Math.max(node.height / 2, 0)} {...common} />;
         } else if (path) {
           shape = <path d={path} {...common} />;

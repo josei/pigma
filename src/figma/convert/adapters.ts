@@ -26,6 +26,7 @@ import type {
   StrokeCap,
   StrokeJoin,
   DevStatus,
+  EllipseArc,
   ExportSetting,
   MaskType,
   StrokeSideWeights,
@@ -103,6 +104,7 @@ export interface NormalizedNode {
   isMask?: boolean;
   maskType?: MaskType;
   devStatus?: DevStatus;
+  arc?: EllipseArc;
   exportSettings?: ExportSetting[];
   minWidth?: number;
   maxWidth?: number;
@@ -453,13 +455,19 @@ function adaptRestNode(node: FigmaRestNode, path: string, report: ReportBuilder)
   if (typeof node.clipsContent === 'boolean') normalized.clipsContent = node.clipsContent;
   if (typeof node.overflowDirection === 'string') normalized.overflowDirection = node.overflowDirection;
   if (typeof node.booleanOperation === 'string') normalized.booleanOperation = node.booleanOperation;
-  // A full circle with no hole is a plain ellipse, which Pigma draws, so its arc data is no loss. Any other arc is reported.
+  // A full circle with no hole is a plain ellipse, which Pigma draws, so its arc data is no loss. A partial arc is kept as the arc
+  // field, drawn on the canvas and in SVG; the PDF and the code output still draw the whole ellipse, so that is reported.
   if (node.arcData && !isFullEllipse(node.arcData)) {
+    normalized.arc = {
+      startingAngle: node.arcData.startingAngle,
+      endingAngle: node.arcData.endingAngle,
+      innerRadius: node.arcData.innerRadius,
+    };
     report.addUnsupported({
       nodeId: node.id,
       path,
       feature: 'ellipse:arcData',
-      detail: 'arc angles are retained in node.raw but have no Pigma field',
+      detail: 'the arc is drawn on the canvas and in SVG; the PDF and the code output draw the whole ellipse',
     });
   }
   if (typeof node.pointCount === 'number') normalized.pointCount = node.pointCount;

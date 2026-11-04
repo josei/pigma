@@ -246,6 +246,7 @@ function convertScene(node: NormalizedNode, parentAbs: Box | null, state: Conver
   if (node.windingRule) shape.windingRule = node.windingRule;
   if (node.pointCount !== undefined) shape.pointCount = node.pointCount;
   if (node.innerRadius !== undefined) shape.innerRadius = node.innerRadius;
+  if (node.arc) shape.arc = node.arc;
   return shape;
 }
 
