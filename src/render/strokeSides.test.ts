@@ -55,12 +55,14 @@ describe('individual stroke weights', () => {
     expect(pixels(file, node)(10, 50)).toEqual([255, 0, 0]);
   });
 
-  it('keeps one weight on a rounded rectangle, since the bands are for a plain box', () => {
+  it('clips the bands of a rounded rectangle to its outline, so a corner is cut by the arc', () => {
+    // A 20-unit radius: the left band (20 wide) is drawn along the middle of the side, and the arc cuts the corner away.
     const { file, node } = box(6, { top: 0, right: 0, bottom: 0, left: 20 }, 20);
     const at = pixels(file, node);
-    // The single weight of 6 is centred on the edge, so it shows 3 units inside it; the 20-unit left band is not drawn.
-    expect(at(1, 50)).toEqual([255, 0, 0]);
-    expect(at(10, 50)).toEqual([255, 255, 255]);
+    expect(at(10, 50)).toEqual([255, 0, 0]);
+    // The corner lies outside the arc, so the band is cut there and nothing red is drawn.
+    expect(at(2, 2)).not.toEqual([255, 0, 0]);
+    expect(at(50, 50)).toEqual([255, 255, 255]);
   });
 
   it('survives a save and a reload', () => {

@@ -858,13 +858,13 @@ const STROKE_CAP: Record<string, 'butt' | 'round' | 'square'> = {
 
 /**
  * The four inside bands of a rectangle or frame with individual stroke weights, in the node's own coordinates; a side of zero width
- * has no band. Only a plain box takes them: a rounded corner or a path keeps the one weight, so this returns null for those, as it
- * does for every other kind of node.
+ * has no band. A rounded box takes them too: its bands are clipped to the rounded outline, so each corner is cut by the arc. A path
+ * keeps the one weight, so this returns null for a path, as it does for every other kind of node.
  */
-function sideBandsOf(node: SceneNode, path: string | null): Array<{ x: number; y: number; width: number; height: number }> | null {
+function sideBandsOf(node: SceneNode): Array<{ x: number; y: number; width: number; height: number }> | null {
   const sides = node.individualStrokeWeights;
-  if (!sides || path || (node.type !== 'RECTANGLE' && node.type !== 'FRAME')) return null;
-  if (cornerRadii(node).some((radius) => radius > 0)) return null;
+  // A rectangle's or frame's path is only its own outline, rounded or not, so the bands take it; any other kind keeps one weight.
+  if (!sides || (node.type !== 'RECTANGLE' && node.type !== 'FRAME')) return null;
   const width = Math.max(node.width, 0);
   const height = Math.max(node.height, 0);
   return [
@@ -877,7 +877,7 @@ function sideBandsOf(node: SceneNode, path: string | null): Array<{ x: number; y
 
 function StrokeShapes({ node, path }: { node: SceneNode; path: string | null }) {
   const weight = node.strokeWeight ?? 1;
-  const bands = sideBandsOf(node, path);
+  const bands = sideBandsOf(node);
   if (node.strokes.length === 0 || (weight <= 0 && !bands)) return null;
   const align = node.strokeAlign ?? 'CENTER';
   return (
@@ -888,11 +888,24 @@ function StrokeShapes({ node, path }: { node: SceneNode; path: string | null }) 
         if (!resolution || resolution.value === 'none') return null;
         // Individual weights draw each side as a band inside the box, in the stroke paint; the band is always inside, whatever the alignment.
         if (bands) {
+          const radii = cornerRadii(node);
+          const outline = radii.some((radius) => radius > 0) ? roundedRectPath(node.width, node.height, radii, cornerSmoothingOf(node)) : null;
+          const clipId = `pigma-strokeband-${sanitize(node.id)}-${index}`;
+          const marks = bands.map((band, bandIndex) => (
+            <rect key={bandIndex} x={band.x} y={band.y} width={band.width} height={band.height} fill={resolution.value} fillOpacity={resolution.opacity} />
+          ));
           return (
             <g key={index}>
-              {bands.map((band, bandIndex) => (
-                <rect key={bandIndex} x={band.x} y={band.y} width={band.width} height={band.height} fill={resolution.value} fillOpacity={resolution.opacity} />
-              ))}
+              {outline ? (
+                <>
+                  <clipPath id={clipId}>
+                    <path d={outline} />
+                  </clipPath>
+                  <g clipPath={`url(#${clipId})`}>{marks}</g>
+                </>
+              ) : (
+                marks
+              )}
             </g>
           );
         }
