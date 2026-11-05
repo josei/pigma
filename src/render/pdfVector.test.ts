@@ -250,6 +250,43 @@ describe('vector PDF', () => {
     expect(body).toContain('[8 4] 2 d');
   });
 
+  it('draws a partial ellipse as its arc: three curves to the centre, not four curves round', () => {
+    const ellipse = createEllipseNode(null, 0, 0, 100, 100) as SceneNode & { arc?: { startingAngle: number; endingAngle: number; innerRadius: number } };
+    ellipse.fills = [solid(0, 0, 1)];
+    ellipse.strokes = [];
+    ellipse.arc = { startingAngle: 0, endingAngle: Math.PI * 1.5, innerRadius: 0 };
+    const { file, nodes } = page([ellipse]);
+    const body = decode(renderVectorPdf(file, nodes, { width: 100, height: 100 }).bytes);
+    const curves = body.split('\n').filter((line) => line.endsWith('c')).length;
+    expect(curves).toBe(3);
+    // A pie slice closes through the centre, so the path has a line to 50 50 before it is filled.
+    expect(body).toContain('50 50 l');
+  });
+
+  it('draws each side with its own band, clipped to the box, instead of one stroke', () => {
+    const rect = createRectNode(null, 0, 0, 100, 100);
+    rect.fills = [];
+    rect.strokes = [solid(1, 0, 0)];
+    rect.strokeWeight = 6;
+    rect.individualStrokeWeights = { top: 0, right: 0, bottom: 0, left: 20 };
+    const { file, nodes } = page([rect]);
+    const body = decode(renderVectorPdf(file, nodes, { width: 100, height: 100 }).bytes);
+    // The left band is 20 wide and the full height, filled in the stroke colour, inside a clip of the box.
+    expect(body).toContain('W n');
+    expect(body).toContain('0 0 20 100 re f');
+    // The single weight is not stroked: no stroke operator for this node.
+    expect(body).not.toContain('S\n');
+  });
+
+  it('keeps a whole-ellipse PDF unchanged: four curves round, no line to the centre', () => {
+    const ellipse = createEllipseNode(null, 0, 0, 100, 100);
+    ellipse.fills = [solid(0, 0, 1)];
+    const { file, nodes } = page([ellipse]);
+    const body = decode(renderVectorPdf(file, nodes, { width: 100, height: 100 }).bytes);
+    expect(body.split('\n').filter((line) => line.endsWith('c')).length).toBeGreaterThanOrEqual(4);
+    expect(body).not.toContain('50 50 l');
+  });
+
   it('renders ellipses, stars and boolean geometry as paths', () => {
     const ellipse = createEllipseNode(null, 0, 0, 60, 40);
     ellipse.fills = [solid(0, 1, 0)];

@@ -1,4 +1,4 @@
-import type { PigmaFile, Paint, SceneNode, TextStyle, Transform } from '../model/types';
+import type { PigmaFile, Paint, SceneNode, SolidPaint, StrokeSideWeights, TextStyle, Transform } from '../model/types';
 import { DEFAULT_MITER_LIMIT, hasChildren } from '../model/types';
 import { fromMatrix, multiply, roundTo } from '../model/matrix';
 
@@ -470,6 +470,34 @@ function strokeExtras(builder: PdfBuilder, node: SceneNode): void {
   }
 }
 
+/**
+ * The four bands of a rectangle or frame with individual stroke weights, each a filled rectangle inside the box, clipped to the
+ * box's outline so a rounded corner cuts them. A side of zero width has no band.
+ */
+function paintSideBands(builder: PdfBuilder, node: SceneNode, paint: SolidPaint, sides: StrokeSideWeights): void {
+  const outline = pdfShapePath(node);
+  if (!outline) return;
+  const alpha = paint.opacity ?? 1;
+  const width = Math.max(node.width, 0);
+  const height = Math.max(node.height, 0);
+  const all: Array<[number, number, number, number]> = [
+    [0, 0, width, sides.top],
+    [0, height - sides.bottom, width, sides.bottom],
+    [0, 0, sides.left, height],
+    [width - sides.right, 0, sides.right, height],
+  ];
+  const bands = all.filter(([, , w, h]) => w > 0 && h > 0);
+  if (bands.length === 0) return;
+  builder.content.push('q');
+  if (alpha < 1) builder.content.push(`/${alphaName(builder, alpha)} gs`);
+  builder.content.push(pathToPdf(outline));
+  builder.content.push('W n');
+  const [r, g, b] = colorOf(paint);
+  builder.content.push(`${num(r)} ${num(g)} ${num(b)} rg`);
+  for (const [x, y, w, h] of bands) builder.content.push(`${num(x)} ${num(y)} ${num(w)} ${num(h)} re f`);
+  builder.content.push('Q');
+}
+
 function paintNode(builder: PdfBuilder, file: PigmaFile, node: SceneNode, parentMatrix: Transform): void {
   const resolved = resolveNodeVariables(file, node);
   const target = (resolved ? { ...node, ...resolved } : node) as SceneNode;
@@ -502,7 +530,11 @@ function paintNode(builder: PdfBuilder, file: PigmaFile, node: SceneNode, parent
         }
       });
       const stroke = target.strokes.find((paint) => paint.visible !== false);
-      if (stroke && (target.strokeWeight ?? 1) > 0) {
+      const sides = target.individualStrokeWeights;
+      if (stroke && sides && stroke.type === 'SOLID' && (target.type === 'RECTANGLE' || target.type === 'FRAME')) {
+        // Individual weights draw each side as a band inside the box, as on the canvas; the single weight is not used here.
+        paintSideBands(builder, target, stroke as SolidPaint, sides);
+      } else if (stroke && (target.strokeWeight ?? 1) > 0) {
         strokeExtras(builder, target);
         paintShape(builder, target, stroke, 0, 'stroke', matrix);
         paintArrowheads(builder, target, stroke, matrix);
