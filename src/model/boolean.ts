@@ -6,6 +6,7 @@ import { applyToPoint, invert, multiply, translate } from './matrix';
 import { firstVisibleFill } from './paint';
 import { DEFAULT_MITER_LIMIT, hasChildren } from './types';
 import { ARROW_HEAD_LENGTH, arrowheadsOf, isArrowCap } from './arrowheads';
+import { ellipseArcRing } from './ellipseArc';
 import { subpathsFromPathData, type VectorAnchor, type VectorPath } from './vector';
 
 /**
@@ -87,6 +88,7 @@ function sampleCubic(from: VectorAnchor, to: VectorAnchor): Ring {
 function localOutline(node: SceneNode): Ring[] | null {
   switch (node.type) {
     case 'ELLIPSE': {
+      if (node.arc) return [ellipseArcRing(node.width, node.height, node.arc) as Ring];
       const ring: Ring = [];
       for (let step = 0; step < ELLIPSE_SAMPLES; step += 1) {
         const angle = (step / ELLIPSE_SAMPLES) * Math.PI * 2;

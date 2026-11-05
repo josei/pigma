@@ -1,4 +1,5 @@
 import type { AnyChild, AnyNode, AutoLayout, NodeType, ParentNode, Rect, SceneNode, Transform } from './types';
+import { ellipseArcContains } from './ellipseArc';
 import { hasChildren } from './types';
 import { IDENTITY, applyToPoint, boundsOf, invert, multiply } from './matrix';
 
@@ -199,6 +200,8 @@ export function nodeMap(root: AnyNode): Map<string, AnyNode> {
  */
 export function hitTestBox(node: AnyNode, space: Transform, x: number, y: number, tolerance = 0): boolean {
   const local = applyToPoint(invert(space), x, y);
+  // A partial ellipse is hit on the arc it draws, so its missing quarter is not a hit.
+  if (node.type === 'ELLIPSE' && node.arc) return ellipseArcContains(node.width, node.height, node.arc, local.x, local.y);
   return (
     local.x >= -tolerance &&
     local.y >= -tolerance &&
