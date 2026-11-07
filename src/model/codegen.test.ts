@@ -60,6 +60,28 @@ describe('inspect / codegen', () => {
     expect(measurements(file, firstId)!.gaps.right).toBe(40);
   });
 
+  it('gives each side of an individually stroked box its own border, with the box left at its size', () => {
+    const file = emptyFile('Sides');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 10, 10, 100, 60);
+    rect.fills = [];
+    rect.strokes = [{ type: 'SOLID', color: { r: 1, g: 0, b: 0 }, opacity: 1 }];
+    rect.strokeWeight = 6;
+    rect.strokeAlign = 'CENTER';
+    rect.individualStrokeWeights = { top: 16, right: 4, bottom: 10, left: 2 };
+    page.children = [rect];
+    const css = toCss(file, rect.id);
+    expect(css).toContain('border-top: 16px solid');
+    expect(css).toContain('border-right: 4px solid');
+    expect(css).toContain('border-bottom: 10px solid');
+    expect(css).toContain('border-left: 2px solid');
+    // The bands are inside the box, so the box is not grown by the centred stroke: it stays 100 by 60 at 10, 10.
+    expect(css).toContain('left: 10px;');
+    expect(css).toContain('width: 100px;');
+    expect(css).toContain('height: 60px;');
+    expect(css).not.toContain('border: 6px');
+  });
+
   it('generates CSS with the geometry, paint, radius and shadow', () => {
     const { file, firstId } = setup();
     const css = toCss(file, firstId);

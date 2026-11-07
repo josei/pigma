@@ -142,7 +142,10 @@ export function cssDeclarations(file: PigmaFile, id: string): string[] {
   // CSS draws a border inside its box, but the canvas strokes an edge by its alignment: an inside stroke is within the box, a centred
   // one half outside, an outside one wholly outside. The box grows to hold the stroke, and a border-box keeps its size. A line's stroke
   // is centred on its y, so its box starts half a weight higher.
-  const grow = !stroke || node.type === 'LINE' ? 0 : node.strokeAlign === 'INSIDE' ? 0 : node.strokeAlign === 'OUTSIDE' ? weight : weight / 2;
+  // Individual weights are bands inside the box whatever the alignment, so such a box does not grow.
+  const sides = node.individualStrokeWeights && (node.type === 'RECTANGLE' || node.type === 'FRAME') ? node.individualStrokeWeights : null;
+  const grow =
+    !stroke || node.type === 'LINE' || sides ? 0 : node.strokeAlign === 'INSIDE' ? 0 : node.strokeAlign === 'OUTSIDE' ? weight : weight / 2;
   const top = node.type === 'LINE' && stroke ? measured.relativeY - weight / 2 : measured.relativeY - grow;
   const lines: string[] = [
     'position: absolute;',
@@ -159,7 +162,14 @@ export function cssDeclarations(file: PigmaFile, id: string): string[] {
     const style = node.dashPattern?.length ? 'dashed' : 'solid';
     // A line is a box of no height, so one top border draws it. A full border would draw two lines, at the top and the bottom edge.
     const side = node.type === 'LINE' ? 'border-top' : 'border';
-    if (stroke.type === 'SOLID') {
+    if (stroke.type === 'SOLID' && sides) {
+      // Each side is its own border, so each keeps its own width; CSS joins them at the corners, cutting a rounded one as it does.
+      const colour = paintToCssBackground(stroke);
+      lines.push(`border-top: ${sides.top}px ${style} ${colour};`);
+      lines.push(`border-right: ${sides.right}px ${style} ${colour};`);
+      lines.push(`border-bottom: ${sides.bottom}px ${style} ${colour};`);
+      lines.push(`border-left: ${sides.left}px ${style} ${colour};`);
+    } else if (stroke.type === 'SOLID') {
       lines.push(`${side}: ${weight}px ${style} ${paintToCssBackground(stroke)};`);
     } else if (node.type === 'LINE') {
       // A line's one border cannot take an image, so it takes the colour at the middle of its gradient.
