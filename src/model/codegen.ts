@@ -852,7 +852,21 @@ export function toSwiftUI(file: PigmaFile, id: string): string {
       lines.push(`      .frame(width: ${round(measured.width, 2)}, height: ${round(measured.height, 2)})`);
       const stroke = firstVisibleFill(node.strokes);
       const strokeStyle = stroke ? swiftPaint(stroke, measured.width, measured.height) : null;
-      if (strokeStyle) {
+      const sides = node.individualStrokeWeights && (node.type === 'RECTANGLE' || node.type === 'FRAME') ? node.individualStrokeWeights : null;
+      if (strokeStyle && sides && stroke?.type === 'SOLID') {
+        // Each side is a band inside the box: a rectangle along its edge, as tall or wide as the side. The corner clip below cuts them.
+        const bands: Array<[string, number]> = [
+          ['.top', sides.top],
+          ['.bottom', sides.bottom],
+          ['.leading', sides.left],
+          ['.trailing', sides.right],
+        ];
+        for (const [edge, size] of bands) {
+          if (!(size > 0)) continue;
+          const extent = edge === '.top' || edge === '.bottom' ? `height: ${round(size, 2)}` : `width: ${round(size, 2)}`;
+          lines.push(`      .overlay(alignment: ${edge}) { Rectangle().fill(${strokeStyle}).frame(${extent}) }`);
+        }
+      } else if (strokeStyle) {
         const width = round(node.strokeWeight ?? 1, 2);
         const style = swiftStrokeStyle(node, width);
         lines.push(

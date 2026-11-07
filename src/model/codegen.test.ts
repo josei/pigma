@@ -688,6 +688,33 @@ describe('SwiftUI for keyframes', () => {
     expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
   });
 
+  it('draws each side of an individually stroked box as a band overlay, with the box clipped to its corners', () => {
+    const file = emptyFile('SwiftSides');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 0, 0, 240, 160);
+    rect.fills = [];
+    rect.strokes = [{ type: 'SOLID', color: { r: 0.9, g: 0.2, b: 0.1 }, opacity: 1 }];
+    rect.strokeWeight = 6;
+    rect.cornerRadius = 48;
+    rect.individualStrokeWeights = { top: 16, right: 4, bottom: 10, left: 2 };
+    page.children = [rect];
+    const swift = toSwiftUI(file, rect.id);
+    expect(swift).toContain('.overlay(alignment: .top) { Rectangle().fill(');
+    expect(swift).toContain('.frame(height: 16) }');
+    expect(swift).toContain('.overlay(alignment: .trailing) { Rectangle().fill(');
+    expect(swift).toContain('.frame(width: 4) }');
+    // The bands replace the one stroke, and the corner radius still clips them.
+    expect(swift).not.toContain('.stroke(');
+    expect(swift).toContain('.cornerRadius(48)');
+    if (swiftcAvailable) {
+      const dir = mkdtempSync(join(tmpdir(), 'pigma-swiftsides-'));
+      const source = join(dir, 'Sides.swift');
+      writeFileSync(source, `import SwiftUI\n\n${swift}`);
+      const target = process.arch === 'arm64' ? 'arm64-apple-macos14' : 'x86_64-apple-macos14';
+      expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
+    }
+  });
+
   it('gives a stroke its cap, its join and its miter limit in the StrokeStyle, and leaves a plain line as lineWidth', () => {
     const file = emptyFile('Caps');
     const page = file.document.children[0]!;
