@@ -688,6 +688,23 @@ describe('SwiftUI for keyframes', () => {
     expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
   });
 
+  it('gives the React style of an individually stroked box a border per side, from the same declarations as the CSS', () => {
+    const file = emptyFile('ReactSides');
+    const page = file.document.children[0]!;
+    const rect = createRectNode(null, 10, 10, 100, 60);
+    rect.fills = [];
+    rect.strokes = [{ type: 'SOLID', color: { r: 1, g: 0, b: 0 }, opacity: 1 }];
+    rect.strokeWeight = 6;
+    rect.individualStrokeWeights = { top: 16, right: 4, bottom: 10, left: 2 };
+    page.children = [rect];
+    const jsx = toReact(file, rect.id);
+    expect(jsx).toContain("borderTop: '16px solid");
+    expect(jsx).toContain("borderRight: '4px solid");
+    expect(jsx).toContain("borderBottom: '10px solid");
+    expect(jsx).toContain("borderLeft: '2px solid");
+    expect(jsx).not.toContain('border: ');
+  });
+
   it('draws each side of an individually stroked box as a band overlay, with the box clipped to its corners', () => {
     const file = emptyFile('SwiftSides');
     const page = file.document.children[0]!;
