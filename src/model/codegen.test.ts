@@ -705,6 +705,19 @@ describe('SwiftUI for keyframes', () => {
     expect(arcCss).toContain('L 50 50 Z');
   });
 
+  it('gives the React style of a partial ellipse its clip path and round edge, from the same declarations as the CSS', () => {
+    const file = emptyFile('ReactArc');
+    const page = file.document.children[0]!;
+    const arc = createEllipseNode(null, 0, 0, 100, 100) as SceneNode & { arc?: { startingAngle: number; endingAngle: number; innerRadius: number } };
+    arc.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 1 }, opacity: 1 }];
+    arc.strokes = [];
+    arc.arc = { startingAngle: 0, endingAngle: Math.PI * 1.5, innerRadius: 0 };
+    page.children = [arc];
+    const jsx = toReact(file, arc.id);
+    expect(jsx).toContain("borderRadius: '50%'");
+    expect(jsx).toContain("clipPath: 'path(\\'M ");
+  });
+
   it('gives the React style of an individually stroked box a border per side, from the same declarations as the CSS', () => {
     const file = emptyFile('ReactSides');
     const page = file.document.children[0]!;
