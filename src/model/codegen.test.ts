@@ -14,10 +14,11 @@ import {
   toReact,
   toSwiftUI,
 } from './codegen';
-import { createFrameNode, createLineNode, createRectNode, createStarNode, createTextNode } from './factory';
+import { createEllipseNode, createFrameNode, createLineNode, createRectNode, createStarNode, createTextNode } from './factory';
 import { setKeyEasingOp, setKeyframeOp } from './keyframes';
 import { emptyFile } from './validate';
 import { EFFECT_TYPES } from './effects';
+import type { SceneNode } from './types';
 
 function setup() {
   const file = emptyFile('Inspect');
@@ -686,6 +687,22 @@ describe('SwiftUI for keyframes', () => {
     writeFileSync(source, `import SwiftUI\n\n${toSwiftUI(file, id)}`);
     const target = process.arch === 'arm64' ? 'arm64-apple-macos14' : 'x86_64-apple-macos14';
     expect(() => execFileSync('swiftc', ['-typecheck', '-target', target, source], { stdio: 'pipe' })).not.toThrow();
+  });
+
+  it('gives a plain ellipse a round shape in CSS, and a partial ellipse its arc as a clip path', () => {
+    const file = emptyFile('Ellipses');
+    const page = file.document.children[0]!;
+    const plain = createEllipseNode(null, 0, 0, 100, 60);
+    plain.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 1 }, opacity: 1 }];
+    const arc = createEllipseNode(null, 120, 0, 100, 100) as SceneNode & { arc?: { startingAngle: number; endingAngle: number; innerRadius: number } };
+    arc.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 1 }, opacity: 1 }];
+    arc.arc = { startingAngle: 0, endingAngle: Math.PI * 1.5, innerRadius: 0 };
+    page.children = [plain, arc];
+    expect(toCss(file, plain.id)).toContain('border-radius: 50%;');
+    const arcCss = toCss(file, arc.id);
+    expect(arcCss).toContain('border-radius: 50%;');
+    expect(arcCss).toContain("clip-path: path('M ");
+    expect(arcCss).toContain('L 50 50 Z');
   });
 
   it('gives the React style of an individually stroked box a border per side, from the same declarations as the CSS', () => {

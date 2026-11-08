@@ -4,6 +4,7 @@ import { boundsOf, fromMatrix, rotationOf, roundTo as round } from './matrix';
 import { figmaColorToCss, firstVisibleFill, paintToCssBackground, rgbaToHex } from './paint';
 import { valuesAt } from './keyframes';
 import { ARROW_HEAD_LENGTH, arrowheadPaths, arrowheadsOf, isArrowCap } from './arrowheads';
+import { ellipseArcPath } from './ellipseArc';
 import { openPolylinesOf } from './boolean';
 import type { KeyframeTrack } from './types';
 import { DEFAULT_MITER_LIMIT } from './types';
@@ -181,6 +182,15 @@ export function cssDeclarations(file: PigmaFile, id: string): string[] {
     }
   }
   if (measured.cornerRadius > 0) lines.push(`border-radius: ${measured.cornerRadius}px;`);
+  if (node.type === 'ELLIPSE') {
+    // A plain ellipse is round: a box with a full radius. A partial ellipse keeps the round edge for its border and clips the box to
+    // its arc, in the box's own coordinates (the box grows by the stroke, as above).
+    lines.push('border-radius: 50%;');
+    if (node.arc) {
+      const outline = ellipseArcPath(measured.width + 2 * grow, measured.height + 2 * grow, node.arc);
+      lines.push(`clip-path: path('${outline}');`);
+    }
+  }
   if (measured.rotation !== 0) lines.push(`transform: rotate(${measured.rotation}deg);`);
   if (measured.opacity < 1) lines.push(`opacity: ${measured.opacity};`);
   // CSS has every blend mode Figma uses, so it is emitted rather than noted —
